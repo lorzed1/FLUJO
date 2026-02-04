@@ -1,0 +1,5 @@
+{
+  "name": "Proyector de Flujo de Caja",
+  "description": "Una aplicación para proyectar el flujo de caja de un negocio. Permite a los usuarios ingresar ingresos y gastos (fijos y variables), categorizarlos y visualizar los datos a través de un panel de control completo y fácil de usar con varios elementos de parametrización.",
+  "requestFramePermissions": []
+}

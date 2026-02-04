@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+:root {
+    --chart-grid: #e5e7eb;
+    /* gray-200 */
+    --chart-text: #6b7280;
+    /* gray-500 */
+}
+
+.dark {
+    --chart-grid: #334155;
+    /* slate-700 */
+    --chart-text: #94a3b8;
+    /* slate-400 */
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
