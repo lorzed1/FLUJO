@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ChartPieIcon, BanknotesIcon, CalendarDaysIcon, PencilIcon, CheckCircleIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, ArrowRightOnRectangleIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, CreditCardIcon, ClipboardDocumentListIcon } from './ui/Icons';
 import { useUI } from '../context/UIContext';
 
-type View = 'dashboard' | 'transactions' | 'calendar' | 'recurring' | 'users' | 'budget' | 'arqueo';
+type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections';
 
 interface SidebarProps {
   currentView: View;
@@ -32,8 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, onExport
     { id: 'dashboard', label: 'Dashboard', icon: <ChartPieIcon className="h-5 w-5" /> },
     { id: 'arqueo', label: 'Arqueo de Caja', icon: <ClipboardDocumentListIcon className="h-5 w-5" /> },
     { id: 'budget', label: 'Presupuestos', icon: <CreditCardIcon className="h-5 w-5" /> },
+    { id: 'projections', label: 'Proyecciones', icon: <CalendarDaysIcon className="h-5 w-5" /> },
 
-    { id: 'calendar', label: 'Flujo Operativo', icon: <CalendarDaysIcon className="h-5 w-5" /> },
     { id: 'users', label: 'Usuarios', icon: <PencilIcon className="h-5 w-5" /> },
   ];
 

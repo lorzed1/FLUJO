@@ -100,7 +100,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                 ...formData,
                 amount: Number(formData.amount),
                 id: initialCommitment?.id,
-                recurrenceRuleId: initialCommitment?.recurrenceRuleId // Preserve rule association
+                recurrenceRuleId: initialCommitment?.recurrenceRuleId, // Preserve rule association
+                paidDate: formData.status === 'paid' ? (initialCommitment?.paidDate || new Date().toISOString().split('T')[0]) : undefined
             });
             onClose();
         } catch (error) {
@@ -222,7 +223,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                         try {
                                             await onSubmit({
                                                 ...initialCommitment,
-                                                status: 'paid'
+                                                status: 'paid',
+                                                paidDate: new Date().toISOString().split('T')[0]
                                             });
                                             onClose();
                                         } catch (e) {

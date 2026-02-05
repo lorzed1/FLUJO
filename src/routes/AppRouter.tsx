@@ -8,8 +8,7 @@ import AlertModal from '../components/ui/AlertModal';
 import PageLoader from '../components/ui/PageLoader';
 
 const DashboardView = lazy(() => import('../features/dashboard/DashboardView'));
-const TransactionsView = lazy(() => import('../features/operations/TransactionsView'));
-const OperationalFlowView = lazy(() => import('../features/operations/OperationalFlowView'));
+
 
 const UsersManagementView = lazy(() => import('../features/auth/UsersManagementView'));
 const Login = lazy(() => import('../features/auth/Login'));
@@ -23,7 +22,10 @@ const BudgetTable = lazy(() => import('../features/budget/pages/BudgetTable').th
 const BudgetRecurring = lazy(() => import('../features/budget/pages/BudgetRecurring').then(m => ({ default: m.BudgetRecurring })));
 const BudgetCategories = lazy(() => import('../features/budget/pages/BudgetCategories').then(m => ({ default: m.BudgetCategories })));
 
-type View = 'dashboard' | 'transactions' | 'calendar' | 'recurring' | 'users' | 'budget' | 'arqueo';
+// Projections
+const ProjectionsView = lazy(() => import('../features/projections/ProjectionsView').then(m => ({ default: m.ProjectionsView })));
+
+type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections';
 
 const AppRouter: React.FC = () => {
     // Contextos especializados
@@ -49,9 +51,8 @@ const AppRouter: React.FC = () => {
         const path = location.pathname;
         if (path.includes('budget')) return 'budget'; // Prioridad para evitar colisión con /budget/calendar
         if (path.includes('arqueo')) return 'arqueo';
-        if (path.includes('calendar')) return 'calendar';
-        if (path.includes('transactions')) return 'transactions';
-        if (path.includes('recurring')) return 'recurring';
+        if (path.includes('projections')) return 'projections';
+
 
         if (path.includes('users') || path.includes('usuarios')) return 'users';
         return 'dashboard';
@@ -151,12 +152,7 @@ const AppRouter: React.FC = () => {
                                 arqueos={arqueos || []}
                             />
                         } />
-                        <Route path="/transactions" element={
-                            <TransactionsView
-                                addTransaction={addTransaction}
-                                categories={categories || []}
-                            />
-                        } />
+
                         <Route path="/arqueo" element={
                             <ArqueoView
                                 onSave={handleSaveArqueo}
@@ -167,24 +163,7 @@ const AppRouter: React.FC = () => {
                                 userRole={userRole}
                             />
                         } />
-                        <Route path="/calendar" element={
-                            <OperationalFlowView
-                                transactions={memoizedAllTransactions || []}
-                                updateTransactionDate={updateTransactionDate}
-                                updateTransactionAmount={updateTransactionAmount}
-                                updateTransaction={updateTransaction}
-                                updateRecurringExpenseOverride={updateRecurringExpenseOverride}
-                                addTransaction={addTransaction}
-                                deleteTransaction={deleteTransaction}
-                                categories={categories || []}
-                                recordedDays={recordedDays || new Set()}
-                                recordDay={recordDay}
-                                recurringExpenses={recurringExpenses || []}
-                                addRecurringExpense={addRecurringExpense}
-                                updateRecurringExpense={updateRecurringExpense}
-                                deleteRecurringExpense={deleteRecurringExpense}
-                            />
-                        } />
+
 
 
                         <Route path="/users" element={<UsersManagementView />} />
@@ -197,10 +176,13 @@ const AppRouter: React.FC = () => {
                             <Route path="recurrent" element={<BudgetRecurring />} />
                             <Route path="categories" element={<BudgetCategories />} />
                         </Route>
+
+                        <Route path="/projections" element={<ProjectionsView />} />
                     </Route>
                 )}
 
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
             </Routes>
 
             <AlertModal

@@ -52,13 +52,15 @@ export const budgetService = {
                 const end = parseISO(endDate);
                 const virtualCommitments: BudgetCommitment[] = [];
 
+                // Track which real commitments have been "used" to satisfy a recurrence slot
+                const consumedRealIds = new Set<string>();
+
                 for (const rule of rules) {
                     if (!rule.active) continue;
 
                     let nextDate = parseISO(rule.startDate);
 
                     // Advance to start range efficiently
-                    // (Naive loop is fine for < 1000 iterations)
                     while (isBefore(nextDate, start)) {
                         nextDate = this.getNextDate(nextDate, rule.frequency, rule.interval);
                     }
@@ -75,13 +77,38 @@ export const budgetService = {
 
                         const dateStr = format(nextDate, 'yyyy-MM-dd');
 
-                        // Check if a REAL commitment exists for this rule on this date
-                        // We check by Rule ID and strict Due Date match
-                        const exists = realCommitments.some(rc =>
-                            rc.recurrenceRuleId === rule.id && rc.dueDate === dateStr
+                        // SMART RECONCILIATION:
+                        // Find a real commitment that satisfies this slot.
+                        // We look for any real commitment for this rule that hasn't been used yet.
+                        // We prioritize the CLOSEST one in date.
+
+                        // 1. Filter candidates
+                        const candidates = realCommitments.filter(rc =>
+                            rc.recurrenceRuleId === rule.id && !consumedRealIds.has(rc.id)
                         );
 
-                        if (!exists) {
+                        // 2. Find best match (closest date)
+                        let bestMatch: BudgetCommitment | null = null;
+                        let minDiff = Infinity;
+
+                        // Define threshold based on frequency (allow flexibility for early/late payments)
+                        const thresholdDays = rule.frequency === 'weekly' ? 4 : 25; // 4 days for weekly, 25 for monthly
+
+                        for (const candidate of candidates) {
+                            const candidateDate = parseISO(candidate.dueDate);
+                            const diff = Math.abs(candidateDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24);
+
+                            if (diff <= thresholdDays && diff < minDiff) {
+                                minDiff = diff;
+                                bestMatch = candidate;
+                            }
+                        }
+
+                        if (bestMatch) {
+                            // Found a real payment that covers this slot (even if date changed)
+                            consumedRealIds.add(bestMatch.id);
+                        } else {
+                            // No matching real payment found, generate VIRTUAL
                             virtualCommitments.push({
                                 id: `projected-${rule.id}-${dateStr}`,
                                 title: `${rule.title} (Proyectado)`,
@@ -103,7 +130,15 @@ export const budgetService = {
 
                 // Merge and Sort
                 const all = [...realCommitments, ...virtualCommitments];
-                return all.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+                // FINAL DEDUPLICATION SAFEGUARD
+                // Ensure no duplicate IDs exist (sanity check)
+                const uniqueMap = new Map<string, BudgetCommitment>();
+                all.forEach(item => uniqueMap.set(item.id, item));
+
+                const uniqueAll = Array.from(uniqueMap.values());
+
+                return uniqueAll.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
             }
 
             return realCommitments;

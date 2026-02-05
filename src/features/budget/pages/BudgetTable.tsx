@@ -140,6 +140,18 @@ export const BudgetTable: React.FC = () => {
             )
         },
         {
+            key: 'paidDate',
+            label: 'Fecha Pago',
+            sortable: true,
+            filterable: true,
+            width: 'w-32',
+            render: (value: string) => (
+                <span className={`text-sm font-medium ${value ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'}`}>
+                    {value || '-'}
+                </span>
+            )
+        },
+        {
             key: 'category',
             label: 'Categoría',
             sortable: true,

@@ -152,10 +152,39 @@ export interface ArqueoRecord {
   rappi: number;
   ingresoCovers: number;
   visitas: number;
+  numeroTransacciones?: number; // Added for traffic analysis
   totalRecaudado: number;
   descuadre: number;
   baseDetail?: Record<string, number>; // Nuevo campo para persistir detalle de billetes
   cuadreDetail?: Record<string, number>; // Nuevo campo para persistir detalle de cuadre de venta
   totalIngresos?: number; // Campo calculado en runtime
   createdAt?: any;
+}
+
+// ==========================================
+// Módulo de Proyecciones y Eventos
+// ==========================================
+
+export type SalesEventType = 'boost' | 'drag' | 'neutral';
+
+export interface SalesEvent {
+  id: string;
+  date: string; // ISO string YYYY-MM-DD
+  name: string;
+  type: SalesEventType;
+  impactFactor: number; // Multiplier (e.g., 1.5, 0.8)
+  isRecurring: boolean;
+  notes?: string;
+  createdAt?: any;
+}
+
+export type ProjectionStatus = 'draft' | 'locked';
+
+export interface SalesProjection {
+  date: string; // Document ID and content: YYYY-MM-DD
+  amountSystem: number;
+  amountAdjusted: number;
+  status: ProjectionStatus;
+  notes?: string;
+  lastUpdated?: any;
 }
