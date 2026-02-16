@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, BanknotesIcon, TableCellsIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PageHeader } from '../../../components/layout/PageHeader';
 import { BudgetCommitment } from '../../../types/budget';
 import { budgetService } from '../../../services/budgetService';
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
-import { startOfMonth, endOfMonth, endOfYear, format } from 'date-fns';
+import { startOfMonth, endOfMonth, endOfYear, startOfYear, format } from 'date-fns';
 import { useUI } from '../../../context/UIContext';
+import { DateSelectionModal } from '../components/DateSelectionModal';
 
 export const BudgetTable: React.FC = () => {
-    const { openForm } = useBudgetContext();
+    const { openForm, refreshTrigger } = useBudgetContext();
     const { setAlertModal } = useUI();
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
+    const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; item: BudgetCommitment | null }>({ isOpen: false, item: null });
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+            const start = format(startOfYear(new Date()), 'yyyy-MM-dd');
             const end = format(endOfYear(new Date()), 'yyyy-MM-dd');
             const data = await budgetService.getCommitments(start, end);
             setCommitments(data.map(d => ({ ...d, id: d.id || Math.random().toString() })));
@@ -30,14 +33,48 @@ export const BudgetTable: React.FC = () => {
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
+    }, [loadData, refreshTrigger]);
 
     const handleEdit = (item: BudgetCommitment) => {
         openForm(undefined, item);
     };
 
+    const handleQuickPay = async (item: BudgetCommitment) => {
+        setPaymentModal({ isOpen: true, item });
+    };
+
+    const handleConfirmPayment = async (dateStr: string) => {
+        if (!paymentModal.item) return;
+        const item = paymentModal.item;
+
+        try {
+            if (item.id.startsWith('projected-')) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, isProjected, ...data } = item;
+                await budgetService.addCommitment({
+                    ...data,
+                    status: 'paid',
+                    paidDate: dateStr,
+                    recurrenceRuleId: item.recurrenceRuleId
+                });
+            } else {
+                await budgetService.updateCommitment(item.id, {
+                    status: 'paid',
+                    paidDate: dateStr
+                });
+            }
+
+            await loadData();
+            setPaymentModal({ isOpen: false, item: null });
+        } catch (error) {
+            console.error("Error paying commitment:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo registrar el pago.' });
+        }
+    };
+
+
     const handleDelete = async (id: string, isProjected: boolean = false) => {
-        if (isProjected || id.startsWith('virtual-')) {
+        if (isProjected || id.startsWith('projected-')) {
             setAlertModal({ isOpen: true, type: 'warning', title: 'Acción no permitida', message: 'No se puede eliminar una proyección futura directa. Debes editar o eliminar la Regla Recurrente asociada.' });
             return;
         }
@@ -64,8 +101,8 @@ export const BudgetTable: React.FC = () => {
 
     const handleBulkDelete = async (ids: Set<string>) => {
         const idArray = Array.from(ids);
-        const virtuals = idArray.filter(id => id.startsWith('virtual-'));
-        const reals = idArray.filter(id => !id.startsWith('virtual-'));
+        const virtuals = idArray.filter(id => id.startsWith('projected-'));
+        const reals = idArray.filter(id => !id.startsWith('projected-'));
 
         if (reals.length === 0) {
             if (virtuals.length > 0) {
@@ -99,6 +136,8 @@ export const BudgetTable: React.FC = () => {
         });
     };
 
+
+
     const columns = useMemo(() => [
         {
             key: 'title',
@@ -110,7 +149,7 @@ export const BudgetTable: React.FC = () => {
                     <span className="font-semibold text-slate-700 dark:text-slate-200 block">{value}</span>
                     {item.recurrenceRuleId && (
                         <span className="text-[10px] uppercase bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold tracking-wider">
-                            {item.id.startsWith('virtual-') ? 'Proyectado' : 'Recurrente'}
+                            {item.id.startsWith('projected-') ? 'Proyectado' : 'Recurrente'}
                         </span>
                     )}
                 </div>
@@ -145,10 +184,21 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             filterable: true,
             width: 'w-32',
-            render: (value: string) => (
-                <span className={`text-sm font-medium ${value ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'}`}>
+            render: (value: string, item: BudgetCommitment) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.status === 'paid') handleQuickPay(item);
+                    }}
+                    className={`text-sm font-medium transition-colors border-b border-transparent hover:border-current ${value
+                        ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer'
+                        : 'text-slate-300 dark:text-slate-600 cursor-default'
+                        }`}
+                    disabled={item.status !== 'paid'}
+                    title={item.status === 'paid' ? "Cambiar fecha de pago" : ""}
+                >
                     {value || '-'}
-                </span>
+                </button>
             )
         },
         {
@@ -181,10 +231,19 @@ export const BudgetTable: React.FC = () => {
         {
             key: 'actions',
             label: '',
-            width: 'w-20',
+            width: 'w-24',
             align: 'text-right' as const,
             render: (_: any, item: BudgetCommitment) => (
                 <div className="flex justify-end gap-1">
+                    {item.status !== 'paid' && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleQuickPay(item); }}
+                            className="text-emerald-400 hover:text-emerald-600 dark:text-emerald-500 dark:hover:text-emerald-300 transition-colors p-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                            title="Marcar como Pagado Hoy"
+                        >
+                            <BanknotesIcon className="w-4 h-4" />
+                        </button>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
                         className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -192,7 +251,7 @@ export const BudgetTable: React.FC = () => {
                     >
                         <PencilSquareIcon className="w-4 h-4" />
                     </button>
-                    {!item.id.startsWith('virtual-') && (
+                    {!item.id.startsWith('projected-') && (
                         <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                             className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -219,6 +278,34 @@ export const BudgetTable: React.FC = () => {
 
     return (
         <div className="h-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col p-4">
+            <PageHeader
+                title="Listado de Pasivos"
+                breadcrumbs={[
+                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Tabla' }
+                ]}
+                icon={<TableCellsIcon className="h-6 w-6" />}
+                actions={
+                    <button
+                        onClick={() => openForm()}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all"
+                    >
+                        <PlusIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Nuevo</span>
+                    </button>
+                }
+            />
+
+            <DateSelectionModal
+                isOpen={paymentModal.isOpen}
+                onClose={() => setPaymentModal({ isOpen: false, item: null })}
+                onConfirm={handleConfirmPayment}
+                title="Registrar Pago"
+                description={<p>Estás registrando el pago de <span className="font-semibold text-slate-800 dark:text-slate-100 block mt-1">"{paymentModal.item?.title || ''}"</span></p>}
+                label="Fecha del Pago"
+                confirmText="Confirmar"
+                initialDate={paymentModal.item?.paidDate}
+            />
             <SmartDataTable
                 data={commitments}
                 columns={columns}
@@ -231,7 +318,8 @@ export const BudgetTable: React.FC = () => {
                 onBulkDelete={handleBulkDelete}
                 onRowClick={handleEdit}
                 searchPlaceholder="Buscar por proveedor, categoría..."
-                containerClassName="h-full"
+                containerClassName="flex-1 min-h-0"
+                exportDateField="dueDate"
             />
         </div>
     );

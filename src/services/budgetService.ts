@@ -13,14 +13,188 @@ import {
     orderBy,
     writeBatch
 } from 'firebase/firestore';
-import { BudgetCommitment, RecurrenceRule, BudgetStatus, RecurrenceFrequency } from '../types/budget';
-import { addMonths, addWeeks, format, isAfter, isBefore, parseISO, getDay, isSameDay } from 'date-fns';
+import { BudgetCommitment, RecurrenceRule, BudgetStatus, RecurrenceFrequency, WeeklyAvailability, BudgetExecutionLog } from '../types/budget';
+import { addMonths, addWeeks, format, isAfter, isBefore, parseISO, getDay, isSameDay, setDay, setDate, addDays, startOfWeek } from 'date-fns';
 
 const COMMITMENTS_COLLECTION = 'budget_commitments';
 const RULES_COLLECTION = 'budget_recurring_rules';
+const AVAILABILITY_COLLECTION = 'budget_weekly_availability';
+const LOGS_COLLECTION = 'budget_execution_history';
 
 export const budgetService = {
     // --- Commitments ---
+    // ... (Mantener métodos existentes)
+
+    // --- Execution History (Logs) ---
+    async addExecutionLog(log: Omit<BudgetExecutionLog, 'id'>): Promise<string> {
+        try {
+            const docRef = await addDoc(collection(db, LOGS_COLLECTION), log);
+            return docRef.id;
+        } catch (error) {
+            console.error('Error adding execution log:', error);
+            throw error;
+        }
+    },
+
+    async getExecutionLogs(): Promise<BudgetExecutionLog[]> {
+        try {
+            const q = query(
+                collection(db, LOGS_COLLECTION),
+                orderBy('executionDate', 'desc')
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as BudgetExecutionLog));
+        } catch (error) {
+            console.error('Error fetching execution logs:', error);
+            // Si falla por falta de índice, devolver vacío por ahora
+            return [];
+        }
+    },
+
+    // --- Weekly Availability ---
+    // ... (Mantener métodos existentes)
+
+    // --- Weekly Availability ---
+    async getWeeklyAvailability(weekStartDate: string): Promise<WeeklyAvailability | null> {
+        try {
+            const q = query(
+                collection(db, AVAILABILITY_COLLECTION),
+                where('weekStartDate', '==', weekStartDate)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+
+            const docData = snapshot.docs[0].data();
+            return {
+                id: snapshot.docs[0].id,
+                ...docData
+            } as WeeklyAvailability;
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            return null;
+        }
+    },
+
+    async saveWeeklyAvailability(data: Omit<WeeklyAvailability, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
+        try {
+            // Check if exists
+            const existing = await this.getWeeklyAvailability(data.weekStartDate);
+
+            if (existing) {
+                // Update
+                const docRef = doc(db, AVAILABILITY_COLLECTION, existing.id);
+                await updateDoc(docRef, {
+                    ...data,
+                    updatedAt: Date.now()
+                });
+            } else {
+                // Create
+                const newRef = doc(collection(db, AVAILABILITY_COLLECTION));
+                await addDoc(collection(db, AVAILABILITY_COLLECTION), {
+                    ...data,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now()
+                });
+            }
+        } catch (error) {
+            console.error('Error saving availability:', error);
+            throw error;
+        }
+    },
+
+    // --- Utility: Reconcile Missing Log for Today ---
+    async reconcileTodayLog(): Promise<string | null> {
+        try {
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            const startOfWeekStr = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+
+            // 1. Check existing log
+            const existingLogs = await this.getExecutionLogs();
+            // Check if any log was created strictly TODAY based on executionDate timestamp
+            const todayLog = existingLogs.find(l => {
+                const logDate = parseISO(l.executionDate);
+                return isSameDay(logDate, new Date());
+            });
+
+            if (todayLog) {
+                console.log("Log for today already exists.");
+                return 'exists';
+            }
+
+            // 2. Find payments made TODAY
+            // Simplificado: Traemos los pagados y filtramos en memoria para evitar errores de índices compuestos
+            const q = query(
+                collection(db, COMMITMENTS_COLLECTION),
+                where('status', '==', 'paid'),
+                // Opcional: limitar a fecha reciente si hay índice, sino traer todo pagado es seguro en escalas pequeñas
+                // orderBy('paidDate', 'desc') 
+            );
+            const snapshot = await getDocs(q);
+
+            console.log(`Found ${snapshot.size} paid commitments total.`);
+
+            const paidItems = snapshot.docs
+                .map(doc => doc.data() as BudgetCommitment)
+                .filter(item => {
+                    // Check if paidDate matches today
+                    // Handle cases where paidDate might be ISO timestamp or just YYYY-MM-DD
+                    if (!item.paidDate) return false;
+                    return item.paidDate.startsWith(todayStr); // '2025-02-09' match
+                });
+
+            console.log(`Filtered to ${paidItems.length} items paid explicitly on ${todayStr}.`);
+
+            if (paidItems.length === 0) {
+                console.log("No payments made today found (after filter).");
+                return 'no_payments';
+            }
+
+            const totalPaid = paidItems.reduce((sum, item) => sum + item.amount, 0);
+            const itemsCount = paidItems.length;
+
+            // 3. Get Current Accounts State (Snapshot)
+            const availability = await this.getWeeklyAvailability(startOfWeekStr);
+
+            // Default blank state if no availability found
+            const currentCtaCorriente = availability?.ctaCorriente || 0;
+            const currentCtaAhorrosJ = availability?.ctaAhorrosJ || 0;
+            const currentCtaAhorrosN = availability?.ctaAhorrosN || 0;
+            const currentEfectivo = availability?.efectivo || 0;
+
+            // Reconstructed Logic:
+            // "Final Balance" is what we have NOW (availability or sum of accounts)
+            // "Initial Balance" was Final + TotalPaid
+            const currentTotal = availability?.totalAvailable || (currentCtaCorriente + currentCtaAhorrosJ + currentCtaAhorrosN + currentEfectivo);
+            const reconstructedInitialTotal = currentTotal + totalPaid;
+
+            const log: Omit<BudgetExecutionLog, 'id'> = {
+                executionDate: new Date().toISOString(),
+                weekStartDate: startOfWeekStr,
+                initialState: {
+                    ctaCorriente: currentCtaCorriente, // We can't know the exact pre-split, so we use current
+                    ctaAhorrosJ: currentCtaAhorrosJ,
+                    ctaAhorrosN: currentCtaAhorrosN,
+                    efectivo: currentEfectivo,
+                    totalAvailable: reconstructedInitialTotal // This is the important reconstruction
+                },
+                totalPaid: totalPaid,
+                finalBalance: currentTotal,
+                itemsCount: itemsCount
+            };
+
+            return await this.addExecutionLog(log);
+
+        } catch (error) {
+            console.error('Error reconciling log:', error);
+            throw error;
+        }
+    },
+
+    // --- Recurrence Rules (Mantener el resto) --- 
+
 
     async getCommitments(startDate?: string, endDate?: string): Promise<BudgetCommitment[]> {
         try {
@@ -67,6 +241,30 @@ export const budgetService = {
 
                     // Collect whilst inside the range
                     while (isBefore(nextDate, end) || isSameDay(nextDate, end)) {
+                        // FIX: Force alignment with rule.dayToSend to prevent drift
+                        const targetDay = Number(rule.dayToSend);
+
+                        if (!isNaN(targetDay)) {
+                            if (rule.frequency === 'weekly') {
+                                // 0=Sun, 1=Mon...
+                                const currentDay = getDay(nextDate);
+                                if (currentDay !== targetDay) {
+                                    // Calculate diff (e.g. Target 5 (Fri) - Current 2 (Tue) = 3)
+                                    // addDays(Tue, 3) -> Fri
+                                    // If Target 1 (Mon) - Current 5 (Fri) = -4. Fri-4 = Mon.
+                                    const diff = targetDay - currentDay;
+                                    nextDate = addDays(nextDate, diff);
+                                }
+                            } else if (rule.frequency === 'monthly') {
+                                const currentDoM = nextDate.getDate();
+                                const daysInMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+                                const actualTarget = Math.min(targetDay, daysInMonth);
+                                if (currentDoM !== actualTarget) {
+                                    nextDate = setDate(nextDate, actualTarget);
+                                }
+                            }
+                        }
+
                         // Respetar fecha final de la regla si existe
                         if (rule.endDate) {
                             const ruleEnd = parseISO(rule.endDate);
@@ -92,7 +290,7 @@ export const budgetService = {
                         let minDiff = Infinity;
 
                         // Define threshold based on frequency (allow flexibility for early/late payments)
-                        const thresholdDays = rule.frequency === 'weekly' ? 4 : 25; // 4 days for weekly, 25 for monthly
+                        const thresholdDays = rule.frequency === 'weekly' ? 6 : 25; // Increase weekly tolerance to cover whole week shifts
 
                         for (const candidate of candidates) {
                             const candidateDate = parseISO(candidate.dueDate);
@@ -128,23 +326,100 @@ export const budgetService = {
                     }
                 }
 
-                // Merge and Sort
-                const all = [...realCommitments, ...virtualCommitments];
+                // --- AGGRESSIVE DEDUPLICATION ---
+                // We have Real Commitments (from DB) and Virtual (Generated).
+                // Sometimes the Smart Reconciliation logic in the loop misses a match (e.g. edge cases).
+                // We perform a second pass: Remove any Virtual commitment that has a "matching" Real commitment
+                // nearby (same Rule, close date) that wasn't already caught.
 
-                // FINAL DEDUPLICATION SAFEGUARD
-                // Ensure no duplicate IDs exist (sanity check)
+                const finalVirtuals = virtualCommitments.filter(vc => {
+                    const vcDate = parseISO(vc.dueDate);
+
+                    // Check if ANY real commitment covers this virtual one
+                    const hasCoverage = realCommitments.some(rc => {
+                        // Must match Rule ID
+                        if (rc.recurrenceRuleId !== vc.recurrenceRuleId) return false;
+
+                        // Must be close in date (e.g. +/- 3 days) to be considered the "same" event
+                        const rcDate = parseISO(rc.dueDate);
+                        const diffVal = Math.abs(rcDate.getTime() - vcDate.getTime()) / (1000 * 60 * 60 * 24);
+                        return diffVal <= 3;
+                    });
+
+                    // If covered by real, discard virtual (return false)
+                    return !hasCoverage;
+                });
+
+                // FINAL DEDUPLICATION BY ID AND SIGNATURE
                 const uniqueMap = new Map<string, BudgetCommitment>();
-                all.forEach(item => uniqueMap.set(item.id, item));
+                const signatureSet = new Set<string>();
 
-                const uniqueAll = Array.from(uniqueMap.values());
+                // 1. Process Reals FIRST (they are the source of truth)
+                realCommitments.forEach(rc => {
+                    uniqueMap.set(rc.id, rc);
+                    if (rc.recurrenceRuleId) {
+                        signatureSet.add(`${rc.recurrenceRuleId}-${rc.dueDate}`);
+                    }
+                });
 
-                return uniqueAll.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+                // 2. Add Virtuals ONLY if not colliding by Signature (RuleID + Date)
+                finalVirtuals.forEach(vc => {
+                    const key = `${vc.recurrenceRuleId}-${vc.dueDate}`;
+                    if (!signatureSet.has(key)) {
+                        uniqueMap.set(vc.id, vc);
+                        // Mark as taken so we don't add duplicates
+                        signatureSet.add(key);
+                    }
+                });
+
+                return Array.from(uniqueMap.values()).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
             }
 
             return realCommitments;
         } catch (error) {
             console.error('Error fetching commitments:', error);
             throw error;
+        }
+    },
+
+    async getOverduePendingCommitments(beforeDate: string): Promise<BudgetCommitment[]> {
+        try {
+            // ESTRATEGIA HÍBRIDA ROBUSTA:
+            // El usuario reporta que faltan "Proyectados Vencidos".
+            // Los proyectados NO existen en DB, se generan al vuelo.
+            // Por tanto, una simple query a DB no basta.
+
+            // 1. Definir horizonte de búsqueda (ej. 3 meses atrás)
+            // Ir demasiado atrás podría ser costoso, 3-6 meses es razonable para cartera operativa.
+            const horizonDate = addMonths(parseISO(beforeDate), -3);
+            const horizonStr = format(horizonDate, 'yyyy-MM-dd');
+
+            // Calculamos la fecha "ayer" respecto a beforeDate (que suele ser el Lunes de la semana actual)
+            // Queremos todo lo que sea estrictamente ANTERIOR a beforeDate.
+            // Para getCommitments, el endDate es inclusivo, así que usamos un día antes.
+            const dayBefore = addDays(parseISO(beforeDate), -1);
+            const dayBeforeStr = format(dayBefore, 'yyyy-MM-dd');
+
+            // 2. Reutilizar la lógica "Smart Reconciliation" de getCommitments
+            // Esto nos traerá:
+            // - Reales en ese rango (Pagados y Pendientes)
+            // - Virtuales generado por reglas que NO tienen contraparte Real (es decir, impagos)
+            const allHistory = await this.getCommitments(horizonStr, dayBeforeStr);
+
+            // 3. Filtrar solo lo que sea DEUDA (Pendiente)
+            const overdue = allHistory.filter(c => {
+                // Si es proyectado, por definición es deuda (si se hubiera pagado, sería Real y el proyectado no existiría)
+                if (c.isProjected) return true;
+
+                // Si es real, solo si está pendiente
+                return c.status === 'pending';
+            });
+
+            return overdue;
+
+        } catch (error) {
+            console.error('Error fetching comprehensive overdue commitments:', error);
+            return [];
         }
     },
 
@@ -201,6 +476,14 @@ export const budgetService = {
 
     async addRecurrenceRule(rule: Omit<RecurrenceRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
         try {
+            // Validation: Prevent "Zombie Rules" (empty title or amount)
+            if (!rule.title || rule.title.trim() === '') {
+                throw new Error("Cannot create rule: Title is required.");
+            }
+            if (rule.amount === undefined || rule.amount === null) {
+                throw new Error("Cannot create rule: Amount is required.");
+            }
+
             const docRef = await addDoc(collection(db, RULES_COLLECTION), {
                 ...rule,
                 createdAt: Date.now(),
@@ -415,10 +698,6 @@ export const budgetService = {
         }
     },
 
-    /**
-     * Carga la configuración inicial de gastos recurrentes basada en la tabla solicitada.
-     * Solo se ejecuta si el usuario lo solicita explícitamente.
-     */
     async seedRecurringExpenses(): Promise<void> {
         try {
             const batch = writeBatch(db);
@@ -452,8 +731,10 @@ export const budgetService = {
                     startDate.setDate(today.getDate() + daysUntil);
                     if (daysUntil === 0) startDate.setDate(startDate.getDate() + 7); // Next week if today
                 } else if (freq === 'monthly') {
-                    // Start from this month, even if day passed, so it shows up as pending/overdue
-                    // startDate is already set to current month/day
+                    // For monthly, ensure day is valid (e.g. not 31st of Feb)
+                    // Current logic takes care of it via JS Date overflow, but let's be cleaner?
+                    // new Date(2025, 1, 31) -> Mar 3.
+                    // We want to set the "Intent" correctly so the Service fixes it.
                 }
 
                 const rule: any = { // Omit<RecurrenceRule, 'id'>
@@ -555,6 +836,30 @@ export const budgetService = {
 
         } catch (error) {
             console.error("Seeding error:", error);
+            throw error;
+        }
+    },
+
+    // --- RESET FUNCTION ---
+    async resetRecurringModule(): Promise<void> {
+        try {
+            console.log('Starting Recurring Module Reset...');
+            // 1. Delete ALL Rules
+            const rulesSnapshot = await getDocs(collection(db, RULES_COLLECTION));
+            const batch1 = writeBatch(db);
+            rulesSnapshot.docs.forEach(doc => batch1.delete(doc.ref));
+            if (!rulesSnapshot.empty) await batch1.commit();
+
+            // 2. Delete ALL Commitments derived from Rules (History + Projections)
+            const commSnapshot = await getDocs(collection(db, COMMITMENTS_COLLECTION));
+            const commDeletes = commSnapshot.docs
+                .filter(doc => doc.data().recurrenceRuleId || doc.data().isProjected)
+                .map(doc => deleteDoc(doc.ref));
+            await Promise.all(commDeletes);
+
+            console.log(`Reset complete: Deleted ${rulesSnapshot.size} rules and ${commDeletes.length} commitments.`);
+        } catch (error) {
+            console.error('Error resetting module:', error);
             throw error;
         }
     }

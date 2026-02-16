@@ -2,6 +2,12 @@ import React, { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
+
 import {
     MagnifyingGlassIcon,
     EyeIcon,
@@ -10,9 +16,11 @@ import {
     ChevronUpIcon,
     ChevronDownIcon,
     TrashIcon,
-    InformationCircleIcon,
-    ChevronUpDownIcon
+    ChevronUpDownIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon
 } from './Icons';
+import { cn } from '@/lib/utils';
 
 // --- Interfaces Genéricas ---
 export interface Column<T> {
@@ -24,9 +32,12 @@ export interface Column<T> {
     sortable?: boolean;
     filterable?: boolean; // Habilita filtro tipo Excel con valores únicos
     getValue?: (item: T) => string | number; // Para ordenamiento y exportación si no es directa la prop
+    defaultHidden?: boolean; // Nueva Prop: Ocultar por defecto
+    tooltip?: string; // Descripción del cálculo o significado de la columna
 }
 
 export interface SmartDataTableProps<T extends { id: string }> {
+    id?: string; // ID único para persistencia
     data: T[];
     columns: Column<T>[];
     enableSearch?: boolean;
@@ -48,6 +59,7 @@ export interface SmartDataTableProps<T extends { id: string }> {
     onSortChange?: (config: { key: string; direction: 'asc' | 'desc' }) => void;
     renderExtraFilters?: () => React.ReactNode;
     renderSelectionActions?: (selectedIds: Set<string>) => React.ReactNode;
+    exportDateField?: string; // Campo de fecha para filtro de exportación
 }
 
 // --- Componente Maestro ---
@@ -60,7 +72,7 @@ export function SmartDataTable<T extends { id: string }>({
     enableColumnConfig = true,
     onBulkDelete,
     onRowClick,
-    containerClassName = "h-full",
+    containerClassName = "",
     searchPlaceholder = "Buscar...",
     selectedIds: externalSelectedIds,
     onSelectionChange: externalOnSelectionChange,
@@ -71,8 +83,15 @@ export function SmartDataTable<T extends { id: string }>({
     sortConfig: externalSortConfig,
     onSortChange: externalOnSortChange,
     renderExtraFilters,
-    renderSelectionActions
+    renderSelectionActions,
+    exportDateField,
+    id: tableId // Alias para evitar conflicto
 }: SmartDataTableProps<T>) {
+
+    // --- Export Modal State ---
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [pendingExportFormat, setPendingExportFormat] = useState<'excel' | 'csv' | 'pdf' | null>(null);
+    const [exportDateRange, setExportDateRange] = useState({ start: '', end: '' });
 
     // 1. Estados de Configuración de Tabla (Internos)
     const [internalSearchTerm, setInternalSearchTerm] = useState('');
@@ -114,11 +133,25 @@ export function SmartDataTable<T extends { id: string }>({
     };
     const [openFilterColumn, setOpenFilterColumn] = useState<string | null>(null);
 
-    // Configuración de visualización de columnas
-    const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() =>
-        initialColumns.reduce((acc, col) => ({ ...acc, [col.key]: true }), {})
-    );
-    const [showColumnSelector, setShowColumnSelector] = useState(false);
+    // Configuración de visualización de columnas con Persistencia
+    const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+        if (tableId) {
+            const saved = localStorage.getItem(`dt_cols_${tableId}`);
+            if (saved) return JSON.parse(saved);
+        }
+        return initialColumns.reduce((acc, col) => ({
+            ...acc,
+            [col.key]: col.defaultHidden ? false : true
+        }), {});
+    });
+
+    // Guardar persistencia cuando cambie
+    React.useEffect(() => {
+        if (tableId) {
+            localStorage.setItem(`dt_cols_${tableId}`, JSON.stringify(visibleColumns));
+        }
+    }, [visibleColumns, tableId]);
+
     const [showExportOptions, setShowExportOptions] = useState(false);
 
     // 2. Helpers de Valor
@@ -261,311 +294,427 @@ export function SmartDataTable<T extends { id: string }>({
         }
     };
 
-    // 6. Exportación
-    const getExportData = () => {
-        const dataToExport = selectedIds.size > 0
-            ? processedData.filter(item => selectedIds.has(item.id))
-            : processedData;
-
-        return dataToExport.map(item => {
+    // 6. Exportación Lógica Unificada
+    const performExport = (dataToExport: T[], format: 'excel' | 'csv' | 'pdf') => {
+        const rows = dataToExport.map(item => {
             const row: Record<string, any> = {};
             initialColumns.filter(c => visibleColumns[c.key]).forEach(col => {
                 row[col.label] = getRenderedStringValue(item, col);
             });
             return row;
         });
+
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        if (format === 'excel') {
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Datos");
+            XLSX.writeFile(wb, `export_${dateStr}.xlsx`);
+        } else if (format === 'csv') {
+            if (rows.length === 0) return;
+            const headers = Object.keys(rows[0]);
+            const csvContent = [headers.join(','), ...rows.map(row => headers.map(h => `"${row[h]}"`).join(','))].join('\n'); // Added quotes for safety
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `export_${dateStr}.csv`;
+            link.click();
+        } else if (format === 'pdf') {
+            if (rows.length === 0) return;
+            const doc = new jsPDF();
+            const headers = Object.keys(rows[0]);
+            const body = rows.map(row => Object.values(row));
+            autoTable(doc, {
+                head: [headers],
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+            doc.save(`export_${dateStr}.pdf`);
+        }
     };
 
-    const exportToExcel = () => {
-        const data = getExportData();
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Datos");
-        XLSX.writeFile(wb, `export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const initiateExport = (format: 'excel' | 'csv' | 'pdf') => {
+        // 1. Si hay selección manual, exportar eso directo
+        if (selectedIds.size > 0) {
+            const dataToExport = processedData.filter(item => selectedIds.has(item.id));
+            performExport(dataToExport, format);
+            return;
+        }
+
+        // 2. Si no hay selección pero hay campo de fecha configurado, mostrar modal
+        if (exportDateField) {
+            setPendingExportFormat(format);
+            setShowExportModal(true);
+            return;
+        }
+
+        // 3. Default: Exportar todo lo visible (processedData)
+        performExport(processedData, format);
     };
 
-    const exportToCSV = () => {
-        const data = getExportData();
-        if (data.length === 0) return;
-        const headers = Object.keys(data[0]);
-        const csvContent = [headers.join(','), ...data.map(row => headers.map(h => row[h]).join(','))].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `export_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
-    };
+    const handleConfirmExport = (filterByDate: boolean) => {
+        if (!pendingExportFormat) return;
 
-    const exportToPDF = () => {
-        const doc = new jsPDF();
-        const data = getExportData();
-        if (data.length === 0) return;
-        const headers = Object.keys(data[0]);
-        const rows = data.map(row => Object.values(row));
+        let dataToExport = [...processedData];
 
-        autoTable(doc, {
-            head: [headers],
-            body: rows,
-            theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229] }
-        });
-        doc.save(`export_${new Date().toISOString().split('T')[0]}.pdf`);
+        if (filterByDate && exportDateField && exportDateRange.start && exportDateRange.end) {
+            const start = new Date(exportDateRange.start).getTime();
+            const end = new Date(exportDateRange.end).getTime();
+            // Ajustar end al final del día
+            const endAdjusted = end + (24 * 60 * 60 * 1000) - 1;
+
+            dataToExport = dataToExport.filter(item => {
+                const val = (item as any)[exportDateField];
+                if (!val) return false;
+                const itemTime = new Date(val).getTime();
+                return itemTime >= start && itemTime <= endAdjusted;
+            });
+        }
+
+        performExport(dataToExport, pendingExportFormat);
+        setShowExportModal(false);
+        setPendingExportFormat(null);
     };
 
     return (
-        <div className={`space-y-2 flex flex-col ${containerClassName}`}>
+        <div className={`space-y-4 flex flex-col ${containerClassName}`}>
             {/* --- TOOLBAR --- */}
 
             {/* Barra de Selección Masiva */}
             {selectedIds.size > 0 && enableSelection && (
-                <div className="flex items-center justify-between bg-indigo-600 text-white p-2 rounded-xl shadow-md animate-in fade-in slide-in-from-top-1 border border-indigo-500 text-xs">
+                <div className="flex items-center justify-between bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 p-2.5 rounded-md shadow animate-in fade-in slide-in-from-top-1 text-sm">
                     <div className="flex items-center gap-3">
                         <span className="font-semibold">{selectedIds.size} seleccionados</span>
-                        <button onClick={() => setSelectedIds(new Set())} className="text-[10px] font-semibold bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded uppercase transition-all">Desmarcar</button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setSelectedIds(new Set())}
+                            className="h-6 px-2 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+                        >
+                            Desmarcar
+                        </Button>
                     </div>
                     {renderSelectionActions ? renderSelectionActions(selectedIds) : (
                         onBulkDelete && (
-                            <button onClick={handleBulkDeleteAction} className="flex items-center gap-1 bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg font-semibold transition-all shadow-sm">
+                            <Button
+                                size="sm"
+                                onClick={handleBulkDeleteAction}
+                                className="h-7 gap-1.5 bg-red-600 hover:bg-red-700 text-white border-none"
+                            >
                                 <TrashIcon className="h-3 w-3" /> Eliminar
-                            </button>
+                            </Button>
                         )
                     )}
                 </div>
             )}
 
             {/* Barra Principal */}
-            <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-wrap gap-2 items-center justify-between relative z-30">
+            <div className="flex flex-wrap gap-2 items-center justify-between">
                 {enableSearch && (
-                    <div className="relative flex-1 min-w-[200px]">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                        </div>
-                        <input
-                            type="text"
+                    <div className="relative flex-1 max-w-sm">
+                        <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
                             placeholder={searchPlaceholder}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-xs font-medium focus:ring-2 focus:ring-primary/20 dark:text-white focus:outline-none transition-all"
+                            className="pl-9 h-9"
                         />
                     </div>
                 )}
 
                 {renderExtraFilters?.()}
 
-                <div className="flex items-center gap-1 ml-auto">
+                <div className="flex items-center gap-2 ml-auto">
                     {/* Selector de Columnas */}
                     {enableColumnConfig && (
-                        <div className="relative">
-                            <button onClick={() => setShowColumnSelector(!showColumnSelector)} className={`p-1.5 rounded-lg border transition-all ${showColumnSelector ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600'}`} title="Configurar Columnas">
-                                <EyeIcon className="h-4 w-4" />
-                            </button>
-                            {showColumnSelector && (
-                                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-2xl z-[1000] p-2 animate-in fade-in zoom-in-95">
-                                    <div className="text-[10px] font-semibold text-gray-300 dark:text-gray-500 uppercase p-2 border-b border-gray-100 dark:border-slate-700 mb-1 text-center">Columnas</div>
-                                    {initialColumns.map(col => (
-                                        <label key={col.key} className="flex items-center gap-2 p-2 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-all">
-                                            <input
-                                                type="checkbox"
-                                                checked={visibleColumns[col.key]}
-                                                onChange={() => setVisibleColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                                                className="rounded text-primary focus:ring-primary h-3 w-3"
-                                            />
-                                            <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 uppercase">{col.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="secondary" size="sm" className="h-9 gap-2">
+                                    <EyeIcon className="h-4 w-4" />
+                                    Columnas
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Configurar Columnas</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {initialColumns.map(col => (
+                                    <DropdownMenuCheckboxItem
+                                        key={col.key}
+                                        checked={visibleColumns[col.key]}
+                                        onCheckedChange={(checked) => setVisibleColumns(prev => ({ ...prev, [col.key]: !!checked }))}
+                                    >
+                                        {col.label}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
 
                     {/* Exportación */}
                     {enableExport && (
-                        <div className="relative">
-                            <button onClick={() => setShowExportOptions(!showExportOptions)} className="p-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30 transition-all font-semibold text-[10px] uppercase flex items-center gap-1">
-                                <ArrowDownTrayIcon className="h-4 w-4" />
-                                <span className="hidden sm:inline">Exp</span>
-                            </button>
-                            {showExportOptions && (
-                                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-xl z-[100] overflow-hidden animate-in fade-in zoom-in-95">
-                                    <button onClick={() => { exportToExcel(); setShowExportOptions(false); }} className="w-full text-left px-4 py-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">Excel</button>
-                                    <button onClick={() => { exportToPDF(); setShowExportOptions(false); }} className="w-full text-left px-4 py-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">PDF</button>
-                                    <button onClick={() => { exportToCSV(); setShowExportOptions(false); }} className="w-full text-left px-4 py-2 text-[10px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">CSV</button>
-                                </div>
-                            )}
-                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="secondary" size="sm" className="h-9 gap-2">
+                                    <ArrowDownTrayIcon className="h-4 w-4" />
+                                    Exportar
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Descargar como</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => initiateExport('excel')}>Excel (.xlsx)</DropdownMenuCheckboxItem>
+                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => initiateExport('csv')}>CSV (.csv)</DropdownMenuCheckboxItem>
+                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => initiateExport('pdf')}>PDF (.pdf)</DropdownMenuCheckboxItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
                 </div>
             </div>
 
             {/* --- TABLA --- */}
-            <div className="flex-1 min-h-0 bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col relative">
-                <div className="flex-1 overflow-auto custom-scrollbar">
-                    <table className="min-w-full text-left border-collapse">
-                        <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-500 dark:text-slate-400 font-semibold border-b border-gray-100 dark:border-slate-700 shadow-sm">
-                            <tr>
-                                {enableSelection && (
-                                    <th className="px-4 py-2 w-10">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.size > 0 && selectedIds.size === processedData.length}
-                                            onChange={toggleSelectAll}
-                                            className="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                                        />
-                                    </th>
-                                )}
-                                {initialColumns.filter(c => visibleColumns[c.key]).map((col, idx, arr) => {
-                                    const isFiltered = activeFilters[col.key]?.length > 0;
-                                    return (
-                                        <th key={col.key} className={`px-4 py-2 text-[12px] transition-all relative group ${col.align || ''}`}>
-                                            <div className={`flex items-center gap-1 ${col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : ''}`}>
-                                                <span
-                                                    className={`cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 transition-colors ${col.sortable !== false ? '' : 'cursor-default'}`}
-                                                    onClick={() => col.sortable !== false && toggleSort(col.key)}
-                                                >
-                                                    {col.label}
-                                                </span>
-                                                {/* Rest of the header content... */}
-
-
-                                                {/* Filtro Excel */}
-                                                {(col.filterable !== false) && (
-                                                    <div className="relative">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setOpenFilterColumn(openFilterColumn === col.key ? null : col.key); }}
-                                                            className={`p-1.5 rounded-md transition-all ${isFiltered
-                                                                ? 'text-white bg-indigo-600 shadow-sm'
-                                                                : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700'
-                                                                }`}
-                                                        >
-                                                            <FunnelIcon className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        {openFilterColumn === col.key && (
-                                                            <div className={`absolute top-full ${idx === arr.length - 1 ? 'right-0' : 'left-0'} mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 z-[1000] animate-in fade-in zoom-in-95 overflow-hidden`}>
-                                                                <div className="p-2 border-b border-gray-50 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50 flex justify-between items-center">
-                                                                    <span className="text-[10px] font-semibold text-gray-400">FILTRAR POR {col.label.toUpperCase()}</span>
-                                                                    {isFiltered && <button onClick={() => clearColumnFilter(col.key)} className="text-[9px] text-red-500 hover:underline font-bold">BORRAR</button>}
-                                                                </div>
-                                                                <div className="max-h-48 overflow-y-auto p-1 custom-scrollbar">
-                                                                    {getUniqueValues(col.key).map(val => (
-                                                                        <label key={val} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-colors">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={activeFilters[col.key]?.includes(val) ?? false}
-                                                                                onChange={() => toggleFilter(col.key, val)}
-                                                                                className="rounded text-primary focus:ring-primary w-3.5 h-3.5 border-gray-300"
-                                                                            />
-                                                                            <span className="text-[10px] text-gray-600 dark:text-gray-300 truncate font-medium">{val}</span>
-                                                                        </label>
-                                                                    ))}
-                                                                    {getUniqueValues(col.key).length === 0 && <p className="text-[10px] text-gray-400 p-2 text-center italic">Sin valores</p>}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
+            <div className="rounded-md border bg-card text-card-foreground shadow-sm flex-1 overflow-auto min-h-0 relative">
+                <Table className="w-full text-sm">
+                    <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                            {enableSelection && (
+                                <TableHead className="w-[40px] pl-4">
+                                    <Checkbox
+                                        checked={selectedIds.size > 0 && selectedIds.size === processedData.length}
+                                        onCheckedChange={toggleSelectAll}
+                                        aria-label="Seleccionar todo"
+                                    />
+                                </TableHead>
+                            )}
+                            {initialColumns.filter(c => visibleColumns[c.key]).map((col) => {
+                                const isFiltered = activeFilters[col.key]?.length > 0;
+                                return (
+                                    <TableHead
+                                        key={col.key}
+                                        className={cn("text-center", col.width)}
+                                        title={col.tooltip}
+                                    >
+                                        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-1">
+                                            <div />
+                                            <span
+                                                className={cn(
+                                                    "font-medium uppercase whitespace-nowrap",
+                                                    col.sortable !== false ? "cursor-pointer hover:text-foreground" : "",
+                                                    col.tooltip ? "border-b border-dotted border-gray-400 cursor-help" : ""
                                                 )}
+                                                onClick={() => col.sortable !== false && toggleSort(col.key)}
+                                            >
+                                                {col.label}
+                                            </span>
 
+                                            <div className="flex items-center gap-1 justify-start">
                                                 {/* Sort Icon */}
                                                 {sortConfig.key === col.key && (
                                                     sortConfig.direction === 'asc'
                                                         ? <ChevronUpIcon className="h-3 w-3 text-primary" />
                                                         : <ChevronDownIcon className="h-3 w-3 text-primary" />
                                                 )}
+
+                                                {/* Filter Button */}
+                                                {col.filterable !== false && (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button
+                                                                className={cn("p-0.5 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors", isFiltered ? "text-primary bg-primary/10" : "text-gray-400")}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <FunnelIcon className="h-3 w-3" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="start" className="w-56 p-0">
+                                                            <div className="p-2 border-b bg-muted/50 flex items-center justify-between">
+                                                                <span className="text-xs font-semibold uppercase">Filtros</span>
+                                                                {isFiltered && (
+                                                                    <button
+                                                                        onClick={() => clearColumnFilter(col.key)}
+                                                                        className="text-[10px] text-destructive cursor-pointer hover:underline font-bold"
+                                                                    >
+                                                                        BORRAR
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <div className="max-h-[200px] overflow-y-auto p-1">
+                                                                {getUniqueValues(col.key).map(val => (
+                                                                    <DropdownMenuCheckboxItem
+                                                                        key={val}
+                                                                        checked={activeFilters[col.key]?.includes(val) ?? false}
+                                                                        onCheckedChange={() => toggleFilter(col.key, val)}
+                                                                    >
+                                                                        {val}
+                                                                    </DropdownMenuCheckboxItem>
+                                                                ))}
+                                                                {getUniqueValues(col.key).length === 0 && <div className="p-4 text-center text-xs text-muted-foreground">Sin valores</div>}
+                                                            </div>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
                                             </div>
-                                        </th>
-                                    );
-                                })}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
-                            {paginatedData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={initialColumns.length + (enableSelection ? 1 : 0)} className="py-20 text-center text-slate-300 dark:text-slate-500 font-semibold uppercase">
-                                        No se encontraron datos.
-                                    </td>
-                                </tr>
-                            ) : (
-                                paginatedData.map((item, idx) => (
-                                    <tr
-                                        key={item.id}
-                                        onClick={() => onRowClick && onRowClick(item)}
-                                        className={`
-                                            transition-all group 
-                                            ${onRowClick ? 'cursor-pointer' : ''}
-                                            ${selectedIds.has(item.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/30' : (idx % 2 !== 0 ? 'bg-gray-50/80 dark:bg-slate-700/30' : 'bg-white dark:bg-slate-800')}
-                                            hover:bg-indigo-50/30 dark:hover:bg-blue-900/20
-                                        `}
-                                    >
-                                        {enableSelection && (
-                                            <td className="px-4 py-2 w-10" onClick={e => e.stopPropagation()}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedIds.has(item.id)}
-                                                    onChange={() => toggleSelectRow(item.id)}
-                                                    className="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                                                />
-                                            </td>
-                                        )}
-                                        {initialColumns.filter(c => visibleColumns[c.key]).map(col => (
-                                            <td key={col.key} className={`px-4 py-2 text-[13px] text-slate-600 dark:text-slate-300 ${col.align || ''}`}>
-                                                {item ? (
-                                                    col.render ? col.render((item as any)[col.key], item) : getRenderedStringValue(item, col)
-                                                ) : null}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                        </div>
+                                    </TableHead>
+                                );
+                            })}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {paginatedData.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0)} className="h-24 text-center text-muted-foreground">
+                                    No se encontraron resultados.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            paginatedData.map((item) => (
+                                <TableRow
+                                    key={item.id}
+                                    data-state={selectedIds.has(item.id) ? "selected" : undefined}
+                                    onClick={() => onRowClick && onRowClick(item)}
+                                    className={cn(onRowClick && "cursor-pointer")}
+                                >
+                                    {enableSelection && (
+                                        <TableCell className="pl-4">
+                                            <Checkbox
+                                                checked={selectedIds.has(item.id)}
+                                                onCheckedChange={() => toggleSelectRow(item.id)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </TableCell>
+                                    )}
+                                    {initialColumns.filter(c => visibleColumns[c.key]).map(col => (
+                                        <TableCell key={col.key} className={cn(col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : '', "py-3")}>
+                                            {item ? (
+                                                col.render ? col.render((item as any)[col.key], item) : getRenderedStringValue(item, col)
+                                            ) : null}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </div>
 
             {/* --- FOOTER DE PAGINACIÓN --- */}
-            <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
-                    <span>Resultados por página:</span>
-                    <select
-                        value={pageSize}
-                        onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                        className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
-                    >
-                        <option value={10}>10</option>
-                        <option value={15}>15</option>
-                        <option value={20}>20</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                    </select>
-                    <span className="hidden sm:inline text-gray-400 mx-2">|</span>
-                    <span className="hidden sm:inline">
-                        Mostrando {paginatedData.length > 0 ? startIndex + 1 : 0} - {Math.min(startIndex + pageSize, totalItems)} de {totalItems} registros
-                        {processedData.length !== data.length && <span className="text-gray-400 ml-1">(filtrados de {data.length})</span>}
-                    </span>
+            <div className="flex items-center justify-between px-2">
+                <div className="flex-1 text-sm text-muted-foreground">
+                    {processedData.length > 0 && (
+                        <>
+                            Mostrando {startIndex + 1}-{Math.min(startIndex + pageSize, totalItems)} de {totalItems}
+                            {processedData.length !== data.length && " (filtrados)"}
+                        </>
+                    )}
                 </div>
-
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-gray-600 dark:text-gray-300 border border-transparent hover:border-gray-200 dark:hover:border-slate-600"
-                        title="Página Anterior"
-                    >
-                        <ChevronDownIcon className="h-4 w-4 rotate-90" />
-                    </button>
-
-                    <span className="text-xs font-semibold px-3 text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg py-1">
-                        {currentPage} <span className="text-gray-400 font-normal">/ {totalPages || 1}</span>
-                    </span>
-
-                    <button
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages || totalPages === 0}
-                        className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-gray-600 dark:text-gray-300 border border-transparent hover:border-gray-200 dark:hover:border-slate-600"
-                        title="Página Siguiente"
-                    >
-                        <ChevronDownIcon className="h-4 w-4 -rotate-90" />
-                    </button>
+                <div className="flex items-center space-x-6 lg:space-x-8">
+                    <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">Filas por página</p>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                            className="h-8 w-[70px] rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value={10}>10</option>
+                            <option value={15}>15</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-sm font-medium">
+                            Pág. {currentPage} de {Math.max(1, totalPages)}
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                <span className="sr-only">Anterior</span>
+                                <ChevronLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
+                                <span className="sr-only">Siguiente</span>
+                                <ChevronRightIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* --- EXPORT DATE RANGE MODAL --- */}
+            {showExportModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-700 overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
+                        <div className="p-5 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                <ArrowDownTrayIcon className="h-5 w-5 text-indigo-500" />
+                                Exportar Datos
+                            </h3>
+                            <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                <span className="sr-only">Cerrar</span>
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm rounded-lg">
+                                <p>¿Deseas exportar todo el listado o filtrar por un rango de fechas específico?</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Desde</label>
+                                    <input
+                                        type="date"
+                                        className="w-full rounded-lg border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2"
+                                        value={exportDateRange.start}
+                                        onChange={(e) => setExportDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Hasta</label>
+                                    <input
+                                        type="date"
+                                        className="w-full rounded-lg border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2"
+                                        value={exportDateRange.end}
+                                        onChange={(e) => setExportDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-5 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700 flex gap-3 justify-end">
+                            <Button
+                                variant="secondary"
+                                onClick={() => handleConfirmExport(false)}
+                                className="border border-gray-300 hover:bg-gray-100 dark:border-slate-600 dark:hover:bg-slate-700"
+                            >
+                                Exportar Todo
+                            </Button>
+                            <Button
+                                onClick={() => handleConfirmExport(true)}
+                                disabled={!exportDateRange.start || !exportDateRange.end}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Exportar Rango
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

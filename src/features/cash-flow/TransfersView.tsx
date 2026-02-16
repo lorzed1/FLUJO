@@ -156,7 +156,7 @@ const TransfersView: React.FC = () => {
     ], []);
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-slate-900/50 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800">
+        <div className="flex flex-col bg-white dark:bg-slate-900/50 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800">
             {/* Header / Stats */}
             <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
@@ -200,8 +200,8 @@ const TransfersView: React.FC = () => {
                 </div>
             )}
 
-            {/* DATA TABLE */}
-            <div className="flex-1 p-0 overflow-hidden">
+            {/* DATA TABLE - Removed overflow constraints */}
+            <div className="p-0">
                 <SmartDataTable
                     data={transfers}
                     columns={columns}
@@ -213,7 +213,8 @@ const TransfersView: React.FC = () => {
                     enableExport={true}
                     enableColumnConfig={true}
                     onBulkDelete={handleBulkDelete}
-                    containerClassName="h-full border-none shadow-none"
+                    exportDateField="date"
+                    containerClassName="border-none shadow-none"
                     // Eliminar individual
                     renderSelectionActions={(ids) => (
                         <button

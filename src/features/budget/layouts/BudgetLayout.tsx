@@ -16,6 +16,7 @@ import { useUI } from '../../../context/UIContext';
 
 export type BudgetContextType = {
     openForm: (date?: Date, commitment?: BudgetCommitment) => void;
+    refreshTrigger: number;
 };
 
 export const useBudgetContext = () => useOutletContext<BudgetContextType>();
@@ -25,6 +26,7 @@ export const BudgetLayout: React.FC = () => {
     const { setAlertModal } = useUI();
     const [initialDate, setInitialDate] = useState<Date | undefined>(undefined);
     const [initialCommitment, setInitialCommitment] = useState<BudgetCommitment | undefined>(undefined);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const openForm = (date?: Date, commitment?: BudgetCommitment) => {
         setInitialDate(date);
@@ -41,7 +43,8 @@ export const BudgetLayout: React.FC = () => {
                     amount: data.amount,
                     dueDate: data.date || data.dueDate, // Fix: Handle both form 'date' and object 'dueDate'
                     status: data.status,
-                    category: data.category
+                    category: data.category,
+                    paidDate: data.paidDate // Include paidDate
                 });
                 setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Compromiso actualizado exitosamente' });
             } else {
@@ -58,6 +61,7 @@ export const BudgetLayout: React.FC = () => {
                         status: data.status,
                         category: data.category,
                         recurrenceRuleId: data.recurrenceRuleId, // Mantenemos link a la regla
+                        paidDate: data.paidDate // Include paidDate
                     });
                     setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: 'Gasto guardado individualmente. Esta modificación solo afecta a este mes.' });
                 } else {
@@ -74,6 +78,8 @@ export const BudgetLayout: React.FC = () => {
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Compromiso creado exitosamente' });
                 }
             }
+            // Trigger refresh for children
+            setRefreshTrigger(prev => prev + 1);
         } catch (e: any) {
             console.error("Budget Save Error:", e);
             setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: `Error al guardar compromiso: ${e?.message || 'Error desconocido'}` });
@@ -82,90 +88,10 @@ export const BudgetLayout: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full space-y-6 p-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Presupuestos y Pagos</h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Gestiona tus compromisos, visualiza deudas y planifica tus pagos.
-                    </p>
-                </div>
-                <div className="flex space-x-3">
-                    <nav className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                        <NavLink
-                            to="/budget"
-                            end
-                            className={({ isActive }) =>
-                                `flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`
-                            }
-                        >
-                            <ChartBarIcon className="w-4 h-4" />
-                            <span>Dashboard</span>
-                        </NavLink>
-                        <NavLink
-                            to="/budget/calendar"
-                            className={({ isActive }) =>
-                                `flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`
-                            }
-                        >
-                            <CalendarIcon className="w-4 h-4" />
-                            <span>Calendario</span>
-                        </NavLink>
-                        <NavLink
-                            to="/budget/list"
-                            className={({ isActive }) =>
-                                `flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`
-                            }
-                        >
-                            <TableCellsIcon className="w-4 h-4" />
-                            <span>Tabla</span>
-                        </NavLink>
-                        <NavLink
-                            to="/budget/recurrent"
-                            className={({ isActive }) =>
-                                `flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`
-                            }
-                        >
-                            <ArrowPathIcon className="w-4 h-4" />
-                            <span>Gastos Recurrentes</span>
-                        </NavLink>
-                        <NavLink
-                            to="/budget/categories"
-                            className={({ isActive }) =>
-                                `flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`
-                            }
-                        >
-                            <TagIcon className="w-4 h-4" />
-                            <span>Categorías</span>
-                        </NavLink>
-                    </nav>
 
-                    <button
-                        onClick={() => openForm()}
-                        className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-lg shadow-indigo-500/30"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        <span>Nuevo Gasto</span>
-                    </button>
-                </div>
-            </div>
 
             <div className="flex-1 min-h-0">
-                <Outlet context={{ openForm }} />
+                <Outlet context={{ openForm, refreshTrigger }} />
             </div>
 
             <BudgetFormModal

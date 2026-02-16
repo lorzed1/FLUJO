@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SalesEvent, SalesProjection, ArqueoRecord } from '../../../types';
 import { projectionsService } from '../../../services/projectionsService';
-import { calculateDailyProjection, ProjectionResult } from '../../../utils/projections';
+import { calculateDailyProjection, ProjectionResult, ProjectionOptions } from '../../../utils/projections';
 import { startOfMonth, endOfMonth, format, addMonths, subMonths, getDay, addDays } from 'date-fns';
 import { useApp } from '../../../context/AppContext';
 
@@ -13,11 +13,15 @@ export const useProjections = () => {
     const [calculatedProjections, setCalculatedProjections] = useState<Record<string, ProjectionResult>>({});
     const [loading, setLoading] = useState(false);
 
-    // Config global (hardcoded for now, could move to context/settings)
-    const [config, setConfig] = useState({
+    // Config global avanzada
+    const [config, setConfig] = useState<ProjectionOptions>({
         lookbackWeeks: 8,
         growthPercentage: 0,
-        inflationPercentage: 0
+        inflationPercentage: 0,
+        trafficGrowthPercentage: 0,
+        ticketGrowthPercentage: 0,
+        anomalyThreshold: 20,
+        recencyWeightMode: 'linear'
     });
 
     const [realSales, setRealSales] = useState<Record<string, number>>({});
@@ -213,8 +217,14 @@ export const useProjections = () => {
         const salesMap: Record<string, number> = {};
         if (arqueos) {
             arqueos.forEach(r => {
-                // Use Venta Bruta as the metric for Goal Comparison
-                salesMap[r.fecha] = r.ventaBruta;
+                // Use Venta SC (Sin Cover) if available, otherwise calculate it
+                const cover = r.ingresoCovers || 0;
+                // Si venta_sc existe úsala, sinó ventaBruta - covers
+                const val = (r.venta_sc !== undefined && r.venta_sc !== null)
+                    ? r.venta_sc
+                    : (r.ventaBruta - cover);
+
+                salesMap[r.fecha] = val;
             });
         }
         setRealSales(salesMap);

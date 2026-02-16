@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardDocumentListIcon, PlusCircleIcon, TrashIcon, ArrowDownTrayIcon, BanknotesIcon, CalendarDaysIcon, ChartBarIcon, ArrowUpTrayIcon, CheckCircleIcon, ExclamationTriangleIcon, TagIcon, ArrowsRightLeftIcon, ArrowPathIcon, MoonIcon, SunIcon } from '../../components/ui/Icons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ClipboardDocumentListIcon, PlusCircleIcon, TrashIcon, ArrowDownTrayIcon, BanknotesIcon, CalendarDaysIcon, ChartBarIcon, ArrowUpTrayIcon, CheckCircleIcon, ExclamationTriangleIcon, TagIcon, ArrowsRightLeftIcon, ArrowPathIcon, MoonIcon, SunIcon, InformationCircleIcon } from '../../components/ui/Icons';
 import AlertModal from '../../components/ui/AlertModal';
 import { formatCOP, parseCOP } from '../../components/ui/Input';
 import { parseExcelData, calculateTotalRecaudado, calculateDescuadre, type ParsedRow } from '../../utils/excelParser';
@@ -12,6 +13,9 @@ import { FirestoreService } from '../../services/firestore';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TransferRecord, TransferType, ArqueoRecord } from '../../types';
+import { PageHeader } from '../../components/layout/PageHeader';
+import { AccountingExportWizard } from './components/AccountingExportWizard';
+
 
 interface ArqueoData {
     fecha: string;
@@ -257,20 +261,32 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
         }
     };
 
-    const [formData, setFormData] = useState<ArqueoData>(() => getInitialState(STORAGE_KEYS.FORM_DATA, {
-        fecha: getLocalDateISO(),
-        ventaBruta: 0,
-        propina: 0,
-        efectivo: 0,
-        datafonoDavid: 0,
-        datafonoJulian: 0,
-        transfBancolombia: 0,
-        nequi: 0,
-        rappi: 0,
-        ingresoCovers: 0,
-        cajero: '',
-        visitas: 0
-    }));
+    const [formData, setFormData] = useState<ArqueoData>(() => {
+        const today = getLocalDateISO();
+        const fallback = {
+            fecha: today,
+            ventaBruta: 0,
+            propina: 0,
+            efectivo: 0,
+            datafonoDavid: 0,
+            datafonoJulian: 0,
+            transfBancolombia: 0,
+            nequi: 0,
+            rappi: 0,
+            ingresoCovers: 0,
+            cajero: '',
+            visitas: 0
+        };
+
+        const saved = getInitialState(STORAGE_KEYS.FORM_DATA, null);
+        if (saved) {
+            // Si hay datos guardados, los usamos pero actualizamos la fecha a hoy
+            // para evitar mostrar una fecha antigua por error.
+            return { ...saved, fecha: today };
+        }
+
+        return fallback;
+    });
 
     // Detail Modal State
     const [activeDetailField, setActiveDetailField] = useState<keyof typeof paymentDetails | null>(null);
@@ -292,12 +308,36 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
         summary: ArqueoData;
     } | null>(null);
 
-    // Tab State
-    const [activeTab, setActiveTab] = useState<'calculadora' | 'arqueo' | 'historial' | 'transferencias'>(() =>
-        getInitialState(STORAGE_KEYS.ACTIVE_TAB, 'calculadora')
-    );
+    // Tab State - Synced with URL via Sidebar
+    const [activeTab, setActiveTab] = useState<'calculadora' | 'arqueo' | 'historial' | 'transferencias'>('calculadora');
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (location.pathname.includes('/form')) {
+            setActiveTab('arqueo');
+        } else if (location.pathname.includes('/transfers')) {
+            setActiveTab('transferencias');
+        } else if (location.pathname.includes('/history')) {
+            setActiveTab('historial');
+        } else {
+            setActiveTab('calculadora');
+        }
+    }, [location.pathname]);
+
+    // Data for PageHeader
+    const getPageDetails = () => {
+        switch (activeTab) {
+            case 'calculadora': return { title: 'Calculadora de Efectivo', subtitle: 'Conteo y validación de efectivo físico' };
+            case 'transferencias': return { title: 'Transferencias', subtitle: 'Gestión de movimientos bancarios' };
+            case 'historial': return { title: 'Historial de Arqueos', subtitle: 'Registro histórico y auditoría' };
+            default: return { title: 'Arqueo de Caja', subtitle: 'Formulario de cierre diario' };
+        }
+    };
+    const pageDetails = getPageDetails();
 
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showAccountingWizard, setShowAccountingWizard] = useState(false);
     const [showExportOptions, setShowExportOptions] = useState(false);
 
     // Refs
@@ -356,7 +396,8 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
 
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.FACTURAS, JSON.stringify(facturas)); }, [facturas, STORAGE_KEYS.FACTURAS]);
 
-    useEffect(() => { localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, JSON.stringify(activeTab)); }, [activeTab, STORAGE_KEYS.ACTIVE_TAB]);
+    // Active tab is now controlled by URL, no need to persist it separately or read from storage here
+    // useEffect(() => {localStorage.setItem(STORAGE_KEYS.ACTIVE_TAB, JSON.stringify(activeTab)); }, [activeTab, STORAGE_KEYS.ACTIVE_TAB]);
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(isDarkMode)); }, [isDarkMode, STORAGE_KEYS.THEME]);
 
     // Auto-calculate Impuesto al Consumo (INC) REMOVED
@@ -364,11 +405,11 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
     /*
     useEffect(() => {
         const inc = Math.round(formData.ventaBruta * (8 / 108));
-        if (formData.impuestoConsumo !== inc) {
-            setFormData(prev => ({ ...prev, impuestoConsumo: inc }));
+                                            if (formData.impuestoConsumo !== inc) {
+                                                setFormData(prev => ({ ...prev, impuestoConsumo: inc }));
         }
     }, [formData.ventaBruta, formData.impuestoConsumo]);
-    */
+                                            */
 
     // Update form totals based on detail lists
     useEffect(() => {
@@ -387,7 +428,7 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
             ...prev,
             efectivo: calculatedTotal
         }));
-        setActiveTab('arqueo');
+        navigate('/arqueo/form');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -654,6 +695,25 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                 setConsumoPersonal(0);
                 setFacturas(0);
 
+                // Reset Form Data y Detalles
+                const today = getLocalDateISO();
+                setFormData({
+                    fecha: today,
+                    ventaBruta: 0,
+                    propina: 0,
+                    efectivo: 0,
+                    datafonoDavid: 0,
+                    datafonoJulian: 0,
+                    transfBancolombia: 0,
+                    nequi: 0,
+                    rappi: 0,
+                    ingresoCovers: 0,
+                    cajero: '',
+                    visitas: 0
+                });
+                setPaymentDetails({ nequi: [], transfBancolombia: [] });
+                setActiveTab('calculadora');
+
                 // User Request: Purga automática (mantenemos solo 2 días)
                 await FirestoreService.autoPurgeOldData();
 
@@ -730,109 +790,42 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                     showCancel={alertConfig.showCancel}
                 />
 
-                {/* Header Responsivo */}
-                <header className="mb-4 sm:mb-6 pt-2">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 transition-colors duration-300">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="bg-primary/10 text-primary p-1.5 rounded-lg">
-                                    <ClipboardDocumentListIcon className="h-5 w-5" />
-                                </span>
-                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Arqueo de Caja</h2>
-                            </div>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium ml-1">Control diario de efectivo y cierres.</p>
-                        </div>
+                <PageHeader
+                    title={pageDetails.title}
+                    breadcrumbs={[
+                        { label: 'Finanzas', path: '/arqueo' },
+                        { label: pageDetails.title }
+                    ]}
+                    icon={<ClipboardDocumentListIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex items-center gap-2">
+                            {/* Guía Rápida Button */}
+                            <button
+                                onClick={() => setAlertConfig({
+                                    isOpen: true,
+                                    title: 'Guía Rápida',
+                                    message: '1. Ingresa la base inicial de la caja.\n2. Registra los billetes y monedas en la Calculadora.\n3. Verifica el cuadre con el sistema.\n4. Si todo está correcto, envía al formulario y guarda el arqueo.',
+                                    type: 'info',
+                                    confirmText: 'Entendido',
+                                    showCancel: false
+                                })}
+                                className="bg-white dark:bg-slate-700 text-gray-500 dark:text-gray-300 hover:text-primary dark:hover:text-blue-400 p-2 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm transition-all hover:scale-105"
+                                title="Ver guía rápida"
+                            >
+                                <InformationCircleIcon className="h-5 w-5" />
+                            </button>
 
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            {/* Theme Toggle */}
                             <button
                                 onClick={() => setIsDarkMode(!isDarkMode)}
-                                className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+                                className="bg-white dark:bg-slate-700 text-gray-400 dark:text-yellow-400 hover:text-yellow-500 p-2 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm transition-all hover:scale-105"
                                 title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
                             >
                                 {isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
                             </button>
-
-                            <button
-                                onClick={handleFillMockData}
-                                className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors flex items-center gap-2"
-                                title="Llenar con datos de prueba"
-                            >
-                                <ArrowPathIcon className="h-5 w-5" />
-                                <span className="hidden sm:inline font-bold text-xs uppercase tracking-wider">Simular Arqueo</span>
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    setAlertConfig({
-                                        isOpen: true,
-                                        type: 'warning',
-                                        title: 'Cerrar Sesión',
-                                        message: '¿Estás seguro que deseas cerrar sesión?',
-                                        confirmText: 'Sí, Salir',
-                                        showCancel: true,
-                                        onConfirm: () => {
-                                            setAlertConfig(prev => ({ ...prev, isOpen: false }));
-                                            logoutLocal();
-                                            window.location.href = '/';
-                                        }
-                                    });
-                                }}
-                                className="w-full sm:w-auto px-4 py-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 hover:text-primary transition-all font-semibold text-sm flex items-center justify-center gap-2 group active:scale-95"
-                            >
-                                <span>Cerrar Sesión</span>
-                                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </button>
                         </div>
-                    </div>
-
-                    {/* Tabs de Navegación Estilizadas */}
-                    <div className="mt-4 flex p-1.5 bg-gray-100/80 dark:bg-slate-800/80 rounded-xl overflow-x-auto no-scrollbar gap-1 sm:gap-0">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('calculadora')}
-                            className={`flex-1 min-w-[120px] px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${activeTab === 'calculadora'
-                                ? 'bg-white dark:bg-slate-700 text-primary dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 hover:text-gray-700 dark:hover:text-gray-200'
-                                }`}
-                        >
-                            <BanknotesIcon className="h-5 w-5" /> Calculadora
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('arqueo')}
-                            className={`flex-1 min-w-[120px] px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${activeTab === 'arqueo'
-                                ? 'bg-white dark:bg-slate-700 text-primary dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 hover:text-gray-700 dark:hover:text-gray-200'
-                                }`}
-                        >
-                            <ClipboardDocumentListIcon className="h-5 w-5" /> Formulario
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('transferencias')}
-                            className={`flex-1 min-w-[120px] px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${activeTab === 'transferencias'
-                                ? 'bg-white dark:bg-slate-700 text-primary dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 hover:text-gray-700 dark:hover:text-gray-200'
-                                }`}
-                        >
-                            <ArrowsRightLeftIcon className="h-5 w-5" /> Transferencias
-                        </button>
-                        {userRole === 'admin' && (
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('historial')}
-                                className={`flex-1 min-w-[120px] px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${activeTab === 'historial'
-                                    ? 'bg-white dark:bg-slate-700 text-primary dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-slate-700/50 hover:text-gray-700 dark:hover:text-gray-200'
-                                    }`}
-                            >
-                                <CalendarDaysIcon className="h-5 w-5" /> Historial
-                            </button>
-                        )}
-                    </div>
-                </header >
+                    }
+                />
 
                 {/* Tab Content: Transferencias */}
                 {
@@ -866,9 +859,9 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                         <table className="w-full">
                                             <thead className="bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-gray-400 text-xs uppercase">
                                                 <tr>
-                                                    <th className="py-2 px-3 text-left font-semibold">Denom.</th>
+                                                    <th className="py-2 px-3 text-center font-semibold">Denom.</th>
                                                     <th className="py-2 px-1 text-center font-semibold">Cant.</th>
-                                                    <th className="py-2 px-3 text-right font-semibold">Total</th>
+                                                    <th className="py-2 px-3 text-center font-semibold">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
@@ -915,9 +908,9 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                         <table className="w-full mb-2">
                                             <thead className="bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-gray-400 text-xs uppercase">
                                                 <tr>
-                                                    <th className="py-2 px-3 text-left font-semibold">Denom.</th>
+                                                    <th className="py-2 px-3 text-center font-semibold">Denom.</th>
                                                     <th className="py-2 px-1 text-center font-semibold">Cant.</th>
-                                                    <th className="py-2 px-3 text-right font-semibold">Total</th>
+                                                    <th className="py-2 px-3 text-center font-semibold">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
@@ -982,18 +975,18 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                 </div>
                             </div>
 
-                            {/* Botón Flotante en Móvil */}
-                            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] sm:static sm:bg-transparent sm:border-0 sm:shadow-none sm:p-0 z-40">
+                            {/* Botón Flotante de Calculadora */}
+                            <div className="fixed bottom-[4.5rem] left-4 right-4 z-40 sm:static sm:bg-transparent sm:p-0">
                                 <button
                                     type="button"
                                     onClick={handleSendToArqueo}
-                                    className="w-full sm:w-auto mx-auto px-6 py-4 bg-primary text-white text-lg font-bold rounded-xl shadow-lg hover:bg-primary/90 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+                                    className="w-full sm:w-auto mx-auto px-6 py-3.5 bg-primary text-white text-lg font-bold rounded-xl shadow-xl hover:bg-primary/90 transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 border border-indigo-400/20 backdrop-blur-sm"
                                 >
                                     <span>Enviar a Arqueo</span>
                                     <div className="bg-white/20 px-3 py-1 rounded-lg text-sm font-mono tracking-wide">
                                         {formatCurrency(totalFinalCuadre)}
                                     </div>
-                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                    <svg className="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                 </button>
                             </div>
                         </div>
@@ -1010,45 +1003,18 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                 <h3 className="text-lg font-semibold text-primary dark:text-blue-400">Historial de Arqueos</h3>
                                 <div className="flex items-center gap-2">
                                     <button
+                                        onClick={() => setShowAccountingWizard(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors shadow-sm"
+                                        disabled={arqueos.length === 0}
+                                    >
+                                        <ArrowDownTrayIcon className="h-4 w-4" /> Exportar Contabilidad
+                                    </button>
+                                    <button
                                         onClick={() => setShowImportModal(true)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-primary dark:text-blue-400 font-bold rounded-lg border border-primary/20 dark:border-blue-400/20 hover:bg-primary/5 dark:hover:bg-blue-400/10 transition-colors shadow-sm"
                                     >
                                         <ArrowUpTrayIcon className="h-4 w-4" /> Importar Excel
                                     </button>
-
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowExportOptions(!showExportOptions)}
-                                            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 transition-colors shadow-sm"
-                                        >
-                                            <ArrowDownTrayIcon className="h-4 w-4" />
-                                            Exportar
-                                        </button>
-
-                                        {showExportOptions && (
-                                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                <div className="text-[10px] font-bold text-gray-400 uppercase p-3 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700">Formato de salida</div>
-                                                <button
-                                                    onClick={() => { tableRef.current?.exportToExcel(); setShowExportOptions(false); }}
-                                                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400 transition-colors flex items-center gap-2"
-                                                >
-                                                    <ChartBarIcon className="h-4 w-4" /> Excel (.xlsx)
-                                                </button>
-                                                <button
-                                                    onClick={() => { tableRef.current?.exportToPDF(); setShowExportOptions(false); }}
-                                                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors flex items-center gap-2"
-                                                >
-                                                    <ClipboardDocumentListIcon className="h-4 w-4" /> Reporte PDF
-                                                </button>
-                                                <button
-                                                    onClick={() => { tableRef.current?.exportToCSV(); setShowExportOptions(false); }}
-                                                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 transition-colors flex items-center gap-2"
-                                                >
-                                                    <TagIcon className="h-4 w-4" /> Archivo CSV
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
                             <ArqueosTable
@@ -1057,6 +1023,12 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                 onUpdate={onUpdateArqueo}
                                 onDelete={onDeleteArqueo}
                                 userRole={userRole}
+                            />
+
+                            <AccountingExportWizard
+                                isOpen={showAccountingWizard}
+                                onClose={() => setShowAccountingWizard(false)}
+                                selectedArqueos={arqueos}
                             />
 
                             {/* Modal de Importación */}
@@ -1188,7 +1160,7 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                         value={formData.efectivo}
                                         onChange={handleCurrencyChange}
                                         readOnly={true}
-                                        onDetailClick={() => setActiveTab('calculadora')}
+                                        onDetailClick={() => navigate('/arqueo/calculadora')}
                                         sublabel={<><ArrowPathIcon className="h-4 w-4 inline-block mr-1 text-gray-400" /> Sincronizado desde Calculadora de Efectivo</>}
                                         useMonoFont={useMonoFont}
                                     />
@@ -1242,10 +1214,10 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                 </div>
                             </div>
 
-                            <div className="pt-2 sticky bottom-4 z-30">
+                            <div className="pt-2 mt-4 sm:mt-0 sticky bottom-4 sm:static md:sticky z-30 sm:z-0 fixed mobile-fab-container left-4 right-4 bottom-20 sm:bottom-auto sm:left-auto sm:right-auto">
                                 <button
                                     type="submit"
-                                    className="w-full py-4 sm:py-4 bg-gray-900 hover:bg-black text-white text-lg font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform active:scale-[0.98] focus:ring-4 focus:ring-gray-300 flex justify-center items-center gap-2"
+                                    className="w-full py-3.5 sm:py-4 bg-gray-900 hover:bg-black text-white text-lg font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all transform active:scale-[0.98] focus:ring-4 focus:ring-gray-300 flex justify-center items-center gap-2"
                                 >
                                     <span>Finalizar Arqueo</span>
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -1259,45 +1231,45 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                 {
                     showConfirmation && confirmationData && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                            <div className={`bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border-t-8 ${confirmationData.descuadre === 0 ? 'border-primary' : confirmationData.descuadre > 0 ? 'border-secondary' : 'border-red-500'}`}>
+                            <div className={`bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border-t-8 ${confirmationData.descuadre === 0 ? 'border-primary' : confirmationData.descuadre > 0 ? 'border-secondary' : 'border-red-500'}`}>
 
-                                <div className="p-6 sm:p-8">
-                                    <h2 className="text-2xl sm:text-3xl font-black text-center text-gray-800 dark:text-white mb-6 tracking-tight">
+                                <div className="p-4 sm:p-6">
+                                    <h2 className="text-xl sm:text-2xl font-black text-center text-gray-800 dark:text-white mb-4 tracking-tight">
                                         Resultado del Arqueo
                                     </h2>
 
-                                    {/* Resumen de Totales */}
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex justify-between items-center p-4 bg-gray-50/80 dark:bg-slate-700/80 rounded-2xl border border-gray-100 dark:border-slate-600">
-                                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Esperado</span>
-                                            <span className="text-lg font-bold text-gray-800 dark:text-white font-mono tracking-tight">{formatCurrency(confirmationData.ventaEsperada)}</span>
+                                    {/* Resumen de Totales - Compact Grid */}
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="flex flex-col items-center justify-center p-3 bg-gray-50/80 dark:bg-slate-700/80 rounded-xl border border-gray-100 dark:border-slate-600">
+                                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Esperado</span>
+                                            <span className="text-base font-bold text-gray-800 dark:text-white font-mono tracking-tight">{formatCurrency(confirmationData.ventaEsperada)}</span>
                                         </div>
-                                        <div className="flex justify-between items-center p-4 bg-gray-50/80 dark:bg-slate-700/80 rounded-2xl border border-gray-100 dark:border-slate-600">
-                                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Recaudado</span>
-                                            <span className="text-lg font-bold text-gray-800 dark:text-white font-mono tracking-tight">{formatCurrency(confirmationData.totalRecaudado)}</span>
+                                        <div className="flex flex-col items-center justify-center p-3 bg-gray-50/80 dark:bg-slate-700/80 rounded-xl border border-gray-100 dark:border-slate-600">
+                                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Recaudado</span>
+                                            <span className="text-base font-bold text-gray-800 dark:text-white font-mono tracking-tight">{formatCurrency(confirmationData.totalRecaudado)}</span>
                                         </div>
                                     </div>
 
-                                    {/* Descuadre */}
-                                    <div className={`py-8 px-6 rounded-2xl mb-8 flex flex-col items-center justify-center ${confirmationData.descuadre === 0 ? 'bg-primary/5 dark:bg-primary/10' : confirmationData.descuadre > 0 ? 'bg-secondary/10 dark:bg-secondary/5' : 'bg-red-50 dark:bg-red-900/10'}`}>
-                                        <span className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest mb-2">Descuadre Final</span>
-                                        <p className={`text-4xl sm:text-5xl font-black mb-3 tracking-tighter ${confirmationData.descuadre === 0 ? 'text-primary dark:text-blue-400' : confirmationData.descuadre > 0 ? 'text-dark-text dark:text-white' : 'text-red-500'}`}>
+                                    {/* Descuadre - Reduced Padding */}
+                                    <div className={`py-5 px-4 rounded-xl mb-5 flex flex-col items-center justify-center ${confirmationData.descuadre === 0 ? 'bg-primary/5 dark:bg-primary/10' : confirmationData.descuadre > 0 ? 'bg-secondary/10 dark:bg-secondary/5' : 'bg-red-50 dark:bg-red-900/10'}`}>
+                                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-300 uppercase tracking-widest mb-1">Descuadre Final</span>
+                                        <p className={`text-3xl sm:text-4xl font-black mb-2 tracking-tighter ${confirmationData.descuadre === 0 ? 'text-primary dark:text-blue-400' : confirmationData.descuadre > 0 ? 'text-dark-text dark:text-white' : 'text-red-500'}`}>
                                             {formatCurrency(confirmationData.descuadre)}
                                         </p>
-                                        <div className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm flex items-center gap-1.5 ${confirmationData.descuadre === 0 ? 'bg-primary/10 text-primary dark:text-blue-400' : confirmationData.descuadre > 0 ? 'bg-secondary/30 text-dark-text dark:text-white' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
+                                        <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm flex items-center gap-1.5 ${confirmationData.descuadre === 0 ? 'bg-primary/10 text-primary dark:text-blue-400' : confirmationData.descuadre > 0 ? 'bg-secondary/30 text-dark-text dark:text-white' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
                                             {confirmationData.descuadre === 0
-                                                ? <><CheckCircleIcon className="h-5 w-5" /> Cuadre Perfecto</>
+                                                ? <><CheckCircleIcon className="h-4 w-4" /> Cuadre Perfecto</>
                                                 : confirmationData.descuadre > 0
-                                                    ? <><BanknotesIcon className="h-5 w-5" /> Sobrante</>
-                                                    : <><ExclamationTriangleIcon className="h-5 w-5" /> Faltante</>
+                                                    ? <><BanknotesIcon className="h-4 w-4" /> Sobrante</>
+                                                    : <><ExclamationTriangleIcon className="h-4 w-4" /> Faltante</>
                                             }
                                         </div>
                                     </div>
 
-                                    {/* Resumen Detallado */}
-                                    <div className="bg-gray-50/50 dark:bg-slate-900/50 rounded-2xl p-4 mb-6 border border-gray-100 dark:border-slate-700">
-                                        <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 text-center">Desglose de Medios de Pago</h4>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                    {/* Resumen Detallado - Compact */}
+                                    <div className="bg-gray-50/50 dark:bg-slate-900/50 rounded-xl p-3 mb-4 border border-gray-100 dark:border-slate-700">
+                                        <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 text-center">Desglose de Medios de Pago</h4>
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
                                             <div className="flex justify-between border-b border-gray-100 dark:border-slate-800 pb-1">
                                                 <span className="text-gray-500">Efectivo:</span>
                                                 <span className="font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(confirmationData.summary.efectivo)}</span>
@@ -1322,41 +1294,47 @@ const ArqueoPreview: React.FC<ArqueoPreviewProps> = ({
                                                 <span className="text-gray-500">Dataf. 2:</span>
                                                 <span className="font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(confirmationData.summary.datafonoJulian)}</span>
                                             </div>
+                                            <div className="col-span-2 flex justify-between border-t border-dashed border-gray-200 dark:border-slate-700 pt-1 mt-1">
+                                                <span className="font-bold text-indigo-600 dark:text-indigo-400">Total Datáfonos:</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">
+                                                    {formatCurrency((confirmationData.summary.datafonoDavid || 0) + (confirmationData.summary.datafonoJulian || 0))}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Botón Exportar PDF */}
+                                    {/* Buttons - Compact */}
                                     <button
                                         onClick={handleExportPDF}
-                                        className="w-full mb-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest transition-all border border-red-100 dark:border-red-900/40"
+                                        className="w-full mb-3 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all border border-red-100 dark:border-red-900/40"
                                     >
-                                        <ArrowDownTrayIcon className="h-4 w-4" />
+                                        <ArrowDownTrayIcon className="h-3 w-3" />
                                         Descargar Resumen PDF
                                     </button>
 
-                                    {/* Botones de Acción */}
-                                    <div className="flex flex-col-reverse sm:flex-row gap-3">
+                                    {/* Action Buttons */}
+                                    <div className="flex flex-col-reverse sm:flex-row gap-2">
                                         <button
                                             onClick={() => setShowConfirmation(false)}
-                                            className="w-full sm:flex-1 py-3.5 px-4 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-white font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 transition-colors"
+                                            className="w-full sm:flex-1 py-3 px-4 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-white font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 transition-colors text-sm"
                                         >
-                                            Volver y Revisar
+                                            Volver
                                         </button>
                                         <button
                                             onClick={handleConfirmSave}
                                             disabled={isSaving}
-                                            className={`w-full sm:flex-1 py-3.5 px-4 font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 transform active:scale-95 ${isSaving ? 'bg-gray-400 cursor-not-allowed text-gray-100' : 'bg-gray-900 text-white hover:bg-black'}`}
+                                            className={`w-full sm:flex-1 py-3 px-4 font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 transform active:scale-95 text-sm ${isSaving ? 'bg-gray-400 cursor-not-allowed text-gray-100' : 'bg-gray-900 text-white hover:bg-black'}`}
                                         >
                                             {isSaving ? (
                                                 <>
-                                                    <svg className="animate-spin h-5 w-5 text-white/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <svg className="animate-spin h-4 w-4 text-white/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
                                                     <span>Guardando...</span>
                                                 </>
                                             ) : (
-                                                <><span>Confirmar Cierre</span> <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></>
+                                                <><span>Confirmar Cierre</span> <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></>
                                             )}
                                         </button>
                                     </div>

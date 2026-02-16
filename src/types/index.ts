@@ -143,6 +143,7 @@ export interface ArqueoRecord {
   fecha: string;
   cajero: string;
   ventaBruta: number;
+  venta_sc?: number; // Venta sin cover (ventaBruta - ingresoCovers) - calculado en runtime
   propina: number;
   efectivo: number;
   datafonoDavid: number;
@@ -187,4 +188,30 @@ export interface SalesProjection {
   status: ProjectionStatus;
   notes?: string;
   lastUpdated?: any;
+}
+export type TransactionSource = 'libro' | 'banco' | 'datafono' | 'efectivo'
+export type TransactionStatus = 'pendiente' | 'conciliado' | 'duda'
+
+export interface TableTransaction {
+  id: string
+  date: string // ISO date string (YYYY-MM-DD)
+  amount: number // En centavos
+  description: string | null
+  source: TransactionSource
+  status: TransactionStatus
+  metadata: Record<string, any>
+  import_batch_id: string | null
+  // Agrega otros campos si los necesitas
+}
+
+export interface TransactionFilters {
+  dateFrom?: string
+  dateTo?: string
+  source?: TransactionSource[]
+  status?: TransactionStatus[]
+  search?: string
+  minAmount?: number
+  maxAmount?: number
+  page?: number
+  pageSize?: number
 }

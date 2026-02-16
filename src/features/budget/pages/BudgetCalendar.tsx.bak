@@ -1,0 +1,748 @@
+import React, { useState, useCallback, useEffect, useContext } from 'react';
+import { Calendar, dateFnsLocalizer, Event, View, Views, Navigate } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import { format, parse, startOfWeek, getDay, parseISO, startOfMonth, endOfMonth, isSameDay, getISOWeek, subMonths, subWeeks, addMonths, addWeeks, subDays } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { PageHeader } from '../../../components/layout/PageHeader';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
+
+const DnDCalendar = withDragAndDrop(Calendar);
+
+import { useBudgetContext } from '../layouts/BudgetLayout';
+import { budgetService } from '../../../services/budgetService';
+import { useUI } from '../../../context/UIContext';
+import { BudgetCommitment } from '../../../types/budget';
+import { DateSelectionModal } from '../components/DateSelectionModal';
+import {
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    CalendarDaysIcon,
+    ViewColumnsIcon,
+    ListBulletIcon,
+    TrashIcon,
+    PencilIcon,
+    BanknotesIcon,
+    PlusIcon
+} from '@heroicons/react/24/outline';
+
+// --- Types ---
+
+interface MyEvent extends Event {
+    id: string;
+    status: 'pending' | 'paid' | 'overdue';
+    amount: number;
+    resource: BudgetCommitment;
+    isProjected: boolean;
+}
+
+// --- Context Bridge for Calendar Actions ---
+
+const CalendarActionsContext = React.createContext<{
+    onDelete: (event: MyEvent) => void;
+    onQuickPay: (event: MyEvent) => void;
+    onChangeDate: (event: MyEvent) => void;
+}>({ onDelete: () => { }, onQuickPay: () => { }, onChangeDate: () => { } });
+
+// --- Configuration ---
+
+const locales = {
+    'es': es,
+};
+
+const localizer = dateFnsLocalizer({
+    format,
+    parse,
+    startOfWeek,
+    getDay,
+    locales,
+});
+
+
+
+
+const CustomEvent = ({ event }: { event: MyEvent }) => {
+    const isProjected = event.isProjected;
+    const { onDelete, onQuickPay, onChangeDate } = useContext(CalendarActionsContext);
+
+    // Configuración de colores según estado
+    let bgClass = 'bg-amber-100 dark:bg-amber-900/40 border-l-4 border-amber-400 text-amber-900 dark:text-amber-100';
+    if (event.status === 'paid') {
+        bgClass = 'bg-emerald-100 dark:bg-emerald-900/40 border-l-4 border-emerald-500 text-emerald-900 dark:text-emerald-100';
+    } else if (event.status === 'overdue') {
+        bgClass = 'bg-rose-100 dark:bg-rose-900/40 border-l-4 border-rose-500 text-rose-900 dark:text-rose-100';
+    }
+
+    if (isProjected) {
+        // Change border color to Indigo for projections to distinguish from real entries
+        // Replacing the status color border with a "Projection" color border
+        bgClass = bgClass.replace(/border-(amber|emerald|rose)-(400|500)/, 'border-indigo-500');
+    }
+
+    return (
+        <div className={`group flex flex-col justify-between px-2 py-1 h-full w-full rounded-md shadow-sm text-[10px] leading-tight overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md hover:z-10 relative ${bgClass}`}>
+
+            <div className="flex justify-between items-start">
+                <div className="font-bold truncate pr-1">
+                    {event.resource.title}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {event.status !== 'paid' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onQuickPay(event);
+                            }}
+                            className="p-0.5 hover:bg-black/10 rounded text-emerald-600 dark:text-emerald-400"
+                            title="Pagar Hoy"
+                        >
+                            <BanknotesIcon className="w-3 h-3 text-current" />
+                        </button>
+                    )}
+                    {event.status !== 'paid' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onChangeDate(event);
+                            }}
+                            className="p-0.5 hover:bg-black/10 rounded text-sky-600 dark:text-sky-400"
+                            title="Cambiar Fecha"
+                        >
+                            <CalendarDaysIcon className="w-3 h-3 text-current" />
+                        </button>
+                    )}
+                    <button
+                        onClick={(e) => {
+                            // Let it bubble to onSelectEvent which opens the form
+                        }}
+                        className="p-0.5 hover:bg-black/10 rounded"
+                        title={isProjected ? "Convertir en Real / Editar" : "Editar"}
+                    >
+                        <PencilIcon className="w-3 h-3 text-current" />
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(event);
+                        }}
+                        className="p-0.5 hover:bg-black/10 rounded"
+                        title={isProjected ? "Eliminar Regla Recurrente" : "Eliminar Compromiso"}
+                    >
+                        <TrashIcon className="w-3 h-3 text-current" />
+                    </button>
+                </div>
+            </div>
+            <div className="font-mono font-medium opacity-90">
+                ${event.resource.amount.toLocaleString()}
+            </div>
+        </div>
+    );
+};
+
+const CustomShowMore = ({ events }: { events: MyEvent[] }) => {
+    return (
+        <div className="flex flex-col gap-[2px] w-full" onClick={(e) => e.stopPropagation()}>
+            {events.map((evt) => (
+                <div key={evt.id} className="rbc-event">
+                    <CustomEvent event={evt} />
+                </div>
+            ))}
+        </div>
+    );
+};
+
+// --- Main Component ---
+
+export const BudgetCalendar: React.FC = () => {
+    const { openForm } = useBudgetContext();
+    const { setAlertModal } = useUI();
+    const [events, setEvents] = useState<MyEvent[]>([]);
+    const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; event: MyEvent | null }>({ isOpen: false, event: null });
+    const [dateChangeModal, setDateChangeModal] = useState<{ isOpen: boolean; event: MyEvent | null }>({ isOpen: false, event: null });
+    const [currentRange, setCurrentRange] = useState<{ start: Date; end: Date }>({
+        start: startOfMonth(new Date()),
+        end: endOfMonth(new Date())
+    });
+    const [view, setView] = useState<View>(Views.MONTH);
+    const [date, setDate] = useState(new Date());
+
+    const handleNavigate = useCallback((newDate: Date) => {
+        setDate(newDate);
+    }, []);
+
+    const navigateCalendar = (action: 'PREV' | 'NEXT' | 'TODAY') => {
+        if (action === 'TODAY') {
+            setDate(new Date());
+            return;
+        }
+        const amount = action === 'NEXT' ? 1 : -1;
+        let newDate = new Date(date);
+        if (view === Views.MONTH) {
+            newDate = amount === 1 ? addMonths(date, 1) : subMonths(date, 1);
+        } else if (view === Views.WEEK) {
+            newDate = amount === 1 ? addWeeks(date, 1) : subWeeks(date, 1);
+        }
+        setDate(newDate);
+    };
+
+    const getCalendarTitle = () => {
+        const baseLabel = format(date, 'MMMM yyyy', { locale: es }).replace(/^\w/, (c) => c.toUpperCase());
+        if (view === 'week') {
+            const weekNumber = getISOWeek(date);
+            return (
+                <div className="flex flex-col items-center leading-none">
+                    <span>{baseLabel}</span>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mt-1">
+                        Semana {weekNumber}
+                    </span>
+                </div>
+            );
+        }
+        return baseLabel;
+    };
+
+    const fetchEvents = useCallback(async () => {
+        try {
+            const commitments = await budgetService.getCommitments(
+                format(currentRange.start, 'yyyy-MM-dd'),
+                format(currentRange.end, 'yyyy-MM-dd')
+            );
+            const mappedEvents: MyEvent[] = commitments.map(c => {
+                // Manual parsing to avoid timezone shifts. 
+                // c.dueDate is YYYY-MM-DD. We want 00:00 local time.
+                const [y, m, d] = c.dueDate.split('-').map(Number);
+                const date = new Date(y, m - 1, d); // Local time 00:00:00
+                return {
+                    id: c.id,
+                    title: c.title,
+                    start: date,
+                    end: date,
+                    status: c.status,
+                    amount: c.amount,
+                    allDay: true,
+                    resource: c,
+                    isProjected: !!c.id.startsWith('projected-')
+                };
+            });
+            setEvents(mappedEvents);
+        } catch (error) {
+            console.error("Error loading calendar events:", error);
+        }
+    }, [currentRange]);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
+
+    const handleSelectSlot = useCallback(({ start }: { start: Date }) => { openForm(start); }, [openForm]);
+    const handleSelectEvent = useCallback((event: MyEvent) => { openForm(undefined, event.resource); }, [openForm]);
+
+    const handleRangeChange = (range: Date[] | { start: Date; end: Date }) => {
+        if (Array.isArray(range)) {
+            const sorted = range.sort((a, b) => a.getTime() - b.getTime());
+            setCurrentRange({ start: sorted[0], end: sorted[sorted.length - 1] });
+        } else {
+            setCurrentRange(range);
+        }
+    };
+
+    const handleQuickPay = useCallback((event: MyEvent) => {
+        setPaymentModal({ isOpen: true, event });
+    }, []);
+
+    const onEventDrop = useCallback(async ({ event, start }: any) => {
+        const item = event.resource;
+        const newDate = format(start, 'yyyy-MM-dd');
+
+        setAlertModal({
+            isOpen: true,
+            type: 'info',
+            title: 'Confirmar Cambio de Fecha',
+            message: `¿Mover "${item.title}" al ${format(start, 'dd/MM/yyyy')}?`,
+            showCancel: true,
+            confirmText: 'Mover',
+            onConfirm: async () => {
+                try {
+                    if (item.id.startsWith('projected-')) {
+                        // Materialize projection on new date
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { id, isProjected, ...data } = item;
+                        await budgetService.addCommitment({
+                            ...data,
+                            dueDate: newDate,
+                            recurrenceRuleId: item.recurrenceRuleId
+                        });
+                    } else {
+                        // Update existing commitment
+                        await budgetService.updateCommitment(item.id, {
+                            dueDate: newDate
+                        });
+                    }
+                    await fetchEvents();
+                    setAlertModal({ isOpen: false, message: '' });
+                } catch (error) {
+                    console.error("Error moving event:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo mover el evento.' });
+                }
+            }
+        });
+    }, [fetchEvents, setAlertModal]);
+
+    const handleConfirmPayment = async (dateStr: string) => {
+        if (!paymentModal.event) return;
+        const event = paymentModal.event;
+
+        try {
+            const item = event.resource;
+
+            if (item.id.startsWith('projected-')) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, isProjected, ...data } = item;
+                await budgetService.addCommitment({
+                    ...data,
+                    status: 'paid',
+                    paidDate: dateStr,
+                    recurrenceRuleId: item.recurrenceRuleId
+                });
+            } else {
+                await budgetService.updateCommitment(item.id, {
+                    status: 'paid',
+                    paidDate: dateStr
+                });
+            }
+
+            await fetchEvents();
+            setPaymentModal({ isOpen: false, event: null });
+        } catch (error) {
+            console.error("Error paying commitment:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo registrar el pago.' });
+        }
+    };
+
+    const handleDeleteEvent = useCallback((event: MyEvent) => {
+        const isProjected = event.resource.id.startsWith('projected-');
+
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: isProjected ? 'Eliminar Regla Recurrente' : 'Confirmar Eliminación',
+            message: isProjected
+                ? `Este es un evento proyectado. ¿Deseas eliminar DEFINITIVAMENTE la Regla Recurrente "${event.resource.title}"? Esto eliminará todas las futuras proyecciones.`
+                : `¿Eliminar "${event.resource.title}"?`,
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                try {
+                    if (isProjected) {
+                        // Extract Rule ID: projected-{RuleID}-{Date}
+                        const parts = event.resource.id.split('-');
+                        const ruleId = parts[1];
+
+                        if (ruleId) {
+                            await budgetService.deleteRecurrenceRule(ruleId);
+                        } else {
+                            throw new Error("No se pudo identificar la regla.");
+                        }
+                    } else {
+                        await budgetService.deleteCommitment(event.resource.id);
+                    }
+                    await fetchEvents();
+                    setAlertModal({ isOpen: false, message: '' });
+                } catch (error) {
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo eliminar el evento' });
+                }
+            }
+        });
+    }, [fetchEvents, setAlertModal]);
+
+    const handleViewChange = (v: View) => { setView(v); };
+    const handleChangeDate = useCallback((event: MyEvent) => {
+        setDateChangeModal({ isOpen: true, event });
+    }, []);
+
+    const handleConfirmDateChange = async (dateStr: string) => {
+        if (!dateChangeModal.event) return;
+        const item = dateChangeModal.event.resource;
+
+        try {
+            if (item.id.startsWith('projected-')) {
+                // Materialize projection on new date
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, isProjected, ...data } = item;
+                await budgetService.addCommitment({
+                    ...data,
+                    dueDate: dateStr,
+                    recurrenceRuleId: item.recurrenceRuleId
+                });
+            } else {
+                // Update existing commitment
+                await budgetService.updateCommitment(item.id, {
+                    dueDate: dateStr
+                });
+            }
+            await fetchEvents();
+            setDateChangeModal({ isOpen: false, event: null });
+            setAlertModal({ isOpen: true, type: 'success', title: 'Fecha Actualizada', message: 'El gasto se ha movido correctamente.' });
+        } catch (error) {
+            console.error("Error moving event:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo mover el evento.' });
+        }
+    };
+
+    return (
+        <div className="h-full bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
+            <DateSelectionModal
+                isOpen={paymentModal.isOpen}
+                onClose={() => setPaymentModal({ isOpen: false, event: null })}
+                onConfirm={handleConfirmPayment}
+                title="Registrar Pago"
+                description={<p>Estás registrando el pago de <span className="font-semibold text-slate-800 dark:text-slate-100 block mt-1">"{paymentModal.event?.resource.title || ''}"</span></p>}
+                label="Fecha del Pago"
+                confirmText="Pagar"
+                initialDate={paymentModal.event?.resource.paidDate}
+            />
+            <DateSelectionModal
+                isOpen={dateChangeModal.isOpen}
+                onClose={() => setDateChangeModal({ isOpen: false, event: null })}
+                onConfirm={handleConfirmDateChange}
+                title="Cambiar Fecha de Gasto"
+                description={<p>Mover <span className="font-semibold text-slate-800 dark:text-slate-100">"{dateChangeModal.event?.resource.title || ''}"</span> a una nueva fecha.</p>}
+                label="Nueva Fecha"
+                confirmText="Mover"
+                confirmButtonClass="bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                initialDate={dateChangeModal.event?.resource.dueDate}
+            />
+            <PageHeader
+                title="Calendario Presupuestal"
+                breadcrumbs={[
+                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Calendario' }
+                ]}
+                icon={<CalendarDaysIcon className="h-6 w-6" />}
+                actions={
+                    <div className="flex flex-col md:flex-row items-center gap-4">
+                        {/* Navigation Controls */}
+                        <div className="flex items-center gap-1 bg-white dark:bg-slate-700/50 p-1 rounded-lg border border-slate-200 dark:border-slate-600">
+                            <button onClick={() => navigateCalendar('TODAY')} className="px-3 py-1.5 text-xs font-bold uppercase text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-md transition-colors">
+                                Hoy
+                            </button>
+                            <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <button onClick={() => navigateCalendar('PREV')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-md text-slate-500 dark:text-slate-400">
+                                <ChevronLeftIcon className="w-4 h-4" />
+                            </button>
+                            <div className="min-w-[140px] text-center font-bold text-slate-800 dark:text-white text-sm select-none">
+                                {getCalendarTitle()}
+                            </div>
+                            <button onClick={() => navigateCalendar('NEXT')} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-md text-slate-500 dark:text-slate-400">
+                                <ChevronRightIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* View Switcher */}
+                        <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+                            <button
+                                onClick={() => setView(Views.MONTH)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 ${view === Views.MONTH
+                                    ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                                    }`}
+                            >
+                                <CalendarDaysIcon className="w-3.5 h-3.5" />
+                                <span>Mes</span>
+                            </button>
+                            <button
+                                onClick={() => setView(Views.WEEK)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 ${view === Views.WEEK
+                                    ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                                    }`}
+                            >
+                                <ViewColumnsIcon className="w-3.5 h-3.5" />
+                                <span>Semana</span>
+                            </button>
+                        </div>
+
+                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 hidden md:block"></div>
+
+                        {/* Create Button */}
+                        <button
+                            onClick={() => openForm()}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                            <span className="hidden sm:inline">Nuevo</span>
+                        </button>
+                    </div>
+                }
+            />
+            <CalendarActionsContext.Provider value={{ onDelete: handleDeleteEvent, onQuickPay: handleQuickPay, onChangeDate: handleChangeDate }}>
+                <div className="flex-1 min-h-0 calendar-wrapper overflow-y-auto">
+                    <DnDCalendar
+                        localizer={localizer}
+                        events={events}
+                        startAccessor={(e: any) => e.start}
+                        endAccessor={(e: any) => e.end}
+                        selectable
+                        onSelectSlot={handleSelectSlot}
+                        onSelectEvent={handleSelectEvent}
+                        onRangeChange={handleRangeChange}
+                        onView={handleViewChange}
+                        view={view}
+                        date={date}
+                        onNavigate={handleNavigate}
+                        toolbar={false}
+                        popup={true}
+                        style={{ height: view === Views.MONTH ? 'auto' : '100%', minHeight: view === Views.MONTH ? '800px' : '600px' }}
+                        culture='es'
+                        components={{
+                            event: CustomEvent as any,
+                            month: {
+                                dateHeader: ({ label }) => <span className="rbc-date-cell">{label}</span>,
+                            },
+                            showMore: CustomShowMore as any
+                        }}
+                        eventPropGetter={() => ({
+                            style: { backgroundColor: 'transparent', boxShadow: 'none' } // Remove default styles effectively
+                        })}
+                        onEventDrop={onEventDrop}
+                        draggableAccessor={(event: any) => event.status !== 'paid'}
+                        resizable={false}
+                    />
+                </div>
+            </CalendarActionsContext.Provider>
+            <style>{`
+                /* -------------------------------------------------------------------------- */
+                /*                         BUDGET CALENDAR CUSTOM STYLES                      */
+                /* -------------------------------------------------------------------------- */
+                
+                .rbc-calendar { 
+                    font-family: inherit; 
+                    height: auto !important; 
+                    min-height: 100%; 
+                    overflow: visible !important;
+                }
+                
+                /* --- MONTH VIEW LAYOUT --- */
+                /* Allow cells to grow vertically */
+                .rbc-month-view { 
+                    border: 1px solid #e2e8f0; 
+                    flex: unset !important; 
+                    height: auto !important; 
+                    display: block !important; 
+                    overflow: visible !important;
+                }
+
+                /* --- STICKY HEADER FIX --- */
+                .rbc-month-view > .rbc-row:first-child {
+                    position: sticky !important;
+                    top: 0;
+                    z-index: 1000;
+                    background: white;
+                    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+                    margin-bottom: 2px;
+                }
+
+                :global(.dark) .rbc-month-view > .rbc-row:first-child {
+                    background: #1e293b;
+                    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5);
+                }
+                
+                .rbc-month-row { 
+                    border-bottom: 1px solid #e2e8f0;
+                    overflow: visible !important; 
+                    height: auto !important; 
+                    min-height: 100px; 
+                    flex: unset !important; 
+                    max-height: none !important;
+                    position: relative !important;
+                }
+                
+                .rbc-row-bg {
+                    height: 100% !important;
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    z-index: 1;
+                }
+
+                /* --- ROW CONTENT WRAPPER --- */
+                /* Critical for DnD: Must span full width so mouse coordinates map correctly */
+                .rbc-row-content { 
+                    position: relative !important;
+                    height: auto !important; 
+                    overflow: visible !important;
+                    width: 100% !important; 
+                    z-index: 4;
+                    pointer-events: auto !important; 
+                }
+                
+                .rbc-row-content .rbc-row {
+                    display: flex !important;
+                    flex-direction: row !important;
+                    height: auto !important;
+                    align-items: flex-start;
+                    width: 100% !important;
+                }
+                
+                /* --- COLUMN SEGMENTS (DAYS) --- */
+                .rbc-row-segment {
+                    padding: 2px 4px;
+                    width: 14.2857% !important; /* Fixed 7-col grid */
+                    max-width: 14.2857% !important;
+                    flex: unset !important;
+                    overflow: visible !important;
+                }
+
+                /* --- EVENTS --- */
+                .rbc-event { 
+                    background: transparent; 
+                    padding: 0; 
+                    outline: none; 
+                    position: relative !important; /* Stack vertically in flow */
+                    display: block !important;
+                    pointer-events: auto;
+                    margin-bottom: 2px;
+                    transition: transform 0.1s ease, box-shadow 0.1s ease;
+                }
+
+                .rbc-event:hover {
+                    z-index: 60 !important;
+                }
+
+                .rbc-event-content { font-size: 10px; }
+
+
+                /* --- WEEK VIEW (NO HOURS) --- */
+                /* Hide the time grid (hourly slots) and gutters */
+                .rbc-time-view .rbc-time-content,
+                .rbc-time-view .rbc-time-gutter, 
+                .rbc-time-view .rbc-header-gutter { 
+                    display: none !important; 
+                }
+
+                .rbc-time-view {
+                    border: none !important;
+                    display: flex !important;
+                    flex-direction: column;
+                    height: 100%;
+                    overflow: visible !important;
+                }
+
+                .rbc-time-view .rbc-time-header {
+                    flex: 1;
+                    height: 100% !important;
+                    display: flex;
+                    flex-direction: column;
+                    border: none;
+                    overflow: visible !important; 
+                }
+
+                /* The container for the days */
+                .rbc-time-view .rbc-time-header-content {
+                    flex: 1;
+                    height: 100% !important;
+                    border-left: 1px solid #e2e8f0;
+                    display: flex;
+                    flex-direction: column;
+                    position: relative;
+                }
+                
+                /* fix: Add vertical grid lines to the background */
+                .rbc-time-view .rbc-time-header-content > .rbc-row-bg {
+                    height: 100% !important;
+                    display: flex !important;
+                    z-index: 1;
+                }
+                
+                .rbc-time-view .rbc-time-header-content > .rbc-row-bg .rbc-day-bg {
+                    border-right: 1px solid #e2e8f0;
+                }
+                
+                /* Dark Mode borders */
+                :global(.dark) .rbc-time-view .rbc-time-header-content > .rbc-row-bg .rbc-day-bg {
+                    border-color: #334155;
+                }
+                
+                /* The row containing the day headers (Mon 26, Tue 27...) */
+                .rbc-time-view .rbc-time-header-content > .rbc-row:first-child {
+                    border-bottom: 1px solid #e2e8f0;
+                    flex: 0 0 auto; /* Don't grow, just wrap content */
+                    z-index: 2; /* Sit above background */
+                    background: white; /* Ensure bg to hide scrolling content if we made it sticky */
+                }
+
+                :global(.dark) .rbc-time-view .rbc-time-header-content > .rbc-row:first-child {
+                    border-color: #334155;
+                    background: #1e293b;
+                }
+
+                /* The row containing the All-Day events (where our data is) */
+                .rbc-time-view .rbc-time-header-content > .rbc-row:last-child {
+                    flex: 1;
+                    overflow-y: visible !important; /* Allow scrolling/expansion */
+                    align-items: flex-start;
+                    height: auto !important;
+                }
+
+                /* Ensure the cells inside the all-day row fill height */
+                .rbc-time-view .rbc-allday-cell {
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: visible !important;
+                }
+
+                /* Force segments to be even */
+                .rbc-time-view .rbc-row .rbc-header {
+                     border-bottom: none !important;
+                }
+
+                /* --- HEADERS & THEME --- */
+                .rbc-header { 
+                    padding: 12px; 
+                    font-weight: 700; 
+                    font-size: 0.75rem; 
+                    color: #64748b; 
+                    border-bottom: 1px solid #e2e8f0; 
+                    text-transform: uppercase; 
+                    letter-spacing: 0.05em; 
+                    text-align: center;
+                    background: white;
+                }
+
+                .rbc-date-cell {
+                    padding: 8px;
+                    font-weight: 600;
+                    font-size: 0.75rem;
+                    text-align: right;
+                    color: #64748b;
+                    z-index: 10;
+                    position: relative;
+                }
+
+                .rbc-day-bg { border-left: 1px solid #f1f5f9; }
+                /* Darker background for off-range days to improve contrast */
+                .rbc-off-range-bg { background-color: #f1f5f9 !important; } 
+                .rbc-today { background-color: #f0f9ff; }
+
+                /* Dark Mode */
+                :global(.dark) .rbc-month-row,
+                :global(.dark) .rbc-month-view,
+                :global(.dark) .rbc-header,
+                :global(.dark) .rbc-time-view .rbc-time-header-content,
+                :global(.dark) .rbc-time-header-content > .rbc-row:first-child { 
+                    border-color: #334155; 
+                }
+                :global(.dark) .rbc-header,
+                :global(.dark) .rbc-today { background: #1e293b; }
+                :global(.dark) .rbc-date-cell,
+                :global(.dark) .rbc-header { color: #94a3b8; }
+                :global(.dark) .rbc-day-bg { border-color: #334155; }
+                /* Darker off-range for dark mode */
+                :global(.dark) .rbc-off-range-bg { background-color: #020617 !important; } 
+            `}</style>
+        </div >
+    );
+};

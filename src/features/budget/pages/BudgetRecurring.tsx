@@ -3,6 +3,7 @@ import { SmartDataTable } from '../../../components/ui/SmartDataTable';
 import { budgetService } from '../../../services/budgetService';
 import { RecurrenceRule } from '../../../types/budget';
 import { ArrowPathIcon, TrashIcon, PencilSquareIcon, PlusIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { PageHeader } from '../../../components/layout/PageHeader';
 import { RecurrenceRuleFormModal } from '../components/RecurrenceRuleFormModal';
 import { useUI } from '../../../context/UIContext';
 
@@ -224,24 +225,62 @@ export const BudgetRecurring: React.FC = () => {
         });
     };
 
+    const handleReset = async () => {
+        setAlertModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Reiniciar Módulo Recurrente',
+            message: 'PELIGRO: Esto eliminará TODAS las reglas recurrentes y sus proyecciones pendientes. Solo se conservará el historial de pagos reales. ¿Deseas continuar?',
+            showCancel: true,
+            confirmText: 'SÍ, BORRAR TODO',
+            onConfirm: async () => {
+                try {
+                    await budgetService.resetRecurringModule();
+                    await loadRules();
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Reiniciado', message: 'El módulo ha sido limpiado. Ahora puedes cargar la plantilla nuevamente.' });
+                } catch (error) {
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Hubo un problema al reiniciar.' });
+                }
+            }
+        });
+    };
+
     return (
         <div className="h-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col p-4">
-            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <ArrowPathIcon className="w-5 h-5 text-indigo-500" />
-                    Gastos Recurrentes
-                </h2>
-
-                <div className="flex gap-2">
-                    <button
-                        onClick={handleCreate}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-500/30"
-                    >
-                        <PlusIcon className="w-4 h-4" />
-                        Nueva Regla
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Gastos Recurrentes"
+                breadcrumbs={[
+                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Recurrentes' }
+                ]}
+                icon={<ArrowPathIcon className="h-6 w-6" />}
+                actions={
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleReset}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg text-sm font-bold shadow-sm transition-colors border border-rose-200"
+                            title="Borrar todas las reglas y empezar de cero"
+                        >
+                            <TrashIcon className="w-4 h-4" />
+                            Resetear DB
+                        </button>
+                        <button
+                            onClick={handleSeed}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                        >
+                            <ArrowPathIcon className="w-4 h-4" />
+                            Cargar Plantilla
+                        </button>
+                        <button
+                            onClick={handleCreate}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                            Nueva Regla
+                        </button>
+                    </div>
+                }
+            />
 
             <SmartDataTable
                 data={rules}
@@ -254,7 +293,7 @@ export const BudgetRecurring: React.FC = () => {
                 onSelectionChange={setSelectedIds}
                 onBulkDelete={handleBulkDelete}
                 searchPlaceholder="Buscar regla..."
-                containerClassName="h-full"
+                containerClassName="flex-1 min-h-0"
             />
 
             <RecurrenceRuleFormModal

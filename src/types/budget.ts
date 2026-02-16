@@ -42,3 +42,31 @@ export interface BudgetKPIs {
     averageDaysOverdue: number;
     dailyCommitments: { date: string; amount: number }[];
 }
+
+export interface WeeklyAvailability {
+    id: string; // Puede ser el mismo 'yyyy-MM-dd' del Lunes para unicidad
+    weekStartDate: string; // YYYY-MM-DD
+    ctaCorriente: number;
+    ctaAhorrosJ: number;
+    ctaAhorrosN: number;
+    efectivo: number;
+    totalAvailable: number;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface BudgetExecutionLog {
+    id: string;
+    executionDate: string; // ISO Datetime
+    weekStartDate: string; // YYYY-MM-DD
+    initialState: {
+        ctaCorriente: number;
+        ctaAhorrosJ: number;
+        ctaAhorrosN: number;
+        efectivo: number;
+        totalAvailable: number;
+    };
+    totalPaid: number;
+    finalBalance: number;
+    itemsCount: number; // Cantidad de facturas pagadas
+}

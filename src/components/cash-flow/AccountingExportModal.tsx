@@ -183,9 +183,9 @@ const AccountingExportModal: React.FC<AccountingExportModalProps> = ({ isOpen, o
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200 font-bold uppercase text-xs">
                                         <tr>
-                                            <th className="px-4 py-3">Concepto</th>
-                                            <th className="px-4 py-3">Cuenta (PUC)</th>
-                                            <th className="px-4 py-3">Tercero Específico (Opcional)</th>
+                                            <th className="px-4 py-3 text-center">Concepto</th>
+                                            <th className="px-4 py-3 text-center">Cuenta (PUC)</th>
+                                            <th className="px-4 py-3 text-center">Tercero Específico (Opcional)</th>
                                             <th className="px-4 py-3 text-center">Tasa Impuesto</th>
                                         </tr>
                                     </thead>
@@ -255,17 +255,17 @@ const AccountingExportModal: React.FC<AccountingExportModalProps> = ({ isOpen, o
 
                             <div className="overflow-auto max-h-96 border border-gray-200 dark:border-slate-700 rounded-lg">
                                 <table className="w-full text-xs text-left whitespace-nowrap">
-                                    <thead className="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 sticky top-0">
+                                    <thead className="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 sticky top-0 uppercase">
                                         <tr>
-                                            <th className="px-3 py-2">Doc</th>
-                                            <th className="px-3 py-2">#</th>
-                                            <th className="px-3 py-2">Fecha</th>
-                                            <th className="px-3 py-2">Cuenta</th>
-                                            <th className="px-3 py-2">Tercero</th>
-                                            <th className="px-3 py-2 text-right">Débito</th>
-                                            <th className="px-3 py-2 text-right">Crédito</th>
-                                            <th className="px-3 py-2 text-right">Base</th>
-                                            <th className="px-3 py-2">Detalle</th>
+                                            <th className="px-3 py-2 text-center">Doc</th>
+                                            <th className="px-3 py-2 text-center">#</th>
+                                            <th className="px-3 py-2 text-center">Fecha</th>
+                                            <th className="px-3 py-2 text-center">Cuenta</th>
+                                            <th className="px-3 py-2 text-center">Tercero</th>
+                                            <th className="px-3 py-2 text-center">Débito</th>
+                                            <th className="px-3 py-2 text-center">Crédito</th>
+                                            <th className="px-3 py-2 text-center">Base</th>
+                                            <th className="px-3 py-2 text-center">Detalle</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-slate-700">

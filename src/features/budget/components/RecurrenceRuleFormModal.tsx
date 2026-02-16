@@ -88,41 +88,49 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
         try {
             // Calcular fecha de inicio real (Primera Ocurrencia) basada en "Válido Desde" y el patrón de recurrencia
             // Esto asegura que la regla comience sincronizada con el patrón deseado
-            const validFromDate = parseISO(formData.validFrom); // Fecha base para buscar la siguiente ocurrencia
+            // Manual parsing for local time safety to prevent timezone shifts
+            const [y, m, d] = formData.validFrom.split('-').map(Number);
+            const validFromDate = new Date(y, m - 1, d); // Local midnight
+
             let start = new Date(validFromDate);
             let dayToSend = 1;
 
             if (formData.frequency === 'weekly') {
-                dayToSend = Number(selectedDayOfWeek);
+                dayToSend = Number(selectedDayOfWeek); // 0=Sun, 1=Mon...
                 // Calcular próximo día de la semana
                 const currentDay = start.getDay();
+                // Ensure positive modulo
                 const daysUntil = (dayToSend + 7 - currentDay) % 7;
                 start.setDate(start.getDate() + daysUntil);
             } else if (formData.frequency === 'monthly') {
                 dayToSend = Number(selectedDayOfMonth);
-                // Ajustar al día del mes seleccionado
-                // Si el día seleccionado es menor al día de 'validFrom', pasar al siguiente mes
-                // Ejemplo: ValidFrom=20-Feb, Day=5. First=05-Mar
+                // Si el día de inicio es MAYOR al día objetivo, saltar al mes siguiente
                 if (validFromDate.getDate() > dayToSend) {
                     start.setMonth(start.getMonth() + 1);
                 }
-                start.setDate(dayToSend);
+                // Check if target day exists in target month (e.g. Feb 30)
+                const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+                start.setDate(Math.min(dayToSend, daysInMonth));
             }
 
             const startDateStr = format(start, 'yyyy-MM-dd');
 
-            await onSubmit({
-                id: isDuplicate ? undefined : initialRule?.id,
+            // Construir objeto base sin campos undefined (Firestore no los acepta)
+            const rulePayload: Parameters<typeof onSubmit>[0] = {
+                ...(isDuplicate ? {} : { id: initialRule?.id }),
                 title: formData.title,
                 amount: Number(formData.amount),
                 category: formData.category,
                 frequency: formData.frequency,
                 startDate: startDateStr, // Primera ocurrencia calculada
-                endDate: formData.validUntil || undefined, // Fecha límite opcional
                 interval: Number(formData.interval),
                 dayToSend,
-                active: formData.active
-            });
+                active: formData.active,
+                // Solo incluir endDate si tiene valor válido
+                ...(formData.validUntil ? { endDate: formData.validUntil } : {})
+            };
+
+            await onSubmit(rulePayload);
             onClose();
         } catch (error) {
             console.error(error);

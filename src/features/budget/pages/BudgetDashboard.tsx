@@ -12,6 +12,9 @@ import { BudgetCommitment } from '../../../types/budget';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, differenceInCalendarDays, subMonths, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useApp } from '../../../context/AppContext';
+import { useBudgetContext } from '../layouts/BudgetLayout';
+import { PageHeader } from '../../../components/layout/PageHeader';
+import { PresentationChartLineIcon, PlusIcon } from '../../../components/ui/Icons';
 
 const getBarColor = (dayData: any) => {
     // Simple logic: if mostly paid, green. If mostly overdue, red. 
@@ -24,6 +27,7 @@ const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export const BudgetDashboard: React.FC = () => {
     const { categories } = useApp();
+    const { openForm } = useBudgetContext();
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -241,25 +245,42 @@ export const BudgetDashboard: React.FC = () => {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto custom-scrollbar pr-2 pb-20">
+            <div className="lg:col-span-3">
+                <PageHeader
+                    title="Control Presupuestal"
+                    breadcrumbs={[
+                        { label: 'Finanzas', path: '/budget' },
+                        { label: 'Dashboard' }
+                    ]}
+                    icon={<PresentationChartLineIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="month"
+                                value={format(selectedMonth, 'yyyy-MM')}
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        const [y, m] = e.target.value.split('-');
+                                        setSelectedMonth(new Date(parseInt(y), parseInt(m) - 1, 1));
+                                    }
+                                }}
+                                className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-gray-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                            <button
+                                onClick={() => openForm()}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">Nuevo</span>
+                            </button>
+                        </div>
+                    }
+                />
+            </div>
 
 
             {/* Stats Cards */}
             <div className="lg:col-span-3">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Resumen Mensual</h2>
-                    <input
-                        type="month"
-                        value={format(selectedMonth, 'yyyy-MM')}
-                        onChange={(e) => {
-                            if (e.target.value) {
-                                // e.target.value is yyyy-MM
-                                const [y, m] = e.target.value.split('-');
-                                setSelectedMonth(new Date(parseInt(y), parseInt(m) - 1, 1));
-                            }
-                        }}
-                        className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-gray-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {stats.map((stat) => (
@@ -420,6 +441,189 @@ export const BudgetDashboard: React.FC = () => {
                     </ResponsiveContainer>
                 </div>
             </div >
+
+            {/* --- DEBUG SECTION: GHOST HUNTER --- */}
+            <div className="lg:col-span-3 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 mt-8">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                    👻 Cazador de Fantasmas (Diagnóstico BD)
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Esta sección lista <strong>TODOS</strong> los registros de la base de datos desde 2024 hasta 2027, sin importar el mes seleccionado.
+                    Úsala para identificar y eliminar registros antiguos o erróneos.
+                </p>
+
+                <GhostBuster />
+            </div>
+
         </div >
+    );
+};
+
+// Componente auxiliar para listar y borrar todo
+const GhostBuster = () => {
+    const [allRecords, setAllRecords] = useState<BudgetCommitment[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const loadAll = async () => {
+        setLoading(true);
+        try {
+            // Sin argumentos trae TODO lo que haya en la colección (ordenado por fecha)
+            // Esto confirmará si hay registros "fantasmas" fuera de rango
+            const data = await budgetService.getCommitments();
+            setAllRecords(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteRecord = async (id: string) => {
+        if (!confirm('¿Eliminar este registro permanentemente?')) return;
+        try {
+            await budgetService.deleteCommitment(id); // Asumiendo que existe deleteCommitment, si no, lo agregamos
+            loadAll(); // Recargar
+        } catch (e) {
+            alert('Error al eliminar');
+        }
+    };
+
+    useEffect(() => {
+        loadAll();
+    }, []);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <span className="font-bold">Total Registros Encontrados: {allRecords.length}</span>
+                <button onClick={loadAll} className="px-3 py-1 bg-slate-200 rounded hover:bg-slate-300 text-xs">Actualizar</button>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto bg-white dark:bg-black rounded border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 uppercase">
+                        <tr>
+                            <th className="p-2 text-center">Fecha</th>
+                            <th className="p-2 text-center">Título</th>
+                            <th className="p-2 text-center">Monto</th>
+                            <th className="p-2 text-center">Estado</th>
+                            <th className="p-2 text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan={5} className="p-4 text-center">Escaneando base de datos...</td></tr>
+                        ) : allRecords.length === 0 ? (
+                            <tr><td colSpan={5} className="p-4 text-center text-green-600 font-bold">¡Base de datos limpia! No hay registros.</td></tr>
+                        ) : (
+                            allRecords.map(rec => (
+                                <tr key={rec.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
+                                    <td className="p-2 font-mono">{rec.dueDate}</td>
+                                    <td className="p-2">{rec.title}</td>
+                                    <td className="p-2">${rec.amount.toLocaleString()}</td>
+                                    <td className={`p-2 font-bold ${rec.status === 'paid' ? 'text-green-500' : 'text-red-500'}`}>
+                                        {rec.status}
+                                    </td>
+                                    <td className="p-2">
+                                        <button
+                                            onClick={() => deleteRecord(rec.id)}
+                                            className="text-red-600 hover:underline hover:bg-red-50 px-2 py-1 rounded"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* --- MONITOR DE REGLAS --- */}
+            <hr className="my-4 border-slate-300 dark:border-slate-700" />
+
+            <div className="flex justify-between items-center">
+                <span className="font-bold flex items-center gap-2">
+                    <span role="img" aria-label="shield">🛡️</span> Monitor de Reglas Recurrentes
+                </span>
+            </div>
+
+            <RulesBuster />
+        </div >
+    );
+};
+
+// Sub-componente para Reglas
+const RulesBuster = () => {
+    const [rules, setRules] = useState<any[]>([]);
+
+    const loadRules = async () => {
+        try {
+            const data = await budgetService.getRecurrenceRules();
+            setRules(data);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const deleteRule = async (id: string, name: string) => {
+        if (!confirm(`¿Eliminar la regla "${name}"? Dejará de crear gastos futuros.`)) return;
+        try {
+            await budgetService.deleteRecurrenceRule(id);
+            loadRules(); // Recargar
+        } catch (e) {
+            alert('Error al eliminar regla');
+        }
+    };
+
+    useEffect(() => { loadRules(); }, []);
+
+    return (
+        <div className="max-h-60 overflow-y-auto bg-white dark:bg-black rounded border border-slate-200 dark:border-slate-800 mt-2">
+            <table className="w-full text-xs text-left">
+                <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 uppercase">
+                    <tr>
+                        <th className="p-2 text-center">Estado</th>
+                        <th className="p-2 text-center">Regla (Nombre)</th>
+                        <th className="p-2 text-center">Monto Base</th>
+                        <th className="p-2 text-center">Frecuencia</th>
+                        <th className="p-2 text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rules.length === 0 ? (
+                        <tr><td colSpan={5} className="p-4 text-center text-slate-500">No hay reglas recurrentes activas.</td></tr>
+                    ) : (
+                        rules.map(r => {
+                            const name = r.title || r.baseTitle;
+                            const amount = r.amount !== undefined ? r.amount : r.baseAmount;
+                            const isHealthy = name && amount !== undefined;
+
+                            return (
+                                <tr key={r.id} className="border-b border-slate-100 dark:border-slate-800">
+                                    <td className="p-2">
+                                        {isHealthy ?
+                                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">✓ Sana</span> :
+                                            <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">⚠️ Error</span>
+                                        }
+                                    </td>
+                                    <td className="p-2 font-bold">{name || 'Sin Nombre'}</td>
+                                    <td className="p-2">${(amount || 0).toLocaleString()}</td>
+                                    <td className="p-2">{r.frequency} (Día {r.dayToSend || r.dayOfMonth || '?'})</td>
+                                    <td className="p-2">
+                                        <button
+                                            onClick={() => deleteRule(r.id, name || 'Desconocida')}
+                                            className="text-slate-500 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })
+                    )}
+                </tbody>
+            </table>
+        </div>
     );
 };

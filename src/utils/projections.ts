@@ -3,36 +3,96 @@ import { getDay, subWeeks, parseISO, isAfter, getMonth } from 'date-fns';
 
 export interface ProjectionOptions {
     lookbackWeeks: number; // e.g. 8
-    inflationPercentage: number; // Ajuste por subida de precios vs histórico
-    growthPercentage: number; // Meta de crecimiento real (volumen)
+    inflationPercentage: number; // Ajuste por IPC (Precios)
+    growthPercentage: number; // Meta de crecimiento global (Legacy)
+
+    // Configuración Avanzada Pro
+    trafficGrowthPercentage?: number; // % extra de clientes
+    ticketGrowthPercentage?: number;  // % extra de gasto por cliente
+    anomalyThreshold?: number;        // Porcentaje para detectar días atípicos (0-100, default 20)
+    recencyWeightMode?: 'equal' | 'linear' | 'aggressive'; // Cómo valoramos el pasado cercano
 }
 
 export interface ProjectionResult {
-    // Monetary Metrics
-    rawAverage: number; // Promedio puro de los históricos (filtrados)
-    baseline: number;   // Promedio + Crecimiento (Base)
-    final: number;      // Base * Factor del Evento del día objetivo
+    // ═══════════════════════════════════════════════════════════
+    // SECCIÓN 1: COMPARATIVOS HISTÓRICOS (Year-over-Year & Trends)
+    // ═══════════════════════════════════════════════════════════
+    historicalComparisons: {
+        yoySameDaySale?: number;        // Venta del mismo día del año anterior (ej: 9 Feb 2025)
+        yoySameDayVisits?: number;      // Visitas del mismo día año anterior
+        yoyEquivalentDaySale?: number;  // Venta del día equivalente año anterior (mismo día semana más cercano)
+        yoyEquivalentDayVisits?: number;
+        yoyGrowthPercent?: number;      // % crecimiento vs año anterior
 
-    // Traffic Metrics (New)
-    rawAverageTickets: number; // Promedio de mesas/transacciones
+        avg4WeeksSale: number;          // Promedio móvil 4 semanas (mismo día semana)
+        avg4WeeksVisits: number;
+        avg8WeeksSale: number;          // Promedio móvil 8 semanas
+        avg8WeeksVisits: number;
+
+        historicalMonthAvgSale?: number;    // Promedio histórico del mismo mes (todos los años)
+        historicalMonthAvgVisits?: number;
+
+        recordsUsedCount: number;       // N° de registros históricos usados en el cálculo
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // SECCIÓN 2: TRÁFICO Y TICKET PROMEDIO
+    // ═══════════════════════════════════════════════════════════
+    traffic: {
+        avgVisits: number;              // Promedio de visitas/clientes
+        avgTransactions: number;        // Promedio de transacciones/mesas
+        avgTicket: number;              // Ticket promedio (venta/transacciones)
+        projectedVisits: number;        // Visitas proyectadas para el día objetivo
+        projectedTransactions: number;  // Transacciones proyectadas
+        projectedTicket: number;        // Ticket promedio proyectado
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // SECCIÓN 3: PROYECCIÓN MONETARIA (Cascada de Ajustes)
+    // ═══════════════════════════════════════════════════════════
+    rawAverage: number;                 // Promedio puro de los históricos (filtrados)
+    baseline: number;                   // Promedio + Inflación + Crecimiento
+    final: number;                      // Baseline * Factor del Evento del día objetivo
+
+    // Desglose de Ajustes (para visualización en tabla)
+    adjustments: {
+        inflationAmount: number;        // Monto del ajuste por inflación ($)
+        growthAmount: number;           // Monto del ajuste por crecimiento ($)
+        eventsImpactAmount: number;     // Monto del impacto de eventos ($)
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // SECCIÓN 4: TRÁFICO (Legacy - mantener compatibilidad)
+    // ═══════════════════════════════════════════════════════════
+    rawAverageTickets: number;          // Promedio de mesas/transacciones
     baselineTickets: number;
     finalTickets: number;
 
-    // Confidence Intervals (Monetary)
+    // ═══════════════════════════════════════════════════════════
+    // SECCIÓN 5: INTERVALOS DE CONFIANZA
+    // ═══════════════════════════════════════════════════════════
     range: {
-        lower: number; // Escenario Pesimista (Optimizado para cubrir costos)
-        upper: number; // Escenario Optimista (Optimizado para stock)
-        stdDev: number; // Volatilidad detectada
+        lower: number;                  // Escenario Pesimista (Optimizado para cubrir costos)
+        upper: number;                  // Escenario Optimista (Optimizado para stock)
+        stdDev: number;                 // Volatilidad detectada (desviación estándar)
     };
 
+    // ═══════════════════════════════════════════════════════════
+    // SECCIÓN 6: FACTORES Y METADATOS
+    // ═══════════════════════════════════════════════════════════
     factors: {
-        inflation: number; // Solo afecta dinero
-        growth: number; // Afecta ambos? El crecimiento es volumen.
-        eventModifier: number; // Afecta ambos
-        weightingApplied: boolean; // Si se usó ponderación reciente
+        inflation: number;              // Factor de inflación aplicado
+        growth: number;                 // Factor de crecimiento aplicado
+        eventModifier: number;          // Modificador por eventos especiales
+        weightingApplied: boolean;      // Si se usó ponderación reciente
     };
-    usedHistory: ArqueoRecord[]; // Registros usados en el cálculo
-    excludedHistory: ArqueoRecord[]; // Registros ignorados (por eventos pasados)
+
+    // Registros históricos utilizados
+    usedHistory: ArqueoRecord[];        // Registros usados en el cálculo
+    excludedHistory: ArqueoRecord[];    // Registros ignorados (por eventos pasados)
+
+    // Indicador de confiabilidad
+    confidence: 'high' | 'medium' | 'low'; // Basado en N° registros y volatilidad
 }
 
 /**
@@ -43,7 +103,13 @@ export const calculateDailyProjection = (
     targetDateStr: string, // YYYY-MM-DD
     allHistory: ArqueoRecord[],
     allEvents: SalesEvent[],
-    options: ProjectionOptions = { lookbackWeeks: 8, growthPercentage: 0, inflationPercentage: 0 }
+    options: ProjectionOptions = {
+        lookbackWeeks: 8,
+        growthPercentage: 0,
+        inflationPercentage: 0,
+        anomalyThreshold: 20,
+        recencyWeightMode: 'linear'
+    }
 ): ProjectionResult => {
     const targetDate = parseISO(targetDateStr);
     const targetDayOfWeek = getDay(targetDate);
@@ -70,11 +136,13 @@ export const calculateDailyProjection = (
     // Esto filtra días donde abriste pero pasó algo catastrófico (o error de digitación)
     const dirtySumAll = allHistory.reduce((sum, r) => sum + r.ventaBruta, 0);
     const dirtyAvgAll = allHistory.length > 0 ? dirtySumAll / allHistory.length : 0;
-    const anomalyThreshold = dirtyAvgAll * 0.20; // 20% del promedio
+
+    // Usar el umbral configurado o el 20% por defecto
+    const thresholdPercent = (options.anomalyThreshold ?? 20) / 100;
+    const anomalyThreshold = dirtyAvgAll * thresholdPercent;
 
     const filterAnomalies = (record: ArqueoRecord): boolean => {
-        // Only filter if we have enough data for the average to be reliable
-        // And if the record's sales are below the anomaly threshold
+        // Ignorar días que vendieron menos del X% del promedio histórico
         return !(allHistory.length >= 4 && record.ventaBruta < anomalyThreshold);
     };
 
@@ -120,12 +188,17 @@ export const calculateDailyProjection = (
 
     if (usedHistory.length > 0) {
         usedHistory.forEach((record, index) => {
-            // Peso para Seasonal:
-            // Si es Seasonal, el "Más reciente" (Año pasado) pesa más que el (Antepasado).
-            // Aún así, la inflación nos puede engañar, pero eso se arregla con los factores abajo.
+            // Peso dinámico basado en recencia
+            let weight = 1;
 
-            // Peso Lineal suave
-            const weight = Math.max(1, 5 - index);
+            if (options.recencyWeightMode === 'linear') {
+                weight = Math.max(1, 5 - index);
+            } else if (options.recencyWeightMode === 'aggressive') {
+                // Caída exponencial: lo más reciente pesa mucho más
+                weight = Math.pow(2, Math.max(0, 4 - index));
+            } else {
+                weight = 1; // 'equal'
+            }
 
             weightedSum += record.ventaBruta * weight;
             weightedTickets += (record.visitas || record.numeroTransacciones || 0) * weight;
@@ -160,17 +233,23 @@ export const calculateDailyProjection = (
     const zScore = 1.28; // 80% Confidence
     const marginOfError = stdDev * zScore;
 
-    // 5. Aplicar Factores Económicos
     // DINERO: Se ve afectado por Inflación (Precio) Y Crecimiento (Volumen)
-    // TICKET: Solo se ve afectado por Crecimiento (Volumen). La inflación no crea más clientes.
     const inflationFactor = 1 + (options.inflationPercentage / 100);
-    const growthFactor = 1 + (options.growthPercentage / 100);
 
-    // Base Monetaria = (Histórico * Inflación para actualizar precios) * Crecimiento Real esperado
-    const baseline = baseMetric * inflationFactor * growthFactor;
+    // Crecimiento Granular: Si no están definidos, usamos el growthPercentage heredado
+    const trafficGrowth = options.trafficGrowthPercentage !== undefined
+        ? (1 + options.trafficGrowthPercentage / 100)
+        : (1 + options.growthPercentage / 100);
 
-    // Base Tráfico = Histórico * Crecimiento Real esperado
-    const baselineTickets = baseMetricTickets * growthFactor;
+    const ticketGrowth = options.ticketGrowthPercentage !== undefined
+        ? (1 + options.ticketGrowthPercentage / 100)
+        : 1; // Por defecto no asumimos crecimiento de ticket si no se especifica
+
+    // Base Monetaria = (Histórico * Inflación para actualizar precios) * Crecimiento Tráfico * Crecimiento Ticket
+    const baseline = baseMetric * inflationFactor * trafficGrowth * ticketGrowth;
+
+    // Base Tráfico = Histórico * Crecimiento de Tráfico esperado
+    const baselineTickets = baseMetricTickets * trafficGrowth;
 
     // 6. Aplicar Factor del Evento del Día Objetivo (incluyendo QUINCENA si existe)
     const targetEvent = allEvents.find(e => e.date === targetDateStr);
@@ -186,32 +265,196 @@ export const calculateDailyProjection = (
     const finalTickets = baselineTickets * eventModifier;
 
     // Escalar rango de error
-    const scaledMargin = marginOfError * inflationFactor * growthFactor * eventModifier;
+    const combinedGrowthFactor = trafficGrowth * ticketGrowth;
+    const scaledMargin = marginOfError * inflationFactor * combinedGrowthFactor * eventModifier;
 
     // Placeholder for now, as we filter everything upfront
     const excludedHistory: ArqueoRecord[] = [];
 
+    // ═══════════════════════════════════════════════════════════
+    // CÁLCULOS ADICIONALES PARA VERSIÓN COMPLETA
+    // ═══════════════════════════════════════════════════════════
+
+    // 1. Year-over-Year Comparisons
+    const targetYear = targetDate.getFullYear();
+    const targetDay = targetDate.getDate();
+
+    // Mismo día del año anterior exacto (ej: 9 Feb 2025 si buscamos 9 Feb 2026)
+    const yoySameDayRecord = allHistory.find(r => {
+        const d = parseISO(r.fecha);
+        return d.getFullYear() === targetYear - 1
+            && d.getMonth() === targetMonth
+            && d.getDate() === targetDay;
+    });
+
+    // Mismo día de la semana del año anterior más cercano
+    const yoyEquivalentRecords = allHistory.filter(r => {
+        const d = parseISO(r.fecha);
+        return d.getFullYear() === targetYear - 1
+            && d.getMonth() === targetMonth
+            && getDay(d) === targetDayOfWeek;
+    }).sort((a, b) => {
+        // Ordenar por cercanía al día objetivo
+        const diffA = Math.abs(parseISO(a.fecha).getDate() - targetDay);
+        const diffB = Math.abs(parseISO(b.fecha).getDate() - targetDay);
+        return diffA - diffB;
+    });
+    const yoyEquivalentRecord = yoyEquivalentRecords[0];
+
+    // % de crecimiento YoY
+    const yoyGrowthPercent = yoySameDayRecord
+        ? ((baseMetric - yoySameDayRecord.ventaBruta) / yoySameDayRecord.ventaBruta) * 100
+        : undefined;
+
+    // 2. Promedios Móviles (4 y 8 semanas)
+    const fourWeeksAgo = subWeeks(targetDate, 4);
+    const eightWeeksAgo = subWeeks(targetDate, 8);
+
+    const last4WeeksRecords = allHistory.filter(r => {
+        const d = parseISO(r.fecha);
+        return d >= fourWeeksAgo && d < targetDate && getDay(d) === targetDayOfWeek;
+    });
+
+    const last8WeeksRecords = allHistory.filter(r => {
+        const d = parseISO(r.fecha);
+        return d >= eightWeeksAgo && d < targetDate && getDay(d) === targetDayOfWeek;
+    });
+
+    const avg4WeeksSale = last4WeeksRecords.length > 0
+        ? last4WeeksRecords.reduce((sum, r) => sum + r.ventaBruta, 0) / last4WeeksRecords.length
+        : 0;
+
+    const avg4WeeksVisits = last4WeeksRecords.length > 0
+        ? last4WeeksRecords.reduce((sum, r) => sum + (r.visitas || 0), 0) / last4WeeksRecords.length
+        : 0;
+
+    const avg8WeeksSale = last8WeeksRecords.length > 0
+        ? last8WeeksRecords.reduce((sum, r) => sum + r.ventaBruta, 0) / last8WeeksRecords.length
+        : 0;
+
+    const avg8WeeksVisits = last8WeeksRecords.length > 0
+        ? last8WeeksRecords.reduce((sum, r) => sum + (r.visitas || 0), 0) / last8WeeksRecords.length
+        : 0;
+
+    // 3. Promedio histórico del mismo mes (todos los años anteriores)
+    const historicalMonthRecords = allHistory.filter(r => {
+        const d = parseISO(r.fecha);
+        return d.getMonth() === targetMonth
+            && getDay(d) === targetDayOfWeek
+            && d < targetDate;
+    });
+
+    const historicalMonthAvgSale = historicalMonthRecords.length > 0
+        ? historicalMonthRecords.reduce((sum, r) => sum + r.ventaBruta, 0) / historicalMonthRecords.length
+        : undefined;
+
+    const historicalMonthAvgVisits = historicalMonthRecords.length > 0
+        ? historicalMonthRecords.reduce((sum, r) => sum + (r.visitas || 0), 0) / historicalMonthRecords.length
+        : undefined;
+
+    // 4. Tráfico y Ticket Promedio
+    const avgVisits = usedHistory.length > 0
+        ? usedHistory.reduce((sum, r) => sum + (r.visitas || 0), 0) / usedHistory.length
+        : 0;
+
+    const avgTransactions = usedHistory.length > 0
+        ? usedHistory.reduce((sum, r) => sum + (r.numeroTransacciones || 0), 0) / usedHistory.length
+        : 0;
+
+    const avgTicket = avgTransactions > 0
+        ? baseMetric / avgTransactions
+        : 0;
+
+    // Proyecciones de tráfico
+    const projectedVisits = avgVisits * trafficGrowth * eventModifier;
+    const projectedTransactions = avgTransactions * trafficGrowth * eventModifier;
+    const projectedTicket = projectedTransactions > 0
+        ? final / projectedTransactions
+        : avgTicket * ticketGrowth;
+
+    // 5. Desglose de ajustes monetarios
+    const inflationAmount = baseMetric * (inflationFactor - 1);
+    const growthAmount = (baseMetric * inflationFactor) * (combinedGrowthFactor - 1);
+    const eventsImpactAmount = baseline * (eventModifier - 1);
+
+    // 6. Nivel de confiabilidad
+    const recordsCount = usedHistory.length;
+    const volatility = stdDev / Math.max(baseMetric, 1); // Coeficiente de variación
+
+    let confidence: 'high' | 'medium' | 'low' = 'low';
+    if (recordsCount >= 8 && volatility < 0.2) {
+        confidence = 'high';
+    } else if (recordsCount >= 4 && volatility < 0.35) {
+        confidence = 'medium';
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // RETURN COMPLETO CON TODA LA DATA
+    // ═══════════════════════════════════════════════════════════
     return {
+        // Comparativos Históricos
+        historicalComparisons: {
+            yoySameDaySale: yoySameDayRecord?.ventaBruta,
+            yoySameDayVisits: yoySameDayRecord?.visitas,
+            yoyEquivalentDaySale: yoyEquivalentRecord?.ventaBruta,
+            yoyEquivalentDayVisits: yoyEquivalentRecord?.visitas,
+            yoyGrowthPercent,
+            avg4WeeksSale,
+            avg4WeeksVisits,
+            avg8WeeksSale,
+            avg8WeeksVisits,
+            historicalMonthAvgSale,
+            historicalMonthAvgVisits,
+            recordsUsedCount: recordsCount
+        },
+
+        // Tráfico
+        traffic: {
+            avgVisits,
+            avgTransactions,
+            avgTicket,
+            projectedVisits,
+            projectedTransactions,
+            projectedTicket
+        },
+
+        // Proyección Monetaria
         rawAverage: baseMetric,
         baseline,
         final,
 
+        // Desglose de Ajustes
+        adjustments: {
+            inflationAmount,
+            growthAmount,
+            eventsImpactAmount
+        },
+
+        // Legacy (compatibilidad)
         rawAverageTickets: baseMetricTickets,
         baselineTickets,
         finalTickets,
 
+        // Intervalos de Confianza
         range: {
             lower: Math.max(0, final - scaledMargin),
             upper: final + scaledMargin,
             stdDev
         },
+
+        // Factores
         factors: {
             inflation: inflationFactor,
-            growth: growthFactor,
+            growth: combinedGrowthFactor,
             eventModifier,
             weightingApplied: usedHistory.length >= 4
         },
+
+        // Históricos
         usedHistory,
-        excludedHistory
+        excludedHistory,
+
+        // Confiabilidad
+        confidence
     };
 };

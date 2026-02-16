@@ -48,11 +48,11 @@ const CashBaseModal: React.FC<CashBaseModalProps> = ({ isOpen, onClose, baseDeta
                         </div>
                     ) : (
                         <table className="w-full text-sm">
-                            <thead className="bg-gray-50/50 dark:bg-slate-900/20 text-xs text-gray-500 font-semibold uppercase text-left">
+                            <thead className="bg-gray-50/50 dark:bg-slate-900/20 text-xs text-gray-500 font-semibold uppercase text-center">
                                 <tr>
                                     <th className="px-4 py-2">Denominación</th>
-                                    <th className="px-4 py-2 text-center">Cant.</th>
-                                    <th className="px-4 py-2 text-right">Total</th>
+                                    <th className="px-4 py-2">Cant.</th>
+                                    <th className="px-4 py-2">Total</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">

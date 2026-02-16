@@ -30,7 +30,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
         amount: '',
         date: '',
         category: '',
-        status: 'pending'
+        status: 'pending',
+        paymentDate: ''
     });
     const [isLoading, setIsLoading] = useState(false);
     const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -49,7 +50,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                     amount: String(initialCommitment.amount),
                     date: initialCommitment.dueDate,
                     category: initialCommitment.category, // This might be a name, not ID. We need to handle that.
-                    status: initialCommitment.status
+                    status: initialCommitment.status,
+                    paymentDate: initialCommitment.paidDate || ''
                 });
             } else if (initialDate) {
                 // Modo Creación con fecha pre-seleccionada
@@ -58,7 +60,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                     amount: '',
                     date: format(initialDate, 'yyyy-MM-dd'),
                     category: expenseCategories[0]?.name || '',
-                    status: 'pending'
+                    status: 'pending',
+                    paymentDate: ''
                 });
             } else {
                 // Modo Creación limpio
@@ -67,7 +70,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                     amount: '',
                     date: '',
                     category: expenseCategories[0]?.name || '',
-                    status: 'pending'
+                    status: 'pending',
+                    paymentDate: ''
                 });
             }
         }
@@ -101,7 +105,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                 amount: Number(formData.amount),
                 id: initialCommitment?.id,
                 recurrenceRuleId: initialCommitment?.recurrenceRuleId, // Preserve rule association
-                paidDate: formData.status === 'paid' ? (initialCommitment?.paidDate || new Date().toISOString().split('T')[0]) : undefined
+                paidDate: formData.status === 'paid' ? (formData.paymentDate || new Date().toISOString().split('T')[0]) : null
             });
             onClose();
         } catch (error) {
@@ -148,6 +152,36 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 required
                             />
                         </LabeledField>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <LabeledField label="Estado">
+                            <Select
+                                value={formData.status}
+                                onChange={e => {
+                                    const newStatus = e.target.value;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        status: newStatus,
+                                        paymentDate: newStatus === 'paid' && !prev.paymentDate ? new Date().toISOString().split('T')[0] : prev.paymentDate
+                                    }));
+                                }}
+                            >
+                                <option value="pending">Pendiente</option>
+                                <option value="paid">Pagado</option>
+                                <option value="overdue">Vencido</option>
+                            </Select>
+                        </LabeledField>
+
+                        {formData.status === 'paid' && (
+                            <LabeledField label="Fecha de Pago">
+                                <Input
+                                    type="date"
+                                    value={formData.paymentDate}
+                                    onChange={e => handleChange('paymentDate', e.target.value)}
+                                />
+                            </LabeledField>
+                        )}
                     </div>
 
                     <div className="flex items-end gap-2">
@@ -213,25 +247,18 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
 
 
 
+
                     <div className="pt-4 flex justify-between space-x-3">
                         <div className="flex-1">
                             {initialCommitment && initialCommitment.status !== 'paid' && (
                                 <button
                                     type="button"
-                                    onClick={async () => {
-                                        setIsLoading(true);
-                                        try {
-                                            await onSubmit({
-                                                ...initialCommitment,
-                                                status: 'paid',
-                                                paidDate: new Date().toISOString().split('T')[0]
-                                            });
-                                            onClose();
-                                        } catch (e) {
-                                            console.error(e);
-                                        } finally {
-                                            setIsLoading(false);
-                                        }
+                                    onClick={() => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            status: 'paid',
+                                            paymentDate: new Date().toISOString().split('T')[0]
+                                        }));
                                     }}
                                     className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg transition-colors font-bold text-xs uppercase tracking-wider flex items-center gap-2"
                                 >
@@ -258,8 +285,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                             </button>
                         </div>
                     </div>
-                </form>
-            </div>
-        </div>
+                </form >
+            </div >
+        </div >
     );
 };

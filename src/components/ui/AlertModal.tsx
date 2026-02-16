@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { Fragment } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 // import { Button } from './Button';
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, InformationCircleIcon } from './Icons';
 
@@ -25,8 +26,6 @@ const AlertModal: React.FC<AlertModalProps> = ({
     cancelText = 'Cancelar',
     showCancel = false
 }) => {
-    if (!isOpen) return null;
-
     const getStyles = () => {
         switch (type) {
             case 'success':
@@ -75,53 +74,75 @@ const AlertModal: React.FC<AlertModalProps> = ({
     const styles = getStyles();
 
     return (
-        <div
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-            onClick={onClose}
-        >
-            <div
-                className={`${styles.bg} border ${styles.border} rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200`}
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex items-start gap-4">
-                    <div className={`${styles.iconBg} ${styles.iconColor} rounded-full w-12 h-12 flex items-center justify-center text-2xl font-bold flex-shrink-0`}>
-                        {styles.icon}
-                    </div>
-                    <div className="flex-1">
-                        {title && (
-                            <h3 className={`text-lg font-bold ${styles.titleColor} mb-2`}>
-                                {title}
-                            </h3>
-                        )}
-                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                            {message}
-                        </p>
-                    </div>
-                </div>
-                <div className="mt-6 flex justify-end gap-3">
-                    {(showCancel || onConfirm) && (
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 text-gray-600 dark:text-gray-400 font-semibold hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm"
+        <Transition appear show={isOpen} as={Fragment}>
+            <Dialog as="div" className="relative z-[99999]" onClose={onClose}>
+                <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-300"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="ease-in duration-200"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                >
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+                </Transition.Child>
+
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100 scale-100"
+                            leaveTo="opacity-0 scale-95"
                         >
-                            {cancelText}
-                        </button>
-                    )}
-                    <button
-                        onClick={() => {
-                            if (onConfirm) {
-                                onConfirm();
-                            } else {
-                                onClose();
-                            }
-                        }}
-                        className={`px-6 py-2 rounded-lg font-semibold transition-colors text-sm shadow-sm ${styles.buttonBg}`}
-                    >
-                        {confirmText}
-                    </button>
+                            <Dialog.Panel className={`${styles.bg} border ${styles.border} w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all`}>
+                                <div className="flex items-start gap-4">
+                                    <div className={`${styles.iconBg} ${styles.iconColor} rounded-full w-12 h-12 flex items-center justify-center text-2xl font-bold flex-shrink-0`}>
+                                        {styles.icon}
+                                    </div>
+                                    <div className="flex-1">
+                                        {title && (
+                                            <Dialog.Title as="h3" className={`text-lg font-bold ${styles.titleColor} mb-2`}>
+                                                {title}
+                                            </Dialog.Title>
+                                        )}
+                                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                            {message}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end gap-3">
+                                    {(showCancel || onConfirm) && (
+                                        <button
+                                            onClick={onClose}
+                                            className="px-4 py-2 text-gray-600 dark:text-gray-400 font-semibold hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                        >
+                                            {cancelText}
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            if (onConfirm) {
+                                                onConfirm();
+                                            } else {
+                                                onClose();
+                                            }
+                                        }}
+                                        className={`px-6 py-2 rounded-lg font-semibold transition-colors text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${styles.buttonBg}`}
+                                    >
+                                        {confirmText}
+                                    </button>
+                                </div>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </Dialog>
+        </Transition>
     );
 };
 

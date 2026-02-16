@@ -72,10 +72,10 @@ export function isValidDate(dateStr: string): boolean {
  */
 export function getLocalDateISO(): string {
     const now = new Date();
-    // Restar el offset de zona horaria para obtener la hora local expresada como UTC
-    // getTimezoneOffset() devuelve minutos positivos para zonas al oeste de UTC (ej. UTC-5 = 300)
-    const localAsUtc = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
-    return localAsUtc.toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 export function formatDateToDisplay(dateStr: string | any): string {

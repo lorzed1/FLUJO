@@ -246,15 +246,15 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                     <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
                         <div className="overflow-x-auto max-h-96">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-100 dark:bg-slate-900 sticky top-0">
+                                <thead className="bg-gray-100 dark:bg-slate-900 sticky top-0 uppercase">
                                     <tr>
-                                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Estado</th>
-                                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Fecha</th>
-                                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Cajero</th>
-                                        <th className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">Venta Bruta</th>
-                                        <th className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">Total Recaudado</th>
-                                        <th className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">Descuadre</th>
-                                        <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300">Errores</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Estado</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Fecha</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Cajero</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Venta Bruta</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Total Recaudado</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Descuadre</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Errores</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 dark:divide-slate-700">

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
 import { TrashIcon, PlusIcon, TagIcon } from '@heroicons/react/24/outline';
+import { PageHeader } from '../../../components/layout/PageHeader';
 import { TransactionType } from '../../../types';
 import { useUI } from '../../../context/UIContext';
 
@@ -88,10 +89,14 @@ export const BudgetCategories: React.FC = () => {
 
     return (
         <div className="h-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 flex flex-col">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                <TagIcon className="w-6 h-6 text-indigo-500" />
-                Gestión de Categorías
-            </h2>
+            <PageHeader
+                title="Gestión de Categorías"
+                breadcrumbs={[
+                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Categorías' }
+                ]}
+                icon={<TagIcon className="h-6 w-6" />}
+            />
 
             {/* Add Form */}
             <form onSubmit={handleAdd} className="mb-8 flex gap-3 items-end bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl">
@@ -123,7 +128,7 @@ export const BudgetCategories: React.FC = () => {
                     columns={columns}
                     enableSearch={true}
                     searchPlaceholder="Buscar categorías..."
-                    containerClassName="h-full"
+                    containerClassName="flex-1 min-h-0"
                 />
             </div>
         </div>

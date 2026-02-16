@@ -2,8 +2,9 @@ import React, { useState, forwardRef, useImperativeHandle, useMemo } from 'react
 import { SmartDataTable, Column } from '../../components/ui/SmartDataTable';
 import { formatDateToDisplay } from '../../utils/dateUtils';
 import { useUI } from '../../context/UIContext';
-import { TrashIcon } from '../../components/ui/Icons';
+import { TrashIcon, PencilIcon } from '../../components/ui/Icons';
 import * as XLSX from 'xlsx';
+import { cn } from '../../lib/utils';
 
 import { ArqueoRecord } from '../../types';
 import CashBaseModal from './CashBaseModal';
@@ -85,9 +86,9 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
         return arqueos.map(item => {
             const totalIngresosCalculado = (item.ventaBruta || 0) + (item.propina || 0);
 
-            // User Rule: Descuadre = Total Egresos - (Total Ingresos + Covers)
-            // Esto asegura que el dinero del cover se descuente del recaudo para ver el sobrante real (ej: 350 pesos).
-            const descuadreCalculado = item.totalRecaudado - (totalIngresosCalculado + (item.ingresoCovers || 0));
+            // User Rule: Descuadre = Total Egresos - Total Ingresos
+            // Los covers son informativos y no afectan el cálculo del descuadre.
+            const descuadreCalculado = item.totalRecaudado - totalIngresosCalculado;
 
             return {
                 ...item,
@@ -220,6 +221,59 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                 />
             )
         },
+        {
+            key: 'ventaSC' as any,
+            label: 'VENTA SC',
+            width: 'w-24',
+            align: 'text-right',
+            defaultHidden: true,
+            render: (_, item) => {
+                const ventaSC = (item.ventaBruta || 0) - (item.ingresoCovers || 0);
+                return (
+                    <span className="text-purple-600 dark:text-purple-400 font-bold tabular-nums">
+                        {formatCompact(ventaSC)}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'baseImpuesto' as any,
+            label: 'BASE',
+            width: 'w-24',
+            align: 'text-right',
+            defaultHidden: true,
+            render: (_, item) => {
+                const ventaSC = (item.ventaBruta || 0) - (item.ingresoCovers || 0);
+                const base = ventaSC / 1.08;
+                return (
+                    <span className="text-purple-600 dark:text-purple-400 tabular-nums">
+                        {formatCompact(Math.round(base))}
+                    </span>
+                );
+            }
+        },
+        {
+            key: 'impuestoConsumo' as any,
+            label: 'INC (8%)',
+            width: 'w-24',
+            align: 'text-right',
+            defaultHidden: true,
+            render: (_, item) => {
+                const ventaSC = (item.ventaBruta || 0) - (item.ingresoCovers || 0);
+                // INC logic based on request: Venta SC * 8% (which implies Base * 8% actually, but request said Venta SC * 8? usually INC is Base * 8%. Let's check math)
+                // Request said: INC = "Venta SC * 8%".
+                // Usually VentaTotal = Base + INC. If INC is 8% of Base, then Base = VentaTotal / 1.08.
+                // And INC = VentaTotal - Base OR Base * 0.08.
+                // Let's use Base * 0.08 for consistency with accounting, derived from the Base calculation.
+                const base = ventaSC / 1.08;
+                const inc = base * 0.08;
+                return (
+                    <span className="text-purple-600 dark:text-purple-400 tabular-nums">
+                        {formatCompact(Math.round(inc))}
+                    </span>
+                );
+            }
+        },
         // Columna Calculada Virtual: TOTAL INGRESOS (Venta + Propina)
         {
             key: 'totalIngresos' as any,
@@ -227,7 +281,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             width: 'w-28',
             align: 'text-right',
             render: (_, item) => (
-                <span className="text-gray-900 dark:text-white tabular-nums border-b-2 border-gray-900/10">
+                <span className="text-purple-600 dark:text-purple-500 font-bold tabular-nums border-b-2 border-purple-200 dark:border-purple-900/30">
                     {formatCompact(item.totalIngresos || 0)}
                 </span>
             )
@@ -348,7 +402,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
-                <span className="text-gray-900 dark:text-white tabular-nums border-b-2 border-gray-900/10">
+                <span className="text-purple-600 dark:text-purple-500 font-bold tabular-nums border-b-2 border-purple-200 dark:border-purple-900/30">
                     {formatCompact(item.totalRecaudado)}
                 </span>
             )
@@ -360,7 +414,12 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
-                <span className={`tabular-nums px-2 py-0.5 rounded-lg bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-slate-700`}>
+                <span className={cn(
+                    "tabular-nums px-2 py-0.5 rounded-lg border font-bold",
+                    item.descuadre < 0
+                        ? "bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/50"
+                        : "bg-gray-50 text-gray-900 border-gray-200 dark:bg-slate-800 dark:text-gray-100 dark:border-slate-700"
+                )}>
                     {formatCompact(item.descuadre)}
                 </span>
             )
@@ -405,30 +464,49 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
         {
             key: 'actions',
             label: '',
-            width: 'w-10',
+            width: 'w-16',
             align: 'text-right',
             render: (_, item) => (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        e.stopPropagation();
-                        setAlertModal({
-                            isOpen: true,
-                            type: 'warning',
-                            title: 'Eliminar Arqueo',
-                            message: '¿Estás seguro que deseas eliminar este arqueo?',
-                            confirmText: 'Sí, Eliminar',
-                            showCancel: true,
-                            onConfirm: () => {
-                                onDelete(item.id);
-                                setAlertModal({ isOpen: false, message: '' }); // Or success
-                            }
-                        });
-                    }}
-                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                >
-                    <TrashIcon className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1 justify-end">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setAlertModal({
+                                isOpen: true,
+                                type: 'info',
+                                title: 'Editar Arqueo',
+                                message: 'Para editar un valor, haz doble clic directamente sobre la celda que deseas modificar. Puedes editar cualquier campo numérico (Covers, Venta POS, Propina, medios de pago, Cajero, Visitas) haciendo doble clic en la celda correspondiente.',
+                                confirmText: 'Entendido',
+                                showCancel: false,
+                            });
+                        }}
+                        className="p-1.5 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                        title="Editar arqueo"
+                    >
+                        <PencilIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setAlertModal({
+                                isOpen: true,
+                                type: 'warning',
+                                title: 'Eliminar Arqueo',
+                                message: '¿Estás seguro que deseas eliminar este arqueo?',
+                                confirmText: 'Sí, Eliminar',
+                                showCancel: true,
+                                onConfirm: () => {
+                                    onDelete(item.id);
+                                    setAlertModal({ isOpen: false, message: '' }); // Or success
+                                }
+                            });
+                        }}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                        title="Eliminar arqueo"
+                    >
+                        <TrashIcon className="h-4 w-4" />
+                    </button>
+                </div>
             )
         }
     ];
@@ -454,8 +532,10 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
 
     return (
         <>
-            <div className="h-[600px] flex flex-col">
+            {/* Removed h-[600px] to allow natural height and prevent double scroll */}
+            <div className="flex flex-col">
                 <SmartDataTable
+                    id="arqueos_history"
                     data={dataWithTotals}
                     columns={columns}
                     enableSearch={true}
@@ -463,6 +543,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     enableExport={true}
+                    exportDateField="fecha"
                     onBulkDelete={(ids) => {
                         setAlertModal({
                             isOpen: true,
