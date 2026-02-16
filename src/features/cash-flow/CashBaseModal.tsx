@@ -41,7 +41,7 @@ const CashBaseModal: React.FC<CashBaseModalProps> = ({ isOpen, onClose, baseDeta
                 </div>
 
                 {/* Body: List of denominations */}
-                <div className="p-0 max-h-[60vh] overflow-y-auto">
+                <div className="p-0 max-h-[60dvh] overflow-y-auto">
                     {denominations.length === 0 ? (
                         <div className="p-8 text-center text-gray-400 text-sm">
                             No hay detalle registrado para esta base.

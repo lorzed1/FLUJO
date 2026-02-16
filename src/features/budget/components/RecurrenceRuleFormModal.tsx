@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RecurrenceRule, RecurrenceFrequency } from '../../../types/budget';
-import { useApp } from '../../../context/AppContext';
+import { useData } from '../../../context/DataContext';
 import { TransactionType } from '../../../types';
 import { XMarkIcon } from '@heroicons/react/24/outline'; // IMPORT FIX: Ensure this line is present if it was previously removed or changed
 import { Input } from '../../../components/ui/Input';
@@ -24,7 +24,7 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
     isDuplicate,
     onSubmit
 }) => {
-    const { categories } = useApp();
+    const { categories } = useData();
     const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE);
 
     const [formData, setFormData] = useState({

@@ -5,7 +5,7 @@ import { Select } from '../../../components/ui/Select';
 import { LabeledField } from '../../../components/ui/LabeledField';
 import { format } from 'date-fns';
 import { BudgetCommitment } from '../../../types/budget';
-import { useApp } from '../../../context/AppContext';
+import { useData } from '../../../context/DataContext';
 import { TransactionType } from '../../../types';
 import { PlusIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 
@@ -24,7 +24,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     initialCommitment,
     onSubmit
 }) => {
-    const { categories, addCategory } = useApp();
+    const { categories, addCategory } = useData();
     const [formData, setFormData] = useState({
         title: '',
         amount: '',

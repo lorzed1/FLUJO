@@ -8,6 +8,7 @@ export interface ArqueoData {
     fecha: string;
     ventaBruta: number;
     propina: number;
+    venta_sc?: number; // Venta neta (opcional en importación)
     efectivo: number;
     datafonoDavid: number;
     datafonoJulian: number;
@@ -47,6 +48,8 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
     { key: 'cajero', label: 'Cajero', aliases: ['CAJERO', 'RESPONSABLE', 'ENCARGADO'], required: true },
     // Excluimos 'BRUTA' para evitar que mapee a 'VENTA BRUTA' (Base) cuando buscamos el Total
     { key: 'ventaBruta', label: 'Venta POS (Total)', aliases: ['VENTA', 'VENTA TOTAL', 'TOTAL VENTA', 'VENTA POS', 'POS', 'TOTAL'], required: true, exclude: ['BRUTA', 'BASE', 'NETA'] },
+    // Venta Sin Cover (Neta) opcional
+    { key: 'venta_sc', label: 'Venta Net (S/Cover)', aliases: ['VENTA SC', 'VENTA SIN COVER', 'NETO', 'SUBTOTAL', 'VENTA NETA'] },
     { key: 'propina', label: 'Propina', aliases: ['PROPINA', 'TIPS'] },
     { key: 'ingresoCovers', label: 'Covers', aliases: ['INGRESO X COVERS', 'COVERS', 'ENTRADAS'] },
     { key: 'efectivo', label: 'Efectivo', aliases: ['EFECTIVO', 'CASH'] },
@@ -216,7 +219,7 @@ export function parseExcelRows(lines: string[], mapping: Record<string, string>)
 
             // CAMPOS MONETARIOS
             const currencyFields: (keyof ArqueoData)[] = [
-                'ventaBruta', 'propina', 'efectivo',
+                'ventaBruta', 'propina', 'venta_sc', 'efectivo',
                 'datafonoDavid', 'datafonoJulian', 'transfBancolombia',
                 'nequi', 'rappi', 'ingresoCovers'
             ];
@@ -282,21 +285,21 @@ export function parseExcelData(text: string): ParseResult {
 /**
  * Calcula el total recaudado para un registro de Arqueo
  */
-export function calculateTotalRecaudado(data: ArqueoData): number {
+export function calculateTotalRecaudado(data: Partial<ArqueoData>): number {
     return (
-        data.efectivo +
-        data.datafonoDavid +
-        data.datafonoJulian +
-        data.transfBancolombia +
-        data.nequi +
-        data.rappi
+        (Number(data.efectivo) || 0) +
+        (Number(data.datafonoDavid) || 0) +
+        (Number(data.datafonoJulian) || 0) +
+        (Number(data.transfBancolombia) || 0) +
+        (Number(data.nequi) || 0) +
+        (Number(data.rappi) || 0)
     );
 }
 
 /**
  * Calcula el descuadre para un registro de Arqueo
  */
-export function calculateDescuadre(data: ArqueoData): number {
+export function calculateDescuadre(data: Partial<ArqueoData>): number {
     const totalIngresos = (Number(data.ventaBruta) || 0) + (Number(data.propina) || 0);
     const totalEgresos = calculateTotalRecaudado(data);
     return totalEgresos - totalIngresos;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { PencilSquareIcon, TrashIcon, BanknotesIcon, TableCellsIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { BudgetCommitment } from '../../../types/budget';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
 import { startOfMonth, endOfMonth, endOfYear, startOfYear, format } from 'date-fns';
@@ -73,9 +73,33 @@ export const BudgetTable: React.FC = () => {
     };
 
 
-    const handleDelete = async (id: string, isProjected: boolean = false) => {
-        if (isProjected || id.startsWith('projected-')) {
-            setAlertModal({ isOpen: true, type: 'warning', title: 'Acción no permitida', message: 'No se puede eliminar una proyección futura directa. Debes editar o eliminar la Regla Recurrente asociada.' });
+    const handleDelete = async (id: string) => {
+        const item = commitments.find(c => c.id === id);
+        if (!item) return;
+
+        const isRecurring = item.recurrenceRuleId && (item.status === 'pending' || item.id.startsWith('projected-'));
+
+        if (isRecurring && item.recurrenceRuleId) {
+            setAlertModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'Eliminar Gasto Recurrente',
+                message: 'Este gasto pertenece a una regla recurrente. ¿Deseas eliminar la regla completa? Esto borrará todas las proyecciones futuras pendientes.',
+                showCancel: true,
+                confirmText: 'Eliminar Regla y Futuros',
+                onConfirm: async () => {
+                    try {
+                        if (item.recurrenceRuleId) {
+                            await budgetService.deleteRecurrenceRule(item.recurrenceRuleId);
+                        }
+                        loadData();
+                        setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Regla recurrente eliminada.' });
+                    } catch (error) {
+                        console.error("Error deleting rule:", error);
+                        setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar la regla recurrente.' });
+                    }
+                }
+            });
             return;
         }
 
@@ -100,37 +124,51 @@ export const BudgetTable: React.FC = () => {
     };
 
     const handleBulkDelete = async (ids: Set<string>) => {
-        const idArray = Array.from(ids);
-        const virtuals = idArray.filter(id => id.startsWith('projected-'));
-        const reals = idArray.filter(id => !id.startsWith('projected-'));
+        const selectedItems = commitments.filter(c => ids.has(c.id));
+        const ruleIds = new Set<string>();
+        const standaloneIds: string[] = [];
 
-        if (reals.length === 0) {
-            if (virtuals.length > 0) {
-                setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: `Solo se seleccionaron proyecciones virtuales, que no se pueden eliminar directamente.` });
+        selectedItems.forEach(item => {
+            if (item.recurrenceRuleId && (item.status === 'pending' || item.id.startsWith('projected-'))) {
+                ruleIds.add(item.recurrenceRuleId);
+            } else {
+                standaloneIds.push(item.id);
             }
-            return;
-        }
+        });
 
-        const message = virtuals.length > 0
-            ? `Se omitirán ${virtuals.length} proyecciones virtuales. ¿Eliminar los ${reals.length} compromisos reales seleccionados?`
-            : `¿Eliminar ${reals.length} compromisos seleccionados?`;
+        const messages = [];
+        if (ruleIds.size > 0) messages.push(`Se eliminarán ${ruleIds.size} reglas recurrentes y sus proyecciones futuras.`);
+        if (standaloneIds.length > 0) messages.push(`Se eliminarán ${standaloneIds.length} compromisos individuales.`);
 
         setAlertModal({
             isOpen: true,
             type: 'warning',
             title: 'Confirmar Eliminación Masiva',
-            message,
+            message: messages.join(' ') || '¿Eliminar elementos seleccionados?',
             showCancel: true,
-            confirmText: 'Eliminar',
+            confirmText: 'Eliminar Todo',
             onConfirm: async () => {
                 try {
-                    await Promise.all(reals.map(id => budgetService.deleteCommitment(id)));
+                    const promises: Promise<any>[] = [];
+
+                    // Delete rules
+                    ruleIds.forEach(ruleId => {
+                        promises.push(budgetService.deleteRecurrenceRule(ruleId));
+                    });
+
+                    // Delete standalone
+                    standaloneIds.forEach(id => {
+                        promises.push(budgetService.deleteCommitment(id));
+                    });
+
+                    await Promise.all(promises);
+
                     loadData();
                     setSelectedIds(new Set());
-                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Compromisos eliminados.' });
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Elementos eliminados correctamente.' });
                 } catch (error) {
                     console.error("Error deleting commitments:", error);
-                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar compromisos seleccionados.' });
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar elementos seleccionados.' });
                 }
             }
         });
@@ -251,15 +289,13 @@ export const BudgetTable: React.FC = () => {
                     >
                         <PencilSquareIcon className="w-4 h-4" />
                     </button>
-                    {!item.id.startsWith('projected-') && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                            className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
-                            title="Eliminar"
-                        >
-                            <TrashIcon className="w-4 h-4" />
-                        </button>
-                    )}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                        className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                        title="Eliminar"
+                    >
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
                 </div>
             )
         }

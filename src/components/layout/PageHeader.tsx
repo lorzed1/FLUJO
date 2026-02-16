@@ -11,7 +11,7 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, actions, icon }) => {
     return (
-        <div className="mb-6">
+        <div className="mb-3 sm:mb-6">
             {/* Breadcrumbs */}
             <nav className="flex items-center text-[10px] sm:text-xs text-gray-400 mb-2 font-medium">
                 <Link to="/dashboard" className="hover:text-primary transition-colors">Inicio</Link>

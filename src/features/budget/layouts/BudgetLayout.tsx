@@ -9,7 +9,7 @@ import {
     TagIcon
 } from '@heroicons/react/24/outline';
 import { BudgetFormModal } from '../components/BudgetFormModal';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 
 import { BudgetCommitment } from '../../../types/budget';
 import { useUI } from '../../../context/UIContext';

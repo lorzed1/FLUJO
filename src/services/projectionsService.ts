@@ -1,163 +1,135 @@
-import { db } from './firebase';
-import {
-    collection,
-    doc,
-    getDocs,
-    getDoc,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    query,
-    where,
-    orderBy,
-    Timestamp,
-    writeBatch
-} from 'firebase/firestore';
+import { supabase } from './supabaseClient';
 import { SalesEvent, SalesProjection } from '../types';
 
-const COLLECTIONS = {
-    EVENTS: 'sales_events',
-    PROJECTIONS: 'sales_projections'
-};
-
+/**
+ * Servicio de proyecciones de ventas usando Supabase.
+ * Mantiene la misma interfaz pública que la versión anterior con Firestore.
+ */
 export const projectionsService = {
-    // ==========================================
-    // Sales Events (Calendario Comercial)
-    // ==========================================
-
-    async getEvents(startDate?: string, endDate?: string): Promise<SalesEvent[]> {
+    // --- Sales Events ---
+    async addSalesEvent(event: Omit<SalesEvent, 'id' | 'createdAt'>): Promise<string> {
         try {
-            let q = query(collection(db, COLLECTIONS.EVENTS), orderBy('date', 'asc'));
+            const { data, error } = await supabase
+                .from('sales_events')
+                .insert({
+                    date: event.date,
+                    name: event.name,
+                    type: event.type,
+                    impact_factor: event.impactFactor,
+                    is_recurring: event.isRecurring,
+                    notes: event.notes || null,
+                })
+                .select('id')
+                .single();
+            if (error) throw error;
+            return data.id;
+        } catch (error) {
+            console.error('Error adding sales event:', error);
+            throw error;
+        }
+    },
 
+    async getSalesEvents(startDate?: string, endDate?: string): Promise<SalesEvent[]> {
+        try {
+            let query = supabase.from('sales_events').select('*');
             if (startDate && endDate) {
-                q = query(
-                    collection(db, COLLECTIONS.EVENTS),
-                    where('date', '>=', startDate),
-                    where('date', '<=', endDate),
-                    orderBy('date', 'asc')
-                );
+                query = query.gte('date', startDate).lte('date', endDate);
             }
-
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as SalesEvent));
+            const { data, error } = await query.order('date', { ascending: true });
+            if (error) throw error;
+            return (data || []).map((row: any) => ({
+                id: row.id,
+                date: row.date,
+                name: row.name,
+                type: row.type,
+                impactFactor: Number(row.impact_factor),
+                isRecurring: row.is_recurring,
+                notes: row.notes,
+                createdAt: row.created_at,
+            }));
         } catch (error) {
-            console.error('Error fetching events:', error);
+            console.error('Error getting sales events:', error);
+            return [];
+        }
+    },
+
+    async updateSalesEvent(id: string, updates: Partial<SalesEvent>): Promise<void> {
+        try {
+            const mapped: any = {};
+            if (updates.date !== undefined) mapped.date = updates.date;
+            if (updates.name !== undefined) mapped.name = updates.name;
+            if (updates.type !== undefined) mapped.type = updates.type;
+            if (updates.impactFactor !== undefined) mapped.impact_factor = updates.impactFactor;
+            if (updates.isRecurring !== undefined) mapped.is_recurring = updates.isRecurring;
+            if (updates.notes !== undefined) mapped.notes = updates.notes;
+
+            const { error } = await supabase.from('sales_events').update(mapped).eq('id', id);
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error updating sales event:', error);
             throw error;
         }
     },
 
-    async addEvent(event: Omit<SalesEvent, 'id'>): Promise<string> {
+    async deleteSalesEvent(id: string): Promise<void> {
         try {
-            const newDocRef = doc(collection(db, COLLECTIONS.EVENTS));
-            await setDoc(newDocRef, {
-                ...event,
-                id: newDocRef.id, // Ensure ID is in the doc data if needed, or rely on doc.id
-                createdAt: Timestamp.now()
-            });
-            return newDocRef.id;
+            const { error } = await supabase.from('sales_events').delete().eq('id', id);
+            if (error) throw error;
         } catch (error) {
-            console.error('Error adding event:', error);
+            console.error('Error deleting sales event:', error);
             throw error;
         }
     },
 
-    async updateEvent(id: string, updates: Partial<SalesEvent>): Promise<void> {
+    // --- Sales Projections ---
+    async getSalesProjections(startDate?: string, endDate?: string): Promise<SalesProjection[]> {
         try {
-            const docRef = doc(db, COLLECTIONS.EVENTS, id);
-            await updateDoc(docRef, {
-                ...updates
-                // removed updatedAt since it's not in the interface, but could be added
-            });
-        } catch (error) {
-            console.error('Error updating event:', error);
-            throw error;
-        }
-    },
-
-    async deleteEvent(id: string): Promise<void> {
-        try {
-            await deleteDoc(doc(db, COLLECTIONS.EVENTS, id));
-        } catch (error) {
-            console.error('Error deleting event:', error);
-            throw error;
-        }
-    },
-
-    // ==========================================
-    // Sales Projections (Metas Diarias)
-    // ==========================================
-
-    /**
-     * Get a specific projection by date (ID = date YYYY-MM-DD)
-     */
-    async getProjection(date: string): Promise<SalesProjection | null> {
-        try {
-            const docRef = doc(db, COLLECTIONS.PROJECTIONS, date);
-            const snapshot = await getDoc(docRef);
-
-            if (snapshot.exists()) {
-                return snapshot.data() as SalesProjection;
+            let query = supabase.from('sales_projections').select('*');
+            if (startDate && endDate) {
+                query = query.gte('date', startDate).lte('date', endDate);
             }
-            return null;
+            const { data, error } = await query.order('date', { ascending: true });
+            if (error) throw error;
+            return (data || []).map((row: any) => ({
+                date: row.date,
+                amountSystem: Number(row.amount_system),
+                amountAdjusted: Number(row.amount_adjusted),
+                status: row.status,
+                notes: row.notes,
+                lastUpdated: row.last_updated,
+            }));
         } catch (error) {
-            console.error(`Error fetching projection for ${date}:`, error);
-            throw error;
+            console.error('Error getting projections:', error);
+            return [];
         }
     },
 
-    async getProjectionsRange(startDate: string, endDate: string): Promise<SalesProjection[]> {
+    async saveSalesProjection(projection: SalesProjection): Promise<void> {
         try {
-            // Since ID is date, we can't easily range query on ID primarily without a field. 
-            // Better to allow querying on a 'date' field inside the doc as well.
-            // My types say 'date' is a field. So we can query it.
-            const q = query(
-                collection(db, COLLECTIONS.PROJECTIONS),
-                where('date', '>=', startDate),
-                where('date', '<=', endDate),
-                orderBy('date', 'asc')
-            );
-
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map(d => d.data() as SalesProjection);
-        } catch (error) {
-            console.error('Error fetching projections range:', error);
-            throw error;
-        }
-    },
-
-    async saveProjection(projection: SalesProjection): Promise<void> {
-        try {
-            // Upsert: ID is the date
-            const docRef = doc(db, COLLECTIONS.PROJECTIONS, projection.date);
-            await setDoc(docRef, {
-                ...projection,
-                lastUpdated: Timestamp.now()
-            });
+            const { error } = await supabase
+                .from('sales_projections')
+                .upsert({
+                    date: projection.date,
+                    amount_system: projection.amountSystem,
+                    amount_adjusted: projection.amountAdjusted,
+                    status: projection.status,
+                    notes: projection.notes || null,
+                    last_updated: new Date().toISOString(),
+                }, { onConflict: 'date' });
+            if (error) throw error;
         } catch (error) {
             console.error('Error saving projection:', error);
             throw error;
         }
     },
 
-    async saveProjectionsBatch(projections: SalesProjection[]): Promise<void> {
+    async deleteSalesProjection(date: string): Promise<void> {
         try {
-            const batch = writeBatch(db);
-
-            projections.forEach(p => {
-                const docRef = doc(db, COLLECTIONS.PROJECTIONS, p.date);
-                batch.set(docRef, {
-                    ...p,
-                    lastUpdated: Timestamp.now()
-                });
-            });
-
-            await batch.commit();
+            const { error } = await supabase.from('sales_projections').delete().eq('date', date);
+            if (error) throw error;
         } catch (error) {
-            console.error('Error batch saving projections:', error);
+            console.error('Error deleting projection:', error);
             throw error;
         }
-    }
+    },
 };

@@ -14,12 +14,13 @@ import {
     TrashIcon
 } from '@heroicons/react/24/outline';
 import { useBudgetContext } from '../layouts/BudgetLayout';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
 import { startOfMonth, endOfMonth, isSameDay, addDays } from 'date-fns';
-import { useApp } from '../../../context/AppContext';
+import { useData } from '../../../context/DataContext';
 
 import { useUI } from '../../../context/UIContext';
+import { BudgetPaymentModal } from '../components/BudgetPaymentModal';
 
 // --- TYPES ---
 interface MyEvent {
@@ -50,7 +51,7 @@ const localizer = dateFnsLocalizer({
 export const BudgetCalendar: React.FC = () => {
     const { openForm, refreshTrigger } = useBudgetContext();
     const { setAlertModal } = useUI();
-    const { categories } = useApp();
+    const { categories } = useData();
 
     // State
     const [events, setEvents] = useState<MyEvent[]>([]);
@@ -61,14 +62,10 @@ export const BudgetCalendar: React.FC = () => {
     // Payment Modal State
     const [paymentModal, setPaymentModal] = useState<{
         isOpen: boolean;
-        event: MyEvent | null;
-        paymentDate: string;
-        isProcessing: boolean;
+        commitment: BudgetCommitment | null;
     }>({
         isOpen: false,
-        event: null,
-        paymentDate: new Date().toISOString().split('T')[0],
-        isProcessing: false
+        commitment: null
     });
 
     // --- DATA FETCHING ---
@@ -238,9 +235,7 @@ export const BudgetCalendar: React.FC = () => {
                                         // Open payment modal with date selector
                                         setPaymentModal({
                                             isOpen: true,
-                                            event: event,
-                                            paymentDate: new Date().toISOString().split('T')[0],
-                                            isProcessing: false
+                                            commitment: event.resource
                                         });
                                     }}
                                     className="p-1 px-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm"
@@ -509,109 +504,16 @@ export const BudgetCalendar: React.FC = () => {
                 </div>
             </div>
 
-            {/* Payment Modal with Date Selector */}
-            {
-                paymentModal.isOpen && paymentModal.event && (
-                    <div
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-                        onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
-                    >
-                        <div
-                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                <CreditCardIcon className="w-5 h-5 text-emerald-500" />
-                                Registrar Pago
-                            </h2>
-
-                            <div className="space-y-4">
-                                {/* Event Info */}
-                                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                    <p className="font-semibold text-slate-800 dark:text-white truncate">
-                                        {paymentModal.event.title}
-                                    </p>
-                                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                                        ${paymentModal.event.resource.amount.toLocaleString()}
-                                    </p>
-                                </div>
-
-                                {/* Date Selector */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                                        Fecha de Pago
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={paymentModal.paymentDate}
-                                        onChange={(e) => setPaymentModal(prev => ({ ...prev, paymentDate: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    />
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        onClick={() => setPaymentModal(prev => ({ ...prev, isOpen: false }))}
-                                        className="flex-1 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors font-medium"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            setPaymentModal(prev => ({ ...prev, isProcessing: true }));
-                                            try {
-                                                const evt = paymentModal.event!.resource;
-                                                // Check if it's a Virtual/Projected event
-                                                if (evt.isProjected || evt.id.startsWith('projected-')) {
-                                                    // It's virtual -> Create a REAL paid commitment
-                                                    await budgetService.addCommitment({
-                                                        title: evt.title,
-                                                        amount: evt.amount,
-                                                        category: evt.category,
-                                                        dueDate: evt.dueDate,
-                                                        status: 'paid',
-                                                        paidDate: paymentModal.paymentDate,
-                                                        recurrenceRuleId: evt.recurrenceRuleId,
-                                                        // Explicitly not projected anymore
-                                                    });
-                                                } else {
-                                                    // It's real -> Update existing
-                                                    await budgetService.updateCommitment(evt.id, {
-                                                        status: 'paid',
-                                                        paidDate: paymentModal.paymentDate
-                                                    });
-                                                }
-
-                                                await fetchEvents();
-                                                setPaymentModal({ isOpen: false, event: null, paymentDate: '', isProcessing: false });
-                                            } catch (error) {
-                                                console.error('Error registering payment:', error);
-                                                setAlertModal({
-                                                    isOpen: true,
-                                                    type: 'error',
-                                                    title: 'Error',
-                                                    message: 'No se pudo registrar el pago.'
-                                                });
-                                                setPaymentModal(prev => ({ ...prev, isProcessing: false }));
-                                            }
-                                        }}
-                                        disabled={paymentModal.isProcessing || !paymentModal.paymentDate}
-                                        className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg shadow-lg shadow-emerald-500/30 transition-all font-medium flex items-center justify-center gap-2"
-                                    >
-                                        {paymentModal.isProcessing ? (
-                                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <CreditCardIcon className="w-4 h-4" />
-                                        )}
-                                        {paymentModal.isProcessing ? 'Procesando...' : 'Confirmar Pago'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            {/* Payment Modal */}
+            <BudgetPaymentModal
+                isOpen={paymentModal.isOpen}
+                onClose={() => setPaymentModal({ isOpen: false, commitment: null })}
+                commitment={paymentModal.commitment || undefined}
+                onSuccess={() => {
+                    fetchEvents();
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Pago Registrado', message: 'El compromiso ha sido marcado como pagado exitosamente.' });
+                }}
+            />
         </>
     );
 };

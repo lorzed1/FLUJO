@@ -1,4 +1,4 @@
-import { ArqueoRecord } from '../../../src/types';
+import { ArqueoRecord } from '../types';
 
 export interface AuditIssue {
     recordId: string;

@@ -1,7 +1,7 @@
 
 import { Transaction, Category, RecurringExpense, RecurringExpenseOverrides } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_RECURRING_EXPENSES } from '../data/defaultData';
-import { FirestoreService } from './firestore';
+import { DatabaseService } from './database';
 
 const STORAGE_KEYS = {
     TRANSACTIONS: 'finance_app_transactions',
@@ -12,11 +12,11 @@ const STORAGE_KEYS = {
     ACCOUNT_MAPPINGS: 'finance_app_account_mappings',
     BANK_TRANSACTIONS: 'finance_app_bank_transactions',
     RECONCILIATION_RESULTS: 'finance_app_reconciliation_results',
-    USE_FIREBASE: 'finance_app_use_firebase', // Flag para determinar si usar Firebase
+    USE_SUPABASE: 'finance_app_use_supabase', // Flag para determinar si usar Supabase
 };
 
-// Flag para determinar si usar Firebase (true) o LocalStorage (false)
-let useFirebase = true;
+// Flag para determinar si usar Supabase (true) o LocalStorage (false)
+let useSupabase = true;
 
 // Helpers para cargar datos de LocalStorage
 const loadLocal = <T>(key: string, defaultValue: T): T => {
@@ -38,32 +38,32 @@ const saveLocal = <T>(key: string, value: T): void => {
 };
 
 /**
- * Servicio de datos híbrido que puede usar Firebase o LocalStorage
- * Por defecto usa Firebase, pero guarda una copia en LocalStorage como cache
+ * Servicio de datos híbrido que puede usar Supabase o LocalStorage
+ * Por defecto usa Supabase, pero guarda una copia en LocalStorage como cache
  */
 export const DataService = {
 
     /**
-     * Cambiar entre Firebase y LocalStorage
+     * Cambiar entre Supabase y LocalStorage
      */
-    setStorageMode: (firebase: boolean) => {
-        useFirebase = firebase;
-        localStorage.setItem(STORAGE_KEYS.USE_FIREBASE, JSON.stringify(firebase));
+    setStorageMode: (supabase: boolean) => {
+        useSupabase = supabase;
+        localStorage.setItem(STORAGE_KEYS.USE_SUPABASE, JSON.stringify(supabase));
     },
 
     /**
      * Obtener modo de almacenamiento actual
      */
     getStorageMode: (): boolean => {
-        return useFirebase;
+        return useSupabase;
     },
 
     // ============ TRANSACCIONES ============
 
     getTransactions: async (): Promise<Transaction[]> => {
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const data = await FirestoreService.getTransactions();
+                const data = await DatabaseService.getTransactions();
                 if (data.length > 0) {
                     saveLocal(STORAGE_KEYS.TRANSACTIONS, data);
                     return data;
@@ -83,11 +83,11 @@ export const DataService = {
 
     saveTransactions: async (transactions: Transaction[]) => {
         saveLocal(STORAGE_KEYS.TRANSACTIONS, transactions);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveTransactions(transactions);
+                await DatabaseService.saveTransactions(transactions);
             } catch (error) {
-                console.error('Error saving transactions to Firebase:', error);
+                console.error('Error saving transactions to Supabase:', error);
             }
         }
     },
@@ -95,9 +95,9 @@ export const DataService = {
     // ============ CATEGORÍAS ============
 
     getCategories: async (): Promise<Category[]> => {
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const data = await FirestoreService.getCategories();
+                const data = await DatabaseService.getCategories();
                 if (data.length > 0) {
                     saveLocal(STORAGE_KEYS.CATEGORIES, data);
                     return data;
@@ -111,11 +111,11 @@ export const DataService = {
 
     saveCategories: async (categories: Category[]) => {
         saveLocal(STORAGE_KEYS.CATEGORIES, categories);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveCategories(categories);
+                await DatabaseService.saveCategories(categories);
             } catch (error) {
-                console.error('Error saving categories to Firebase:', error);
+                console.error('Error saving categories to Supabase:', error);
             }
         }
     },
@@ -123,9 +123,9 @@ export const DataService = {
     // ============ GASTOS RECURRENTES ============
 
     getRecurringExpenses: async (): Promise<RecurringExpense[]> => {
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const data = await FirestoreService.getRecurringExpenses();
+                const data = await DatabaseService.getRecurringExpenses();
                 if (data.length > 0) {
                     saveLocal(STORAGE_KEYS.RECURRING, data); // Changed from RECURRING_EXPENSES to RECURRING
                     return data;
@@ -139,11 +139,11 @@ export const DataService = {
 
     saveRecurringExpenses: async (expenses: RecurringExpense[]) => {
         saveLocal(STORAGE_KEYS.RECURRING, expenses); // Changed from RECURRING_EXPENSES to RECURRING
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveRecurringExpenses(expenses);
+                await DatabaseService.saveRecurringExpenses(expenses);
             } catch (error) {
-                console.error('Error saving recurring expenses to Firebase:', error);
+                console.error('Error saving recurring expenses to Supabase:', error);
             }
         }
     },
@@ -151,9 +151,9 @@ export const DataService = {
     // ============ OVERRIDES ============
 
     getRecurringOverrides: async (): Promise<RecurringExpenseOverrides> => {
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const data = await FirestoreService.getRecurringOverrides();
+                const data = await DatabaseService.getRecurringOverrides();
                 if (Object.keys(data).length > 0) {
                     saveLocal(STORAGE_KEYS.RECURRING_OVERRIDES, data);
                     return data;
@@ -167,11 +167,11 @@ export const DataService = {
 
     saveRecurringOverrides: async (overrides: RecurringExpenseOverrides) => {
         saveLocal(STORAGE_KEYS.RECURRING_OVERRIDES, overrides);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveRecurringOverrides(overrides);
+                await DatabaseService.saveRecurringOverrides(overrides);
             } catch (error) {
-                console.error('Error saving overrides to Firebase:', error);
+                console.error('Error saving overrides to Supabase:', error);
             }
         }
     },
@@ -179,9 +179,9 @@ export const DataService = {
     // ============ DÍAS REGISTRADOS ============
 
     getRecordedDays: async (): Promise<string[]> => {
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const data = await FirestoreService.getRecordedDays();
+                const data = await DatabaseService.getRecordedDays();
                 if (data.length > 0) {
                     saveLocal(STORAGE_KEYS.RECORDED_DAYS, data);
                     return data;
@@ -196,11 +196,11 @@ export const DataService = {
     saveRecordedDays: async (days: Set<string>) => {
         const daysArray = Array.from(days);
         saveLocal(STORAGE_KEYS.RECORDED_DAYS, daysArray);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveRecordedDays(days);
+                await DatabaseService.saveRecordedDays(days);
             } catch (error) {
-                console.error('Error saving recorded days to Firebase:', error);
+                console.error('Error saving recorded days to Supabase:', error);
             }
         }
     },
@@ -208,9 +208,9 @@ export const DataService = {
     // ============ MAPEOS DE CUENTAS ============
 
     getAccountMappings: async () => {
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const mappings = await FirestoreService.getAccountMappings();
+                const mappings = await DatabaseService.getAccountMappings();
                 saveLocal(STORAGE_KEYS.ACCOUNT_MAPPINGS, mappings);
                 return mappings;
             } catch (error) {
@@ -222,9 +222,9 @@ export const DataService = {
 
     saveAccountMappings: async (mappings: any[]) => {
         saveLocal(STORAGE_KEYS.ACCOUNT_MAPPINGS, mappings);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveAccountMappings(mappings);
+                await DatabaseService.saveAccountMappings(mappings);
             } catch (error) { }
         }
     },
@@ -234,12 +234,12 @@ export const DataService = {
     getBankTransactions: async (): Promise<Record<string, Transaction[]>> => {
         let data: Record<string, Transaction[]> = {};
 
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const firestoreData = await FirestoreService.getBankTransactions();
-                if (Object.keys(firestoreData).length > 0) {
-                    saveLocal(STORAGE_KEYS.BANK_TRANSACTIONS, firestoreData);
-                    return firestoreData;
+                const supabaseData = await DatabaseService.getBankTransactions();
+                if (Object.keys(supabaseData).length > 0) {
+                    saveLocal(STORAGE_KEYS.BANK_TRANSACTIONS, supabaseData);
+                    return supabaseData;
                 }
             } catch (error) {
                 // Fallback to local
@@ -263,9 +263,9 @@ export const DataService = {
 
     saveBankTransactions: async (data: Record<string, Transaction[]>) => {
         saveLocal(STORAGE_KEYS.BANK_TRANSACTIONS, data);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveBankTransactions(data);
+                await DatabaseService.saveBankTransactions(data);
             } catch (error) { }
         }
     },
@@ -275,27 +275,27 @@ export const DataService = {
     getReconciliationResults: async (): Promise<Record<string, any>> => {
         let data: Record<string, any> = {};
 
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                const firestoreData = await FirestoreService.getReconciliationResults();
+                const supabaseData = await DatabaseService.getReconciliationResults();
 
                 // DATA SAFETY: Only use Firestore if it has data. 
                 // If it's empty, we might be facing a sync error or fresh start.
                 // We check if we have local backup.
-                if (Object.keys(firestoreData).length > 0) {
-                    saveLocal(STORAGE_KEYS.RECONCILIATION_RESULTS, firestoreData);
-                    return firestoreData;
+                if (Object.keys(supabaseData).length > 0) {
+                    saveLocal(STORAGE_KEYS.RECONCILIATION_RESULTS, supabaseData);
+                    return supabaseData;
                 } else {
                     // Firestore is empty. Check local.
                     const localBackup = loadLocal(STORAGE_KEYS.RECONCILIATION_RESULTS, {});
                     if (Object.keys(localBackup).length > 0) {
-                        console.warn("Firestore returned empty, but local backup found. Using local data.");
+                        console.warn("Supabase returned empty, but local backup found. Using local data.");
                         // Optional: Trigger background save to restore cloud?
                         return localBackup;
                     }
                 }
             } catch (error) {
-                console.warn("Error loading from Firestore, falling back to local", error);
+                console.warn("Error loading from Supabase, falling back to local", error);
                 // Fallback handles below
             }
         }
@@ -317,9 +317,9 @@ export const DataService = {
 
     saveReconciliationResults: async (data: Record<string, any>) => {
         saveLocal(STORAGE_KEYS.RECONCILIATION_RESULTS, data);
-        if (useFirebase) {
+        if (useSupabase) {
             try {
-                await FirestoreService.saveReconciliationResults(data);
+                await DatabaseService.saveReconciliationResults(data);
             } catch (error) { }
         }
     },
@@ -359,12 +359,12 @@ export const DataService = {
         }
     },
 
-    // ============ MIGRAR DE LOCALSTORAGE A FIREBASE ============
+    // ============ MIGRAR DE LOCALSTORAGE A SUPABASE ============
 
     /**
-     * Migrar todos los datos de LocalStorage a Firebase
+     * Migrar todos los datos de LocalStorage a Supabase
      */
-    migrateToFirebase: async (): Promise<boolean> => {
+    migrateToSupabase: async (): Promise<boolean> => {
         try {
             const localData = {
                 transactions: loadLocal(STORAGE_KEYS.TRANSACTIONS, []),
@@ -375,19 +375,19 @@ export const DataService = {
             };
 
             await Promise.all([
-                FirestoreService.saveTransactions(localData.transactions),
-                FirestoreService.saveCategories(localData.categories),
-                FirestoreService.saveRecurringExpenses(localData.recurringExpenses),
-                FirestoreService.saveRecurringOverrides(localData.recurringOverrides),
-                FirestoreService.saveRecordedDays(new Set(localData.recordedDays)),
-                FirestoreService.saveBankTransactions(loadLocal(STORAGE_KEYS.BANK_TRANSACTIONS, {})),
-                FirestoreService.saveReconciliationResults(loadLocal(STORAGE_KEYS.RECONCILIATION_RESULTS, {})),
+                DatabaseService.saveTransactions(localData.transactions),
+                DatabaseService.saveCategories(localData.categories),
+                DatabaseService.saveRecurringExpenses(localData.recurringExpenses),
+                DatabaseService.saveRecurringOverrides(localData.recurringOverrides),
+                DatabaseService.saveRecordedDays(new Set(localData.recordedDays)),
+                DatabaseService.saveBankTransactions(loadLocal(STORAGE_KEYS.BANK_TRANSACTIONS, {})),
+                DatabaseService.saveReconciliationResults(loadLocal(STORAGE_KEYS.RECONCILIATION_RESULTS, {})),
             ]);
 
-            console.log('✅ Migración a Firebase completada exitosamente');
+            console.log('✅ Migración a Supabase completada exitosamente');
             return true;
         } catch (error) {
-            console.error('❌ Error durante la migración a Firebase:', error);
+            console.error('❌ Error durante la migración a Supabase:', error);
             return false;
         }
     },
@@ -398,8 +398,8 @@ export const DataService = {
         try {
             let data;
 
-            if (useFirebase) {
-                data = await FirestoreService.exportAllData();
+            if (useSupabase) {
+                data = await DatabaseService.exportAllData();
             } else {
                 data = {
                     transactions: loadLocal(STORAGE_KEYS.TRANSACTIONS, []),
@@ -414,9 +414,9 @@ export const DataService = {
             const exportData = {
                 ...data,
                 meta: {
-                    version: 2, // Versión 2 para incluir Firebase
+                    version: 3, // Versión 3 para Supabase
                     date: new Date().toISOString(),
-                    source: useFirebase ? 'firebase' : 'localStorage',
+                    source: useSupabase ? 'supabase' : 'localStorage',
                 }
             };
 
@@ -453,8 +453,8 @@ export const DataService = {
                 reconciliationResults: data.reconciliationResults || {},
             };
 
-            if (useFirebase) {
-                await FirestoreService.importAllData(importData);
+            if (useSupabase) {
+                await DatabaseService.importAllData(importData);
             } else {
                 saveLocal(STORAGE_KEYS.TRANSACTIONS, importData.transactions);
                 saveLocal(STORAGE_KEYS.CATEGORIES, importData.categories);

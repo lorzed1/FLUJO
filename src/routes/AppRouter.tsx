@@ -1,7 +1,8 @@
 import React, { useEffect, lazy, Suspense } from 'react';
 import { Route, Routes, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import { useArqueos } from '../context/ArqueoContext';
 import MainLayout from '../components/layout/MainLayout';
 import PageLoader from '../components/ui/PageLoader';
 
@@ -9,6 +10,7 @@ const DashboardView = lazy(() => import('../features/dashboard/DashboardView'));
 const UsersManagementView = lazy(() => import('../features/auth/UsersManagementView'));
 const Login = lazy(() => import('../features/auth/Login'));
 const ArqueoView = lazy(() => import('../features/cash-flow/ArqueoPreview'));
+const RescueData = lazy(() => import('../pages/RescueData'));
 
 // Budget Module
 const BudgetLayout = lazy(() => import('../features/budget/layouts/BudgetLayout').then(m => ({ default: m.BudgetLayout })));
@@ -26,11 +28,8 @@ const ProjectionsView = lazy(() => import('../features/projections/ProjectionsVi
 const AppRouter: React.FC = () => {
     // Contextos especializados
     const { isLoading: authLoading, isAuthenticated, userRole } = useAuth();
-    const {
-        isLoading: dataLoading,
-        memoizedAllTransactions, transactions, categories, arqueos,
-        handleSaveArqueo, handleUpdateArqueo, handleDeleteArqueo, handleMigrateArqueos
-    } = useApp();
+    const { isLoading: dataLoading } = useData();
+    const { isArqueosLoading: arqueoLoading } = useArqueos();
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -79,7 +78,7 @@ const AppRouter: React.FC = () => {
     }
 
     // Esperar a que los datos se carguen solo si está autenticado
-    if (dataLoading) {
+    if (dataLoading || arqueoLoading) {
         return (
             <PageLoader />
         );
@@ -91,25 +90,13 @@ const AppRouter: React.FC = () => {
             <Route element={<MainLayout />}>
                 {/* Arqueo: Accesible para Admin y Cajero */}
                 <Route path="/arqueo/*" element={
-                    <ArqueoView
-                        onSave={handleSaveArqueo}
-                        arqueos={arqueos || []}
-                        onUpdateArqueo={handleUpdateArqueo}
-                        onDeleteArqueo={handleDeleteArqueo}
-                        onMigrateArqueos={handleMigrateArqueos}
-                        userRole={userRole}
-                    />
+                    <ArqueoView />
                 } />
 
                 {/* Rutas exclusivas Admin */}
                 <Route path="/dashboard" element={
                     userRole === 'admin' ? (
-                        <DashboardView
-                            projectedTransactions={memoizedAllTransactions || []}
-                            realTransactions={transactions || []}
-                            categories={categories || []}
-                            arqueos={arqueos || []}
-                        />
+                        <DashboardView />
                     ) : <Navigate to="/arqueo" replace />
                 } />
 
@@ -131,6 +118,8 @@ const AppRouter: React.FC = () => {
                     <Route path="execution" element={<BudgetExecution />} />
                     <Route path="history" element={<BudgetHistory />} />
                 </Route>
+
+                <Route path="/rescate" element={<RescueData />} />
 
                 {/* Default Route */}
                 <Route path="/" element={<Navigate to={userRole === 'cajero' ? "/arqueo" : "/dashboard"} replace />} />

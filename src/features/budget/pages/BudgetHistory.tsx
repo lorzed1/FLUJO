@@ -9,7 +9,7 @@ import {
     ArrowTrendingDownIcon
 } from '@heroicons/react/24/outline';
 import { BudgetExecutionLog } from '../../../types/budget';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 
 export const BudgetHistory: React.FC = () => {
     const [logs, setLogs] = useState<BudgetExecutionLog[]>([]);

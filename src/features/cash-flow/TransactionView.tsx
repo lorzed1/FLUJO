@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useData } from '../../context/DataContext';
 import { TransactionTable } from '@/components/TransactionTable';
 import { TransactionFilters, TableTransaction, TransactionSource, TransactionStatus } from '@/types';
 import { Transaction as DomainTransaction } from '@/types';
 
 export const TransactionView: React.FC = () => {
-    const { transactions } = useApp();
+    const { transactions } = useData();
 
     const [filters, setFilters] = useState<TransactionFilters>({
         page: 1,

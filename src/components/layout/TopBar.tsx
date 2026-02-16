@@ -7,7 +7,7 @@ export const TopBar: React.FC = () => {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     return (
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 shrink-0 z-20">
+        <header className="h-14 sm:h-16 bg-white border-b border-gray-100 flex items-center justify-between px-3 sm:px-6 shrink-0 z-20">
             {/* Left: Search & Context */}
             <div className="flex items-center gap-6 flex-1">
                 {/* Global Search */}

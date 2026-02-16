@@ -1,87 +1,91 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabaseClient';
 
 export type UserRole = 'admin' | 'cajero';
 
-export interface UserRoleData {
+export const DEFAULT_ADMIN_EMAILS = ['admin@flujocaja.com'];
+
+interface UserRoleData {
     email: string;
     role: UserRole;
-    createdAt: string;
+    createdAt?: string;
     lastLogin?: string;
 }
 
 /**
- * Obtiene el rol de un usuario desde Firestore
+ * Obtener el rol de un usuario por su ID.
  */
 export const getUserRole = async (userId: string): Promise<UserRole> => {
     try {
-        const userDoc = await getDoc(doc(db, 'users', userId));
-
-        if (userDoc.exists()) {
-            const data = userDoc.data() as UserRoleData;
-            return data.role || 'cajero'; // Default: cajero
-        }
-
-        // Si no existe, retorna cajero por defecto
-        return 'cajero';
+        const { data, error } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle();
+        if (error) throw error;
+        return (data?.role as UserRole) || 'cajero';
     } catch (error) {
-        console.error('Error obteniendo rol de usuario:', error);
-        return 'cajero'; // En caso de error, default cajero
+        console.error('Error getting user role:', error);
+        return 'cajero';
     }
 };
 
 /**
- * Asigna un rol a un usuario en Firestore
+ * Establecer el rol de un usuario.
  */
-export const setUserRole = async (
-    userId: string,
-    email: string,
-    role: UserRole
-): Promise<void> => {
+export const setUserRole = async (userId: string, email: string, role: UserRole): Promise<void> => {
     try {
-        const userData: UserRoleData = {
-            email,
-            role,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-        };
-
-        await setDoc(doc(db, 'users', userId), userData, { merge: true });
-        console.log(`✅ Rol asignado: ${email} -> ${role}`);
+        const { error } = await supabase
+            .from('user_roles')
+            .upsert({
+                id: userId,
+                email,
+                role,
+                created_at: new Date().toISOString(),
+            }, { onConflict: 'id' });
+        if (error) throw error;
     } catch (error) {
-        console.error('Error asignando rol:', error);
+        console.error('Error setting user role:', error);
         throw error;
     }
 };
 
 /**
- * Actualiza el último login del usuario
+ * Actualizar la fecha de último login.
  */
 export const updateLastLogin = async (userId: string): Promise<void> => {
     try {
-        await setDoc(
-            doc(db, 'users', userId),
-            { lastLogin: new Date().toISOString() },
-            { merge: true }
-        );
+        const { error } = await supabase
+            .from('user_roles')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', userId);
+        if (error) throw error;
     } catch (error) {
-        console.error('Error actualizando último login:', error);
+        console.error('Error updating last login:', error);
     }
 };
 
 /**
- * Define los emails de administradores
- * Puedes modificar esta lista para agregar más admins
+ * Verificar si un email es admin por defecto.
  */
-const ADMIN_EMAILS = [
-    'admin@flowtrack.com',
-    'david@flowtrack.com',
-    // Agrega aquí los emails de los administradores
-];
+export const isDefaultAdmin = (email: string): boolean => {
+    return DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase());
+};
 
 /**
- * Determina si un email debe ser admin por defecto
+ * Obtener el rol de un usuario por email.
  */
-export const isAdminEmail = (email: string): boolean => {
-    return ADMIN_EMAILS.includes(email.toLowerCase());
+export const getUserRoleByEmail = async (email: string): Promise<UserRole> => {
+    try {
+        if (isDefaultAdmin(email)) return 'admin';
+        const { data, error } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('email', email)
+            .maybeSingle();
+        if (error) throw error;
+        return (data?.role as UserRole) || 'cajero';
+    } catch (error) {
+        console.error('Error getting role by email:', error);
+        return 'cajero';
+    }
 };

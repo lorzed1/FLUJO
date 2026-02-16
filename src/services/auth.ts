@@ -1,13 +1,7 @@
-import {
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signOut
-} from 'firebase/auth';
-import { auth } from './firebase';
-
 /**
  * Sistema de autenticación local con gestión dinámica de usuarios
  * Los usuarios se persisten en localStorage
+ * Autenticación local con gestión dinámica de usuarios
  */
 
 export type UserRole = 'admin' | 'cajero';
@@ -53,9 +47,6 @@ const DEFAULT_USERS: LocalUser[] = [
 // ============================================
 const SESSION_KEY = 'flowtrack_session';
 const USERS_KEY = 'flowtrack_users';
-
-// Helper: Convert username to email for Firebase
-const getEmail = (username: string) => `${username.toLowerCase().replace(/\s+/g, '')}@flowtrack.app`;
 
 // ============================================
 // GESTIÓN DE USUARIOS EN LOCALSTORAGE
@@ -218,8 +209,8 @@ export const validateCredentials = (username: string, password: string): LocalUs
 };
 
 /**
- * Inicia sesión con Firebase Y localmente
- * Esto permite usar reglas de seguridad "privadas" (request.auth != null)
+ * Inicia sesión localmente
+ * Autenticación puramente local
  */
 export const loginLocal = async (username: string, password: string): Promise<AuthSession | null> => {
     // 1. Validar contra base de datos local (roles, existencia)
@@ -230,49 +221,9 @@ export const loginLocal = async (username: string, password: string): Promise<Au
         return null;
     }
 
-    try {
-        const email = getEmail(username);
-        console.log(`🔐 Autenticando en Firebase como ${email}...`);
+    console.log(`🔐 Login exitoso para: ${username}`);
 
-        // 2. Intentar login en Firebase
-        await signInWithEmailAndPassword(auth, email, password);
-        console.log('✅ Firebase Login: Éxito');
-
-    } catch (error: any) {
-        const errorCode = error.code;
-        const email = getEmail(username);
-
-        // Si el usuario no existe en Firebase, lo creamos automáticamente
-        if (errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-credential' || errorCode === 'auth/invalid-login-credentials') {
-            console.log('⚠️ Usuario no encontrado en Firebase. Intentando registrar...');
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                console.log('✅ Usuario registrado y logueado en Firebase');
-            } catch (createError: any) {
-                console.error('❌ Error creando usuario en Firebase:', createError);
-                // Si falla la creación (ej. contraseña débil com admin123 para firebase, aunque admin123 suele pasar si es >6 chars)
-                // Nota: Firebase pide min 6 caracteres.
-                if (createError.code === 'auth/weak-password') {
-                    alert('La contraseña es muy débil para Firebase (mínimo 6 caracteres). Por favor cámbiala localmente.');
-                }
-                throw createError;
-            }
-        }
-        else if (errorCode === 'auth/wrong-password') {
-            console.error('❌ Contraseña incorrecta en Firebase');
-            return null;
-        }
-        else {
-            console.error('❌ Error desconocido en Firebase Auth:', error);
-            // Si el error es "auth/operation-not-allowed", el usuario debe habilitar Email/Password en consola
-            if (errorCode === 'auth/operation-not-allowed') {
-                alert('⚠️ IMPORTANTE: Debes habilitar "Correo electrónico/Contraseña" en la pestaña Authentication de Firebase Console.');
-            }
-            throw error;
-        }
-    }
-
-    // 3. Crear sesión local
+    // 2. Crear sesión local
     const session: AuthSession = {
         username: user.username,
         role: user.role,
@@ -309,14 +260,9 @@ export const isAuthenticated = (): boolean => {
 };
 
 /**
- * Cierra la sesión actual (Firebase y Local)
+ * Cierra la sesión actual
  */
 export const logoutLocal = async (): Promise<void> => {
-    try {
-        await signOut(auth);
-    } catch (e) {
-        console.warn('Error al cerrar sesión de Firebase', e);
-    }
     localStorage.removeItem(SESSION_KEY);
     console.log('👋 Sesión cerrada');
 };

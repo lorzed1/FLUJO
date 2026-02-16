@@ -22,7 +22,7 @@ import {
     ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import { BudgetCommitment } from '../../../types/budget';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 import { useUI } from '../../../context/UIContext';
 import { BudgetContextType } from '../layouts/BudgetLayout';
 

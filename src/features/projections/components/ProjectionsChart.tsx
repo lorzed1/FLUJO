@@ -35,6 +35,7 @@ export const ProjectionsChart: React.FC<ProjectionsChartProps> = ({
     const data = useMemo(() => {
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
+        // Visualmente mostramos solo el mes actual, sin relleno de semanas completas
         const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
         return days.map(day => {

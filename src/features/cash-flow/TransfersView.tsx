@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TransferRecord } from '../../types';
-import { FirestoreService } from '../../services/firestore';
+import { DatabaseService } from '../../services/database';
 import { ArrowPathIcon, BanknotesIcon } from '../../components/ui/Icons';
 import { SmartDataTable, Column } from '../../components/ui/SmartDataTable';
 import { formatCOP } from '../../components/ui/Input';
@@ -16,7 +16,7 @@ const TransfersView: React.FC = () => {
     const loadTransfers = async () => {
         setIsLoading(true);
         try {
-            const data = await FirestoreService.getTransfers();
+            const data = await DatabaseService.getTransfers();
             console.log('📊 TransfersView: Datos brutos de Firestore:', data);
 
             // User Request: Sanitizar registros
@@ -59,7 +59,7 @@ const TransfersView: React.FC = () => {
             confirmText: 'Eliminar',
             onConfirm: async () => {
                 try {
-                    await FirestoreService.deleteTransfer(id);
+                    await DatabaseService.deleteTransfer(id);
                     setTransfers(prev => prev.filter(t => t.id !== id));
                     setAlertModal({ isOpen: false, message: '' });
                 } catch (err) {
@@ -79,7 +79,7 @@ const TransfersView: React.FC = () => {
             confirmText: 'Eliminar',
             onConfirm: async () => {
                 try {
-                    await Promise.all(Array.from(ids).map(id => FirestoreService.deleteTransfer(id)));
+                    await Promise.all(Array.from(ids).map(id => DatabaseService.deleteTransfer(id)));
                     setTransfers(prev => prev.filter(t => !ids.has(t.id)));
                     setSelectedIds(new Set()); // Clear selection
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registros eliminados.' });

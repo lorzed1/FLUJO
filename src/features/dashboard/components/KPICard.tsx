@@ -1,0 +1,50 @@
+import React, { ReactNode } from 'react';
+import { Card } from '../../../components/ui/Card';
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../../../components/ui/Icons';
+
+export interface KPICardProps {
+    label: string;
+    value: string | number;
+    vsLastMonth?: number;
+    vsLastYear?: number;
+    icon: ReactNode;
+    colorClass: string;
+    compact?: boolean;
+}
+
+export const KPICard: React.FC<KPICardProps> = ({ label, value, vsLastMonth, vsLastYear, icon, colorClass, compact = false }) => {
+    return (
+        <Card className="hover:shadow-md transition-all duration-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 relative overflow-hidden group bg-white dark:bg-slate-800" noPadding={false}>
+            {/* Background decoration */}
+            <div className="absolute -right-6 -top-6 w-32 h-32 bg-gradient-to-br from-slate-50 to-transparent dark:from-slate-700/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+            <div className="relative z-10">
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5">{label}</p>
+                        <p className={`${compact ? 'text-xl' : 'text-2xl'} font-bold text-slate-900 dark:text-slate-100 truncate`}>{value}</p>
+                    </div>
+                    <div className={`p-2.5 rounded-lg ${colorClass} bg-opacity-10 shadow-sm`}>
+                        {icon}
+                    </div>
+                </div>
+
+                {(vsLastMonth !== undefined || vsLastYear !== undefined) && (
+                    <div className="flex gap-2 text-xs">
+                        {vsLastMonth !== undefined && (
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium ${vsLastMonth >= 0 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                                {vsLastMonth >= 0 ? <ArrowTrendingUpIcon className="w-3.5 h-3.5" /> : <ArrowTrendingDownIcon className="w-3.5 h-3.5" />}
+                                <span>{Math.abs(vsLastMonth).toFixed(1)}% vs mes ant.</span>
+                            </div>
+                        )}
+                        {vsLastYear !== undefined && (
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-medium ${vsLastYear >= 0 ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'}`}>
+                                <span>{Math.abs(vsLastYear).toFixed(1)}% vs año ant.</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+};

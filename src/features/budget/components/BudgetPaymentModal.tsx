@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useUI } from '../../../context/UIContext';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
-import { useApp } from '../../../context/AppContext';
+
 import { format } from 'date-fns';
 
 import { XMarkIcon, CheckCircleIcon, BanknotesIcon } from '@heroicons/react/24/outline';
@@ -40,15 +40,36 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
 
         setIsLoading(true);
         try {
-            await budgetService.updateCommitment(commitment.id, {
-                status: 'paid',
-                paidDate: date,
-                amount: Number(amount) // Update amount in case it was changed during payment
-            });
+            if (commitment.id.startsWith('projected-')) {
+                // Es una proyección virtual -> Materializar como real
+                await budgetService.addCommitment({
+                    title: commitment.title,
+                    amount: Number(amount),
+                    category: commitment.category,
+                    dueDate: commitment.dueDate,
+                    status: 'paid',
+                    paidDate: date,
+                    recurrenceRuleId: commitment.recurrenceRuleId,
+                    // Ya no es proyectado por definición
+                });
+            } else {
+                // Es un compromiso real -> Actualizar
+                await budgetService.updateCommitment(commitment.id, {
+                    status: 'paid',
+                    paidDate: date,
+                    amount: Number(amount)
+                });
+            }
             onSuccess?.();
             onClose();
         } catch (error) {
             console.error("Payment failed", error);
+            setAlertModal({
+                isOpen: true,
+                type: 'error',
+                title: 'Error de Pago',
+                message: 'No se pudo registrar el pago.'
+            });
         } finally {
             setIsLoading(false);
         }

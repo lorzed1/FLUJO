@@ -1,0 +1,65 @@
+/* react-grid-layout styles */
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+.react-grid-item {
+  transition: all 200ms ease, opacity 0s;
+  transition-property: left, top, width, height;
+}
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+.react-grid-item.resizing {
+  z-index: 100;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+.react-grid-item.react-grid-placeholder {
+  background: rgba(99, 102, 241, 0.2); /* Indigo-ish placeholder */
+  opacity: 0.5;
+  z-index: 2;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+  border-radius: 0.75rem; /* rounded-xl consistent with app */
+}
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+  z-index: 20;
+}
+
+/* Custom handle icon */
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(156, 163, 175, 0.5);
+  border-bottom: 2px solid rgba(156, 163, 175, 0.5);
+}
+
+/* Disable selection while dragging */
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 100;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  cursor: grabbing !important;
+}
+
+/* Grid Layout Bg pattern (optional for edit mode) */
+.grid-edit-mode {
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.dark .grid-edit-mode {
+  background-image: radial-gradient(#334155 1px, transparent 1px);
+}

@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ProjectionsDashboardPage } from './pages/ProjectionsDashboardPage';
 import { ProjectionsDatabasePage } from './pages/ProjectionsDatabasePage';
+import { EquilibriumDatabasePage } from './pages/EquilibriumDatabasePage';
 
 export const ProjectionsView: React.FC = () => {
     const {
@@ -105,6 +106,13 @@ export const ProjectionsView: React.FC = () => {
                             storedProjections={projections}
                             realSales={realSales}
                             loading={loading}
+                        />
+                    } />
+
+                    <Route path="equilibrium" element={
+                        <EquilibriumDatabasePage
+                            currentDate={currentDate}
+                            realSales={realSales}
                         />
                     } />
 

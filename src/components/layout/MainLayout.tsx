@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../Sidebar';
 import { TopBar } from './TopBar';
 import { useAuth } from '../../context/AuthContext';
-import { useApp } from '../../context/AppContext';
+import { useData } from '../../context/DataContext';
 import { useUI } from '../../context/UIContext';
 import PageLoader from '../ui/PageLoader';
 import AlertModal from '../ui/AlertModal';
@@ -12,7 +12,7 @@ type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections';
 
 const MainLayout: React.FC = () => {
     const { userName, userRole, handleLogout } = useAuth();
-    const { handleExport, handleImport } = useApp();
+    const { handleExport, handleImport } = useData();
     const { alertModal, setAlertModal } = useUI();
 
     const location = useLocation();
@@ -46,7 +46,7 @@ const MainLayout: React.FC = () => {
             <div className="flex-1 flex flex-col h-full w-full min-w-0 transition-all duration-300">
                 <TopBar />
 
-                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 bg-gray-50/50 scroll-smooth">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-0 sm:p-4 lg:p-6 bg-gray-50/50 scroll-smooth">
                     <Suspense fallback={<PageLoader />}>
                         <Outlet />
                     </Suspense>

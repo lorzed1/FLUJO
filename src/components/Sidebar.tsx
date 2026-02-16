@@ -93,7 +93,6 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       roles: ['admin', 'cajero'],
       path: '/arqueo',
       children: [
-        { id: 'arqueo-calculadora', label: 'Calculadora', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/calculadora' },
         { id: 'arqueo-form', label: 'Formulario Diarios', icon: <ClipboardDocumentListIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/form' },
         { id: 'arqueo-transfers', label: 'Transferencias', icon: <ArrowRightOnRectangleIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/transfers' },
         { id: 'arqueo-history', label: 'Historial Cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/history' },
@@ -123,6 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       path: '/projections',
       children: [
         { id: 'projections-dashboard', label: 'Dashboard', icon: <PresentationChartLineIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/dashboard' },
+        { id: 'projections-equilibrium', label: 'BD Proyección Eq.', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/equilibrium' },
         { id: 'projections-database', label: 'Base de Datos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/database' },
       ]
     },
@@ -266,8 +266,8 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                     onConfirm: async () => {
                       setAlertModal({ isOpen: false, message: '' });
                       try {
-                        const { FirestoreService } = await import('../services/firestore');
-                        await FirestoreService.resetSystemData();
+                        const { DatabaseService } = await import('../services/database');
+                        await DatabaseService.resetSystemData();
                         window.location.reload();
                       } catch (e) {
                         setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: String(e) });

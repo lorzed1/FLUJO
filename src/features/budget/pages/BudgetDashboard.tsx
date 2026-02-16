@@ -7,14 +7,15 @@ import {
     CalendarDaysIcon
 } from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, differenceInCalendarDays, subMonths, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useApp } from '../../../context/AppContext';
+import { useData } from '../../../context/DataContext';
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PresentationChartLineIcon, PlusIcon } from '../../../components/ui/Icons';
+import { GhostBuster } from '../components/GhostBuster';
 
 const getBarColor = (dayData: any) => {
     // Simple logic: if mostly paid, green. If mostly overdue, red. 
@@ -26,7 +27,7 @@ const getBarColor = (dayData: any) => {
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 export const BudgetDashboard: React.FC = () => {
-    const { categories } = useApp();
+    const { categories, transactions } = useData();
     const { openForm } = useBudgetContext();
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
@@ -39,6 +40,7 @@ export const BudgetDashboard: React.FC = () => {
     };
 
     // --- Data Loading on Month Change ---
+
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
@@ -47,10 +49,40 @@ export const BudgetDashboard: React.FC = () => {
                 const start = startOfMonth(selectedMonth);
                 const end = endOfMonth(selectedMonth);
 
-                const data = await budgetService.getCommitments(
+                let data = await budgetService.getCommitments(
                     format(start, 'yyyy-MM-dd'),
                     format(end, 'yyyy-MM-dd')
                 );
+
+                // --- FALLBACK LOGIC ---
+                // Si no hay compromisos de presupuesto específicos, usar las transacciones reales históricas
+                // para que el dashboard no se vea vacío.
+                if (data.length === 0 && textIsDataLoaded()) {
+                    console.log('⚠️ BudgetDashboard: Usando transacciones como fallback.');
+                    const fallbackData = transactions
+                        .filter(t => {
+                            const d = parseISO(t.date);
+                            return isWithinInterval(d, { start, end });
+                        })
+                        .map(t => ({
+                            id: t.id,
+                            title: t.description || 'Transacción',
+                            amount: t.amount,
+                            dueDate: t.date,
+                            status: 'paid', // All historical transactions are paid
+                            paidDate: t.date,
+                            category: t.categoryId,
+                            description: 'Historical fallback',
+                            isProjected: false,
+                            createdAt: 0,
+                            updatedAt: 0
+                        } as BudgetCommitment));
+
+                    if (fallbackData.length > 0) {
+                        data = fallbackData;
+                    }
+                }
+
                 setCommitments(data);
             } catch (error) {
                 console.error("Error loading dashboard data:", error);
@@ -59,7 +91,10 @@ export const BudgetDashboard: React.FC = () => {
             }
         };
         loadData();
-    }, [selectedMonth]);
+    }, [selectedMonth, transactions]); // Add transactions dependency
+
+    // Helper to check if transactions actully loaded
+    const textIsDataLoaded = () => transactions.length > 0;
 
     // --- Overdue Logic (Global Context) ---
     const [overdueItems, setOverdueItems] = useState<BudgetCommitment[]>([]);
@@ -241,10 +276,17 @@ export const BudgetDashboard: React.FC = () => {
 
 
 
-    if (isLoading) return <div className="p-6">Cargando tablero...</div>;
+    if (isLoading) return (
+        <div className="flex h-full items-center justify-center p-6">
+            <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+                <p className="text-sm font-medium text-slate-500 animate-pulse">Cargando tablero...</p>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto custom-scrollbar pr-2 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto custom-scrollbar pr-2 pb-20 animate-in fade-in zoom-in-95 duration-500">
             <div className="lg:col-span-3">
                 <PageHeader
                     title="Control Presupuestal"
@@ -300,7 +342,7 @@ export const BudgetDashboard: React.FC = () => {
             </div>
 
             {/* Main Chart */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+            <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 dark:border-slate-700">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Gastos por Semana ({format(selectedMonth, 'MMMM yyyy', { locale: es })})</h3>
                 <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
@@ -394,7 +436,7 @@ export const BudgetDashboard: React.FC = () => {
                 </div>
             </div>
             {/* Category Pie Chart - New Row */}
-            < div className="lg:col-span-3 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700" >
+            <div className="lg:col-span-3 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 dark:border-slate-700">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Distribución por Categoría</h3>
                 <div className="h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -455,175 +497,6 @@ export const BudgetDashboard: React.FC = () => {
                 <GhostBuster />
             </div>
 
-        </div >
-    );
-};
-
-// Componente auxiliar para listar y borrar todo
-const GhostBuster = () => {
-    const [allRecords, setAllRecords] = useState<BudgetCommitment[]>([]);
-    const [loading, setLoading] = useState(false);
-
-    const loadAll = async () => {
-        setLoading(true);
-        try {
-            // Sin argumentos trae TODO lo que haya en la colección (ordenado por fecha)
-            // Esto confirmará si hay registros "fantasmas" fuera de rango
-            const data = await budgetService.getCommitments();
-            setAllRecords(data);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const deleteRecord = async (id: string) => {
-        if (!confirm('¿Eliminar este registro permanentemente?')) return;
-        try {
-            await budgetService.deleteCommitment(id); // Asumiendo que existe deleteCommitment, si no, lo agregamos
-            loadAll(); // Recargar
-        } catch (e) {
-            alert('Error al eliminar');
-        }
-    };
-
-    useEffect(() => {
-        loadAll();
-    }, []);
-
-    return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <span className="font-bold">Total Registros Encontrados: {allRecords.length}</span>
-                <button onClick={loadAll} className="px-3 py-1 bg-slate-200 rounded hover:bg-slate-300 text-xs">Actualizar</button>
-            </div>
-
-            <div className="max-h-96 overflow-y-auto bg-white dark:bg-black rounded border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 uppercase">
-                        <tr>
-                            <th className="p-2 text-center">Fecha</th>
-                            <th className="p-2 text-center">Título</th>
-                            <th className="p-2 text-center">Monto</th>
-                            <th className="p-2 text-center">Estado</th>
-                            <th className="p-2 text-center">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? (
-                            <tr><td colSpan={5} className="p-4 text-center">Escaneando base de datos...</td></tr>
-                        ) : allRecords.length === 0 ? (
-                            <tr><td colSpan={5} className="p-4 text-center text-green-600 font-bold">¡Base de datos limpia! No hay registros.</td></tr>
-                        ) : (
-                            allRecords.map(rec => (
-                                <tr key={rec.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
-                                    <td className="p-2 font-mono">{rec.dueDate}</td>
-                                    <td className="p-2">{rec.title}</td>
-                                    <td className="p-2">${rec.amount.toLocaleString()}</td>
-                                    <td className={`p-2 font-bold ${rec.status === 'paid' ? 'text-green-500' : 'text-red-500'}`}>
-                                        {rec.status}
-                                    </td>
-                                    <td className="p-2">
-                                        <button
-                                            onClick={() => deleteRecord(rec.id)}
-                                            className="text-red-600 hover:underline hover:bg-red-50 px-2 py-1 rounded"
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* --- MONITOR DE REGLAS --- */}
-            <hr className="my-4 border-slate-300 dark:border-slate-700" />
-
-            <div className="flex justify-between items-center">
-                <span className="font-bold flex items-center gap-2">
-                    <span role="img" aria-label="shield">🛡️</span> Monitor de Reglas Recurrentes
-                </span>
-            </div>
-
-            <RulesBuster />
-        </div >
-    );
-};
-
-// Sub-componente para Reglas
-const RulesBuster = () => {
-    const [rules, setRules] = useState<any[]>([]);
-
-    const loadRules = async () => {
-        try {
-            const data = await budgetService.getRecurrenceRules();
-            setRules(data);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const deleteRule = async (id: string, name: string) => {
-        if (!confirm(`¿Eliminar la regla "${name}"? Dejará de crear gastos futuros.`)) return;
-        try {
-            await budgetService.deleteRecurrenceRule(id);
-            loadRules(); // Recargar
-        } catch (e) {
-            alert('Error al eliminar regla');
-        }
-    };
-
-    useEffect(() => { loadRules(); }, []);
-
-    return (
-        <div className="max-h-60 overflow-y-auto bg-white dark:bg-black rounded border border-slate-200 dark:border-slate-800 mt-2">
-            <table className="w-full text-xs text-left">
-                <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 uppercase">
-                    <tr>
-                        <th className="p-2 text-center">Estado</th>
-                        <th className="p-2 text-center">Regla (Nombre)</th>
-                        <th className="p-2 text-center">Monto Base</th>
-                        <th className="p-2 text-center">Frecuencia</th>
-                        <th className="p-2 text-center">Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rules.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-slate-500">No hay reglas recurrentes activas.</td></tr>
-                    ) : (
-                        rules.map(r => {
-                            const name = r.title || r.baseTitle;
-                            const amount = r.amount !== undefined ? r.amount : r.baseAmount;
-                            const isHealthy = name && amount !== undefined;
-
-                            return (
-                                <tr key={r.id} className="border-b border-slate-100 dark:border-slate-800">
-                                    <td className="p-2">
-                                        {isHealthy ?
-                                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">✓ Sana</span> :
-                                            <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">⚠️ Error</span>
-                                        }
-                                    </td>
-                                    <td className="p-2 font-bold">{name || 'Sin Nombre'}</td>
-                                    <td className="p-2">${(amount || 0).toLocaleString()}</td>
-                                    <td className="p-2">{r.frequency} (Día {r.dayToSend || r.dayOfMonth || '?'})</td>
-                                    <td className="p-2">
-                                        <button
-                                            onClick={() => deleteRule(r.id, name || 'Desconocida')}
-                                            className="text-slate-500 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors"
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
         </div>
     );
 };

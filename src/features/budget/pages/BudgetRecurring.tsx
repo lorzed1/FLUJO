@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
-import { budgetService } from '../../../services/budgetService';
+import { budgetService } from '../../../services/budget';
 import { RecurrenceRule } from '../../../types/budget';
 import { ArrowPathIcon, TrashIcon, PencilSquareIcon, PlusIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../../components/layout/PageHeader';

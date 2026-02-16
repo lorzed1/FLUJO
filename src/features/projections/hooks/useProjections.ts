@@ -3,10 +3,10 @@ import { SalesEvent, SalesProjection, ArqueoRecord } from '../../../types';
 import { projectionsService } from '../../../services/projectionsService';
 import { calculateDailyProjection, ProjectionResult, ProjectionOptions } from '../../../utils/projections';
 import { startOfMonth, endOfMonth, format, addMonths, subMonths, getDay, addDays } from 'date-fns';
-import { useApp } from '../../../context/AppContext';
+import { useArqueos } from '../../../context/ArqueoContext';
 
 export const useProjections = () => {
-    const { arqueos } = useApp(); // Need historical data
+    const { arqueos } = useArqueos(); // Need historical data
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState<SalesEvent[]>([]);
     const [projections, setProjections] = useState<Record<string, SalesProjection>>({});
@@ -33,11 +33,11 @@ export const useProjections = () => {
             const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
             // 1. Fetch Events
-            const monthEvents = await projectionsService.getEvents(start, end);
+            const monthEvents = await projectionsService.getSalesEvents(start, end);
             setEvents(monthEvents);
 
             // 2. Fetch Stored Projections (Metas manuales/bloqueadas)
-            const stored = await projectionsService.getProjectionsRange(start, end);
+            const stored = await projectionsService.getSalesProjections(start, end);
             const storedMap = stored.reduce((acc, p) => ({ ...acc, [p.date]: p }), {});
             setProjections(storedMap);
 
@@ -47,7 +47,7 @@ export const useProjections = () => {
             // Optimization: Fetch all events once? Or fetch past events on demand?
             // For now, let's assume we fetch all events or a large enough window if performance allows.
             // Let's just fetch ALL events for simplicity in the prototype phase as data volume is low.
-            const allEvents = await projectionsService.getEvents();
+            const allEvents = await projectionsService.getSalesEvents();
 
             const results: Record<string, ProjectionResult> = {};
 
@@ -83,17 +83,17 @@ export const useProjections = () => {
 
     // Actions
     const addEvent = async (event: Omit<SalesEvent, 'id'>) => {
-        await projectionsService.addEvent(event);
+        await projectionsService.addSalesEvent(event);
         loadMonthData(); // Reload
     };
 
     const updateEvent = async (id: string, updates: Partial<SalesEvent>) => {
-        await projectionsService.updateEvent(id, updates);
+        await projectionsService.updateSalesEvent(id, updates);
         loadMonthData();
     };
 
     const deleteEvent = async (id: string) => {
-        await projectionsService.deleteEvent(id);
+        await projectionsService.deleteSalesEvent(id);
         loadMonthData();
     };
 
@@ -108,7 +108,7 @@ export const useProjections = () => {
             notes: existing?.notes
         };
 
-        await projectionsService.saveProjection(projection);
+        await projectionsService.saveSalesProjection(projection);
 
         // Update local state optimistic
         setProjections(prev => ({
@@ -129,14 +129,14 @@ export const useProjections = () => {
             // Optimization: Fetch all events for the year first
             const start = `${year}-01-01`;
             const end = `${year}-12-31`;
-            const existingEvents = await projectionsService.getEvents(start, end);
+            const existingEvents = await projectionsService.getSalesEvents(start, end);
             const existingMap = new Set(existingEvents.map(e => `${e.date}|${e.name}`)); // Simple signature
 
             const toAdd = holidays.filter(h => !existingMap.has(`${h.date}|${h.name}`));
 
             if (toAdd.length === 0) return 0;
 
-            const promises = toAdd.map(h => projectionsService.addEvent({
+            const promises = toAdd.map(h => projectionsService.addSalesEvent({
                 date: h.date,
                 name: h.name,
                 type: 'boost', // Default holidays as boost? Or neutral? Usually boost for restaurants
@@ -187,14 +187,14 @@ export const useProjections = () => {
             // Filter existing
             const start = `${year}-01-01`;
             const end = `${year}-12-31`;
-            const existingEvents = await projectionsService.getEvents(start, end);
+            const existingEvents = await projectionsService.getSalesEvents(start, end);
             const existingMap = new Set(existingEvents.map(e => `${e.date}`)); // Solo por fecha para no duplicar boosts
 
             const toAdd = paydays.filter(p => !existingMap.has(p.date));
 
             if (toAdd.length === 0) return 0;
 
-            const promises = toAdd.map(p => projectionsService.addEvent({
+            const promises = toAdd.map(p => projectionsService.addSalesEvent({
                 date: p.date,
                 name: p.name,
                 type: 'boost',
@@ -217,14 +217,33 @@ export const useProjections = () => {
         const salesMap: Record<string, number> = {};
         if (arqueos) {
             arqueos.forEach(r => {
-                // Use Venta SC (Sin Cover) if available, otherwise calculate it
-                const cover = r.ingresoCovers || 0;
-                // Si venta_sc existe úsala, sinó ventaBruta - covers
-                const val = (r.venta_sc !== undefined && r.venta_sc !== null)
-                    ? r.venta_sc
-                    : (r.ventaBruta - cover);
+                if (!r.fecha) return;
 
-                salesMap[r.fecha] = val;
+                const dateKey = r.fecha.substring(0, 10);
+                let val = 0;
+
+                // Prioridad: venta_sc (campo explícito si existe)
+                if (r.venta_sc !== undefined && r.venta_sc !== null) {
+                    if (typeof r.venta_sc === 'number') {
+                        val = r.venta_sc;
+                    } else if (typeof r.venta_sc === 'string') {
+                        const clean = r.venta_sc.replace(/\./g, '').replace(',', '.');
+                        val = parseFloat(clean) || 0;
+                    }
+                } else {
+                    // Fallback: ventaBruta - ingresoCovers
+                    const bruta = typeof r.ventaBruta === 'string'
+                        ? parseFloat(r.ventaBruta.replace(/\./g, '').replace(',', '.'))
+                        : (r.ventaBruta || 0);
+                    const cover = typeof r.ingresoCovers === 'string'
+                        ? parseFloat(r.ingresoCovers.replace(/\./g, '').replace(',', '.'))
+                        : (r.ingresoCovers || 0);
+
+                    val = bruta - cover;
+                }
+
+                // Acumular si hay múltiples arqueos por día (turnos)
+                salesMap[dateKey] = (salesMap[dateKey] || 0) + val;
             });
         }
         setRealSales(salesMap);
