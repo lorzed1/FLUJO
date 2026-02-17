@@ -29,6 +29,8 @@ import { PaymentDetailModal } from './components/PaymentDetailModal';
 import { ArqueoConfirmationModal } from './components/ArqueoConfirmationModal';
 import { CashCalculator } from './components/CashCalculator';
 import { useArqueoForm, formatCurrencyValue } from './hooks/useArqueoForm';
+import { ArqueoDateSelector } from './components/ArqueoDateSelector';
+
 
 // ============================================
 // Types (re-exported for external consumers)
@@ -53,15 +55,22 @@ const ArqueoPreview: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
+    // --- Date Selection Logic ---
+    const [isDateConfirmed, setIsDateConfirmed] = React.useState(false);
+
     useEffect(() => {
         if (location.pathname.includes('/history')) {
             setActiveTab('historial');
+            setIsDateConfirmed(true);
         } else if (location.pathname.includes('/transfers')) {
             setActiveTab('transferencias');
+            setIsDateConfirmed(true);
         } else {
             setActiveTab('arqueo');
+            setIsDateConfirmed(false); // Reset confirmation for 'arqueo' tab
         }
     }, [location.pathname]);
+
 
     const getPageDetails = () => {
         switch (activeTab) {
@@ -180,6 +189,12 @@ const ArqueoPreview: React.FC = () => {
                 // Reset form on success
                 form.resetForm();
                 setActiveTab('arqueo');
+                // Reset date confirmation to force re-entry for next session if needed, 
+                // or keep it if they want to do another one for same day? 
+                // Usually one per day. Let's keep date confirmed but reset form.
+                // Actually, if they finished, maybe they want to close?
+                // Let's leave isDateConfirmed as is.
+
                 await DatabaseService.autoPurgeOldData();
                 form.setShowConfirmation(false);
             } else {
@@ -192,6 +207,19 @@ const ArqueoPreview: React.FC = () => {
             form.setIsSaving(false);
         }
     };
+
+    // If active tab is 'arqueo' and date is NOT confirmed, show selector
+    if (activeTab === 'arqueo' && !isDateConfirmed) {
+        return (
+            <div className={form.isDarkMode ? 'dark' : ''}>
+                <ArqueoDateSelector
+                    currentDate={form.formData.fecha}
+                    onDateChange={(date) => form.setFormData(prev => ({ ...prev, fecha: date }))}
+                    onConfirm={() => setIsDateConfirmed(true)}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className={form.isDarkMode ? 'dark' : ''}>
@@ -369,8 +397,9 @@ const ArqueoPreview: React.FC = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 <div>
                                     <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Fecha</label>
-                                    <input type="date" name="fecha" value={form.formData.fecha} onChange={form.handleSimpleChange}
-                                        className="w-full py-3 sm:py-2.5 px-3 text-base sm:text-sm rounded-xl border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-gray-900 dark:text-white dark:bg-slate-700 shadow-sm transition-all"
+                                    <input type="date" name="fecha" value={form.formData.fecha}
+                                        readOnly
+                                        className="w-full py-3 sm:py-2.5 px-3 text-base sm:text-sm rounded-xl border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-slate-800 shadow-sm transition-all cursor-not-allowed"
                                         required />
                                 </div>
                                 <div>
