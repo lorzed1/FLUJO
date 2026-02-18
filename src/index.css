@@ -79,7 +79,7 @@
 
   html,
   body {
-    @apply h-full overflow-hidden bg-background text-foreground;
+    @apply h-full overflow-hidden bg-background text-foreground font-sans;
   }
 }
 

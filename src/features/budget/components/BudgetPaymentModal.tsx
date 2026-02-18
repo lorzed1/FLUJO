@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useUI } from '../../../context/UIContext';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
-
 import { format } from 'date-fns';
-
 import { XMarkIcon, CheckCircleIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { Input } from '../../../components/ui/Input';
+import { Button } from '../../../components/ui/Button';
 
 interface BudgetPaymentModalProps {
     isOpen: boolean;
@@ -41,7 +40,6 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
         setIsLoading(true);
         try {
             if (commitment.id.startsWith('projected-')) {
-                // Es una proyección virtual -> Materializar como real
                 await budgetService.addCommitment({
                     title: commitment.title,
                     amount: Number(amount),
@@ -50,10 +48,8 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
                     status: 'paid',
                     paidDate: date,
                     recurrenceRuleId: commitment.recurrenceRuleId,
-                    // Ya no es proyectado por definición
                 });
             } else {
-                // Es un compromiso real -> Actualizar
                 await budgetService.updateCommitment(commitment.id, {
                     status: 'paid',
                     paidDate: date,
@@ -77,64 +73,82 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
 
     if (!isOpen || !commitment) return null;
 
+    const FormLabel = ({ children }: { children: React.ReactNode }) => (
+        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
+            {children}
+        </label>
+    );
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4" onClick={onClose}>
+            <div
+                className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header Block */}
+                <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <BanknotesIcon className="w-4 h-4 text-emerald-600" />
+                        Confirmación de Pago
+                    </h3>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1"
+                    >
+                        <XMarkIcon className="w-4 h-4" />
+                    </button>
+                </div>
+
                 <div className="p-6">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <BanknotesIcon className="w-6 h-6 text-emerald-600" />
-                                Registrar Pago
-                            </h3>
-                            <p className="text-sm text-slate-500 mt-1">
-                                {commitment.title}
-                            </p>
-                        </div>
-                        <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full transition-colors">
-                            <XMarkIcon className="w-6 h-6 text-slate-400" />
-                        </button>
+                    <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-900/20">
+                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.1em] mb-1">Concepto seleccionado</p>
+                        <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">{commitment.title}</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Monto Pagado</label>
-                            <CurrencyInput
-                                value={amount}
-                                onChange={(val) => setAmount(String(val))}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha de Pago</label>
-                            <Input
-                                type="date"
-                                value={date}
-                                onChange={e => setDate(e.target.value)}
-                                required
-                            />
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="grid grid-cols-1 gap-5">
+                            <div>
+                                <FormLabel>Importe a Liquidar</FormLabel>
+                                <CurrencyInput
+                                    value={amount}
+                                    onChange={(val) => setAmount(String(val))}
+                                    className="!h-10 text-[14px] font-bold !border-gray-200 dark:!border-slate-700"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <FormLabel>Fecha Valor</FormLabel>
+                                <Input
+                                    type="date"
+                                    value={date}
+                                    onChange={e => setDate(e.target.value)}
+                                    className="!h-10 text-[13px] font-medium uppercase tracking-tight"
+                                    required
+                                />
+                            </div>
                         </div>
 
-                        <div className="flex gap-3 pt-4">
-                            <button
+                        <div className="flex gap-3 pt-6 border-t border-gray-50 dark:border-slate-700 mt-2">
+                            <Button
                                 type="button"
+                                variant="secondary"
                                 onClick={onClose}
-                                className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium"
+                                className="flex-1 !h-10 font-bold text-[11px] uppercase tracking-wider"
                             >
                                 Cancelar
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                                className="flex-1 !h-10 !bg-emerald-600 hover:!bg-emerald-700 font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-emerald-100 dark:shadow-none"
                             >
                                 {isLoading ? 'Procesando...' : (
                                     <>
-                                        <CheckCircleIcon className="w-5 h-5" />
-                                        Confirmar Pago
+                                        <CheckCircleIcon className="w-4 h-4 mr-1.5" />
+                                        Efectuar Pago
                                     </>
                                 )}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </div>

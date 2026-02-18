@@ -555,4 +555,33 @@ export class DatabaseService {
     static async autoPurgeOldData(): Promise<number> {
         return 0;
     }
+
+    /**
+     * ⚠️ ZONA DE PELIGRO: Reseteo total de datos (Fábrica)
+     */
+    static async resetSystemData(): Promise<void> {
+        try {
+            console.warn('⚠️ INICIANDO RESET DE FÁBRICA SYSTEM...');
+
+            // 1. Eliminar Arqueos
+            await supabase.from('arqueos').delete().neq('id', 'placeholder');
+
+            // 2. Eliminar Transacciones (incluye transferencias)
+            await supabase.from('transactions').delete().neq('id', 'placeholder');
+
+            // 3. Eliminar Gastos Recurrentes
+            await supabase.from('recurring_expenses').delete().neq('id', 'placeholder');
+
+            // 4. Resetear Settings (excepto claves críticas si las hubiera)
+            await supabase.from('settings').delete().neq('key', 'placeholder');
+
+            // 5. Categorías (Opcional: Si quieres borrar las personalizadas)
+            // await supabase.from('categories').delete().neq('id', 'placeholder');
+
+            console.log('✅ SYSTEM FACTORY RESET COMPLETED');
+        } catch (error) {
+            console.error('❌ Error durante Factory Reset:', error);
+            throw error;
+        }
+    }
 }

@@ -16,6 +16,8 @@ import { useArqueos } from '../../context/ArqueoContext';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { AccountingExportWizard } from './components/AccountingExportWizard';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import ExcelImportTab from './ExcelImportTab';
 import ArqueosTable, { type ArqueosTableHandle } from './ArqueosTable';
 import TransfersView from './TransfersView';
@@ -223,7 +225,7 @@ const ArqueoPreview: React.FC = () => {
 
     return (
         <div className={form.isDarkMode ? 'dark' : ''}>
-            <div className="w-full max-w-full lg:max-w-[98%] mx-auto pb-32 sm:pb-20 overflow-x-hidden min-h-[100dvh] transition-colors duration-300 dark:bg-slate-900">
+            <div className="w-full h-full flex flex-col overflow-x-hidden min-h-[100dvh] transition-colors duration-300 bg-gray-50 dark:bg-slate-900 pb-8 px-4 sm:px-8 lg:px-12">
 
                 {/* Modals */}
                 <PaymentDetailModal
@@ -303,32 +305,59 @@ const ArqueoPreview: React.FC = () => {
 
                 {/* Tab: Historial */}
                 {activeTab === 'historial' && (
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-primary dark:text-blue-400">Historial de Arqueos</h3>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => form.setShowAccountingWizard(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors shadow-sm"
-                                    disabled={arqueos.length === 0}
-                                >
-                                    <ArrowDownTrayIcon className="h-4 w-4" /> Exportar Contabilidad
-                                </button>
-                                <button
-                                    onClick={() => form.setShowImportModal(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-primary dark:text-blue-400 font-bold rounded-lg border border-primary/20 dark:border-blue-400/20 hover:bg-primary/5 dark:hover:bg-blue-400/10 transition-colors shadow-sm"
-                                >
-                                    <ArrowUpTrayIcon className="h-4 w-4" /> Importar Excel
-                                </button>
-                            </div>
+                    <div className="bg-white dark:bg-slate-800 p-0 sm:p-0 rounded-xl shadow-none sm:shadow-sm border-none sm:border border-slate-200 dark:border-slate-700 bg-transparent sm:bg-white">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
+                            <ArqueosTable
+                                ref={tableRef}
+                                arqueos={arqueos}
+                                onUpdate={onUpdateArqueo}
+                                onDelete={onDeleteArqueo}
+                                userRole={userRole}
+                                extraActions={
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => form.setShowAccountingWizard(true)}
+                                            className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 hidden sm:flex"
+                                            disabled={arqueos.length === 0}
+                                        >
+                                            <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                                            Exportar Contabilidad
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => form.setShowImportModal(true)}
+                                            className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 hidden sm:flex"
+                                        >
+                                            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                                            Importar Excel
+                                        </Button>
+
+                                        {/* Mobile Icons Only */}
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => form.setShowAccountingWizard(true)}
+                                            className="h-8 w-8 p-0 sm:hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                                            disabled={arqueos.length === 0}
+                                        >
+                                            <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => form.setShowImportModal(true)}
+                                            className="h-8 w-8 p-0 sm:hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                                        >
+                                            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                }
+                            />
                         </div>
-                        <ArqueosTable
-                            ref={tableRef}
-                            arqueos={arqueos}
-                            onUpdate={onUpdateArqueo}
-                            onDelete={onDeleteArqueo}
-                            userRole={userRole}
-                        />
+
                         <AccountingExportWizard
                             isOpen={form.showAccountingWizard}
                             onClose={() => form.setShowAccountingWizard(false)}
@@ -337,15 +366,15 @@ const ArqueoPreview: React.FC = () => {
 
                         {/* Import Modal */}
                         {form.showImportModal && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[85dvh]">
-                                    <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                        <h3 className="text-xl font-bold text-dark-text dark:text-white flex items-center gap-2">
-                                            <ArrowUpTrayIcon className="h-6 w-6 text-primary" /> Importar Arqueos desde Excel
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[85dvh] animate-in zoom-in-95 duration-200">
+                                    <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <ArrowUpTrayIcon className="h-6 w-6 text-indigo-600" /> Importar Arqueos desde Excel
                                         </h3>
                                         <button
                                             onClick={() => form.setShowImportModal(false)}
-                                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                                         >
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -355,10 +384,10 @@ const ArqueoPreview: React.FC = () => {
                                     <div className="p-4 sm:p-6 overflow-y-auto">
                                         <ExcelImportTab onBatchImport={(rows) => form.handleBatchImport(rows, onSave)} />
                                     </div>
-                                    <div className="p-4 bg-gray-50 dark:bg-slate-900 border-t border-gray-100 dark:border-slate-700 rounded-b-2xl flex justify-end">
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 rounded-b-2xl flex justify-end">
                                         <button
                                             onClick={() => form.setShowImportModal(false)}
-                                            className="px-6 py-2 text-gray-600 dark:text-gray-300 font-semibold hover:text-gray-800 dark:hover:text-white transition-colors"
+                                            className="px-6 py-2 text-slate-600 dark:text-slate-300 font-semibold hover:text-slate-800 dark:hover:text-white transition-colors"
                                         >
                                             Cerrar
                                         </button>
@@ -392,73 +421,74 @@ const ArqueoPreview: React.FC = () => {
                         />
 
                         {/* Info General */}
-                        <div className="bg-white dark:bg-slate-800 p-3 sm:p-6 rounded-none sm:rounded-xl shadow-sm border-y sm:border border-gray-100 dark:border-slate-700">
-                            <h3 className="text-base sm:text-lg font-semibold text-primary dark:text-blue-400 mb-3 sm:mb-4 border-b border-gray-100 dark:border-slate-700 pb-2">Información General</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700">
+                            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-100 dark:border-slate-700 uppercase tracking-wide">Información General</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 <div>
-                                    <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Fecha</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
                                     <input type="date" name="fecha" value={form.formData.fecha}
                                         readOnly
-                                        className="w-full py-3 sm:py-2.5 px-3 text-base sm:text-sm rounded-xl border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-slate-800 shadow-sm transition-all cursor-not-allowed"
+                                        className="w-full h-8 px-3 text-[13px] rounded border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:border-purple-600 text-gray-600 bg-gray-50 dark:bg-slate-700 dark:text-gray-300 shadow-sm transition-all"
                                         required />
                                 </div>
                                 <div>
-                                    <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Cajero</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">Cajero</label>
                                     <input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange}
                                         placeholder="Nombre del responsable"
-                                        className="w-full py-3 sm:py-2.5 px-3 text-base sm:text-sm rounded-xl border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-gray-900 dark:text-white dark:bg-slate-700 shadow-sm transition-all"
+                                        className="w-full h-8 px-3 text-[13px] rounded border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:border-purple-600 text-gray-900 dark:text-white dark:bg-slate-700 shadow-sm transition-all"
                                         required />
                                 </div>
                                 <div>
-                                    <label className="block text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Total Visitas (Personas)</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">Total Visitas</label>
                                     <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
-                                        className="w-full py-3 sm:py-2.5 px-3 text-base sm:text-sm rounded-xl border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-gray-900 dark:text-white dark:bg-slate-700 shadow-sm transition-all"
+                                        className="w-full h-8 px-3 text-[13px] rounded border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:border-purple-600 text-gray-900 dark:text-white dark:bg-slate-700 shadow-sm transition-all"
                                         placeholder="0" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Ventas y Esperado */}
-                        <div className="bg-white dark:bg-slate-800 p-3 sm:p-6 rounded-none sm:rounded-xl shadow-sm border-y sm:border border-gray-100 dark:border-slate-700">
-                            <div className="flex justify-between items-center mb-3 sm:mb-4 border-b border-gray-100 dark:border-slate-700 pb-2">
-                                <h3 className="text-base sm:text-lg font-semibold text-primary dark:text-blue-400">Ventas del Sistema (Esperado)</h3>
-                                <div className="text-right">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold block">Total Esperado (Venta + Propina)</span>
-                                    <span className="text-lg font-bold text-primary dark:text-blue-400">{formatCurrencyValue(form.ventaTotalEsperada)}</span>
+                        <div className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 mt-4">
+                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100 dark:border-slate-700">
+                                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wide">Ventas del Sistema</h3>
+                                <div className="text-right flex items-center gap-3">
+                                    <span className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-bold">Total Esperado</span>
+                                    <span className="text-base font-bold text-purple-600 dark:text-blue-400 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">{formatCurrencyValue(form.ventaTotalEsperada)}</span>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                <CurrencyInput label="Covers (Informativo)" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al Total Esperado" useMonoFont={useMonoFont} />
-                                <CurrencyInput label="Venta POS" name="ventaBruta" value={form.formData.ventaBruta} onChange={form.handleCurrencyChange} sublabel="Venta reportada por el sistema" useMonoFont={useMonoFont} />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <CurrencyInput label="Covers" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al esperado" useMonoFont={useMonoFont} />
+                                <CurrencyInput label="Venta POS (Bruta)" name="ventaBruta" value={form.formData.ventaBruta} onChange={form.handleCurrencyChange} sublabel="Reporte sistema" useMonoFont={useMonoFont} />
                                 <CurrencyInput label="Propina" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
                             </div>
                         </div>
 
                         {/* Medios de Pago */}
-                        <div className="bg-white dark:bg-slate-800 p-3 sm:p-6 rounded-none sm:rounded-xl shadow-sm border-y sm:border border-gray-100 dark:border-slate-700">
-                            <h3 className="text-base sm:text-lg font-semibold text-light-text dark:text-blue-400 mb-3 sm:mb-4 border-b border-gray-100 dark:border-slate-700 pb-2">Medios de Pago (Recaudado)</h3>
-                            <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                                <CurrencyInput label="Efectivo Total" name="efectivo" value={form.formData.efectivo} onChange={form.handleCurrencyChange}
-                                    readOnly={true} onDetailClick={() => form.setIsCalculatorExpanded(true)}
-                                    sublabel={<><TableCellsIcon className="h-4 w-4 inline-block mr-1 text-gray-400" /> Sincronizar desde la calculadora de arriba</>}
-                                    useMonoFont={useMonoFont} />
-                            </div>
-                            <div className="mt-3 sm:mt-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                    <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                    <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                    <CurrencyInput label="Transf. Bancolombia" name="transfBancolombia" value={form.formData.transfBancolombia} onChange={form.handleCurrencyChange}
-                                        onDetailClick={() => form.openDetailModal('transfBancolombia', 'Transf. Bancolombia')} readOnly={true} useMonoFont={useMonoFont} />
-                                    <CurrencyInput label="Nequi" name="nequi" value={form.formData.nequi} onChange={form.handleCurrencyChange}
-                                        onDetailClick={() => form.openDetailModal('nequi', 'Nequi')} readOnly={true} useMonoFont={useMonoFont} />
+                        <div className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 mt-4">
+                            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-100 dark:border-slate-700 uppercase tracking-wide">Recaudo (Medios de Pago)</h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                <div className="lg:col-span-1">
+                                    <CurrencyInput label="Efectivo Total" name="efectivo" value={form.formData.efectivo} onChange={form.handleCurrencyChange}
+                                        readOnly={true} onDetailClick={() => form.setIsCalculatorExpanded(true)}
+                                        sublabel="Sincronizar arriba"
+                                        useMonoFont={useMonoFont} />
                                 </div>
+                                <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
                                 <CurrencyInput label="Rappi" name="rappi" value={form.formData.rappi} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
                             </div>
-                            <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-light-text/10 dark:bg-light-text/5 rounded-lg flex justify-between items-center">
-                                <span className="text-xs sm:text-sm font-semibold text-light-text dark:text-blue-400">Total Recaudado</span>
-                                <span className="text-base sm:text-lg font-bold text-light-text dark:text-blue-400">{formatCurrencyValue(form.totalRecaudado)}</span>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-2 border-b border-gray-50 border-dashed mb-3">
+                                <CurrencyInput label="Transf. Bancolombia" name="transfBancolombia" value={form.formData.transfBancolombia} onChange={form.handleCurrencyChange}
+                                    onDetailClick={() => form.openDetailModal('transfBancolombia', 'Transf. Bancolombia')} readOnly={true} useMonoFont={useMonoFont} />
+                                <CurrencyInput label="Nequi" name="nequi" value={form.formData.nequi} onChange={form.handleCurrencyChange}
+                                    onDetailClick={() => form.openDetailModal('nequi', 'Nequi')} readOnly={true} useMonoFont={useMonoFont} />
+                            </div>
+
+                            <div className="mt-2 flex justify-end items-center gap-4">
+                                <span className="text-xs font-semibold text-gray-500 uppercase">Total Recaudado</span>
+                                <span className="text-lg font-bold text-gray-800 dark:text-white">{formatCurrencyValue(form.totalRecaudado)}</span>
                             </div>
                         </div>
 

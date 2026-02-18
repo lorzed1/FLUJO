@@ -1,8 +1,8 @@
+
 import React from 'react';
 import { ClipboardDocumentListIcon } from '../../../components/ui/Icons';
-import { formatCOP, parseCOP } from '../../../components/ui/Input';
 
-interface CurrencyInputProps {
+export interface CurrencyInputProps {
     label: string;
     name: string;
     value: number;
@@ -15,38 +15,43 @@ interface CurrencyInputProps {
 
 export const CurrencyInput: React.FC<CurrencyInputProps> = ({ label, name, value, onChange, sublabel, readOnly, onDetailClick, useMonoFont = false }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseCOP(e.target.value);
-        onChange(name, val);
+        // Remove non-numeric chars except for formatting if needed, but here we just pass raw
+        const rawValue = e.target.value.replace(/\D/g, '');
+        onChange(name, Number(rawValue));
     };
 
     return (
-        <div>
-            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">{label}</label>
-            <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none text-base sm:text-sm">$</span>
-                <input
-                    type="text"
-                    inputMode="numeric"
-                    name={name}
-                    value={value === 0 ? '' : formatCOP(value)}
-                    onChange={handleChange}
-                    readOnly={readOnly}
-                    className={`w-full pl-7 ${onDetailClick ? 'pr-10' : 'pr-3'} py-3 sm:py-2.5 text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary ${useMonoFont ? 'font-mono' : ''} transition-all shadow-sm ${readOnly ? 'bg-gray-50/80 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-400 font-medium' : 'border-gray-300 dark:border-slate-600 text-gray-900 dark:text-gray-100 bg-white dark:bg-slate-800'}`}
-                    placeholder="0"
-                    autoComplete="off"
-                />
+        <div className="w-full">
+            <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-gray-500 pointer-events-none text-sm">$</span>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        name={name}
+                        value={value === 0 ? '' : new Intl.NumberFormat('es-CO').format(value)}
+                        onChange={handleChange}
+                        readOnly={readOnly}
+                        className={`w-full pl-6 pr-2 py-1.5 text-[13px] rounded border border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:border-purple-600 ${useMonoFont ? 'font-mono' : ''} transition-all shadow-sm h-8 ${readOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : 'bg-white text-gray-900 dark:bg-slate-700 dark:text-white'}`}
+                        placeholder="0"
+                        autoComplete="off"
+                    />
+                </div>
                 {onDetailClick && (
                     <button
                         type="button"
                         onClick={onDetailClick}
-                        className="absolute inset-y-0 right-0 p-3 flex items-center text-primary hover:text-primary/80 transition-colors"
+                        className="bg-purple-600 hover:bg-purple-700 text-white p-1 rounded shadow-sm transition-colors flex items-center justify-center w-8 h-8"
                         title="Ver Detalles"
                     >
-                        <ClipboardDocumentListIcon className="h-6 w-6" />
+                        <ClipboardDocumentListIcon className="h-4 w-4" />
                     </button>
                 )}
             </div>
-            {sublabel && <p className="text-[10px] sm:text-xs text-gray-500 mt-1 pl-1 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-gray-400 inline-block"></span>{sublabel}</p>}
+            {sublabel && (
+                <p className="text-[11px] text-gray-500 mt-0.5 ml-0.5">{sublabel}</p>
+            )}
         </div>
     );
 };

@@ -6,6 +6,7 @@ import { ArrowPathIcon, TrashIcon, PencilSquareIcon, PlusIcon, DocumentDuplicate
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { RecurrenceRuleFormModal } from '../components/RecurrenceRuleFormModal';
 import { useUI } from '../../../context/UIContext';
+import { Button } from '@/components/ui/Button';
 
 export const BudgetRecurring: React.FC = () => {
     const { setAlertModal } = useUI();
@@ -88,10 +89,7 @@ export const BudgetRecurring: React.FC = () => {
 
     const handleSaveRule = async (data: any) => {
         try {
-            // Destructure to remove 'id' from the object sent to Firestore add/update
-            // Firestore throws error if a field is explicitly 'undefined'
             const { id, ...ruleData } = data;
-
             if (id) {
                 await budgetService.updateRecurrenceRule(id, ruleData);
             } else {
@@ -110,14 +108,14 @@ export const BudgetRecurring: React.FC = () => {
             label: 'Descripción',
             sortable: true,
             filterable: true,
-            render: (value: string) => <span className="font-semibold text-slate-700 dark:text-slate-200">{value}</span>
+            render: (value: string) => <span className="font-medium text-[13px] text-gray-900 dark:text-gray-200">{value}</span>
         },
         {
             key: 'amount',
             label: 'Monto',
             sortable: true,
             align: 'text-right' as const,
-            render: (value: number) => <span className="font-mono text-slate-700 dark:text-slate-200">${value.toLocaleString()}</span>
+            render: (value: number) => <span className="font-medium text-[13px] text-gray-900 dark:text-white">${value.toLocaleString()}</span>
         },
         {
             key: 'category',
@@ -125,7 +123,7 @@ export const BudgetRecurring: React.FC = () => {
             sortable: true,
             filterable: true,
             render: (value: string) => (
-                <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-xs font-bold uppercase tracking-wider">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border border-gray-200 bg-gray-50 text-gray-600 uppercase tracking-wide">
                     {value}
                 </span>
             )
@@ -146,7 +144,7 @@ export const BudgetRecurring: React.FC = () => {
                 } else {
                     text = 'Anual';
                 }
-                return <span className="text-sm text-slate-500">{text}</span>;
+                return <span className="text-[13px] text-gray-500 font-normal">{text}</span>;
             }
         },
         {
@@ -154,35 +152,38 @@ export const BudgetRecurring: React.FC = () => {
             label: 'Estado',
             align: 'text-center' as const,
             render: (value: boolean) => (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${value ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                    {value ? 'Activo' : 'Inactivo'}
-                </span>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto ${value ? 'bg-white border-emerald-200' : 'bg-white border-gray-200'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${value ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                    <span className={`text-[11px] font-medium uppercase tracking-wide ${value ? 'text-emerald-700' : 'text-gray-500'}`}>
+                        {value ? 'Activo' : 'Inactivo'}
+                    </span>
+                </div>
             )
         },
         {
             key: 'actions',
             label: '',
-            width: 'w-20',
+            width: 'w-24',
             align: 'text-right' as const,
             render: (_: any, item: RecurrenceRule) => (
                 <div className="flex justify-end gap-1">
                     <button
                         onClick={() => handleDuplicate(item)}
-                        className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
                         title="Duplicar regla"
                     >
                         <DocumentDuplicateIcon className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => handleEdit(item)}
-                        className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                        className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
                         title="Editar regla"
                     >
                         <PencilSquareIcon className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => handleDelete(item.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                        className="p-1 text-gray-400 hover:text-rose-600 transition-colors"
                         title="Eliminar regla"
                     >
                         <TrashIcon className="w-4 h-4" />
@@ -192,6 +193,7 @@ export const BudgetRecurring: React.FC = () => {
         }
     ], []);
 
+    // ... loading state handled same ...
     if (loading) {
         return (
             <div className="flex h-full items-center justify-center text-slate-400">
@@ -246,7 +248,7 @@ export const BudgetRecurring: React.FC = () => {
     };
 
     return (
-        <div className="h-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col p-4">
+        <div className="space-y-6">
             <PageHeader
                 title="Gastos Recurrentes"
                 breadcrumbs={[
@@ -256,45 +258,60 @@ export const BudgetRecurring: React.FC = () => {
                 icon={<ArrowPathIcon className="h-6 w-6" />}
                 actions={
                     <div className="flex gap-2">
-                        <button
+                        <Button
+                            variant="danger"
+                            size="sm"
                             onClick={handleReset}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg text-sm font-bold shadow-sm transition-colors border border-rose-200"
+                            className="bg-white text-rose-600 hover:bg-rose-50 border-rose-200 hover:border-rose-300"
                             title="Borrar todas las reglas y empezar de cero"
                         >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="w-4 h-4 mr-2" />
                             Resetear DB
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="secondary"
                             onClick={handleSeed}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                            className="bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
                         >
-                            <ArrowPathIcon className="w-4 h-4" />
+                            <ArrowPathIcon className="w-4 h-4 mr-2" />
                             Cargar Plantilla
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="primary"
                             onClick={handleCreate}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-bold shadow-sm transition-colors"
                         >
-                            <PlusIcon className="w-4 h-4" />
+                            <PlusIcon className="w-4 h-4 mr-2" />
                             Nueva Regla
-                        </button>
+                        </Button>
                     </div>
                 }
             />
 
-            <SmartDataTable
-                data={rules}
-                columns={columns}
-                enableSearch={true}
-                enableColumnConfig={true}
-                enableExport={true}
-                enableSelection={true}
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                onBulkDelete={handleBulkDelete}
-                searchPlaceholder="Buscar regla..."
-                containerClassName="flex-1 min-h-0"
-            />
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
+                <SmartDataTable
+                    data={rules}
+                    columns={columns}
+                    enableSearch={true}
+                    enableColumnConfig={true}
+                    enableExport={true}
+                    enableSelection={true}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onBulkDelete={handleBulkDelete}
+                    searchPlaceholder="Buscar regla..."
+                    containerClassName="border-none shadow-none"
+                    // Eliminar individual (Selection Actions are handled by SmartDataTable internal logic usually, or customized via props if supported)
+                    renderSelectionActions={(ids) => (
+                        <Button
+                            size="sm"
+                            onClick={() => handleBulkDelete(ids)}
+                            className="bg-rose-600 hover:bg-rose-700 text-white border-none h-7 gap-1.5"
+                        >
+                            <TrashIcon className="h-3 w-3" /> Eliminar ({ids.size})
+                        </Button>
+                    )}
+                />
+            </div>
 
             <RecurrenceRuleFormModal
                 isOpen={isModalOpen}

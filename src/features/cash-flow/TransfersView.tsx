@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TransferRecord } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { ArrowPathIcon, BanknotesIcon } from '../../components/ui/Icons';
+import { ArrowPathIcon, BanknotesIcon, TrashIcon } from '../../components/ui/Icons';
 import { SmartDataTable, Column } from '../../components/ui/SmartDataTable';
 import { formatCOP } from '../../components/ui/Input';
 import { useUI } from '../../context/UIContext';
+import { Button } from '@/components/ui/Button';
 
 const TransfersView: React.FC = () => {
     const { setAlertModal } = useUI();
@@ -96,7 +97,7 @@ const TransfersView: React.FC = () => {
             label: 'Fecha',
             sortable: true,
             filterable: true,
-            render: (val) => <span className="font-medium text-gray-700 dark:text-gray-300">{val || ''}</span>
+            render: (val) => <span className="font-semibold text-[13px] text-gray-700 dark:text-gray-300">{val || ''}</span>
         },
         {
             key: 'type',
@@ -105,16 +106,21 @@ const TransfersView: React.FC = () => {
             filterable: true,
             render: (val) => {
                 const type = (val || 'unknown').toLowerCase();
-                const styles =
-                    type === 'nequi' ? 'bg-pink-100 text-pink-700 border-pink-200' :
-                        type === 'bancolombia' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                            type === 'davivienda' ? 'bg-red-100 text-red-700 border-red-200' :
-                                'bg-gray-100 text-gray-700 border-gray-200';
+
+                // Color dot indicator instead of full badge background
+                const dotColor =
+                    type === 'nequi' ? 'bg-pink-500' :
+                        type === 'bancolombia' ? 'bg-yellow-400' :
+                            type === 'davivienda' ? 'bg-red-500' :
+                                'bg-gray-400';
 
                 return (
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase border ${styles} shadow-sm`}>
-                        {type}
-                    </span>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-gray-200 bg-white dark:bg-slate-700 dark:border-slate-600 shadow-sm">
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                        <span className="text-[11px] font-medium uppercase text-gray-700 dark:text-gray-200 tracking-wide">
+                            {type}
+                        </span>
+                    </div>
                 );
             }
         },
@@ -125,11 +131,11 @@ const TransfersView: React.FC = () => {
             filterable: true,
             render: (val, item) => (
                 <div className="flex flex-col">
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
+                    <span className="font-medium text-[13px] text-gray-800 dark:text-gray-200">
                         {val || 'Sin referencia'}
                     </span>
                     {item?.arqueoId && (
-                        <span className="text-[10px] text-gray-400 font-mono">
+                        <span className="text-[10px] text-gray-400 font-mono mt-0.5">
                             ID: {item.arqueoId.slice(0, 8)}...
                         </span>
                     )}
@@ -141,14 +147,14 @@ const TransfersView: React.FC = () => {
             label: 'Descripción',
             sortable: true,
             filterable: true,
-            render: (val) => <span className="text-sm text-gray-600 dark:text-gray-400">{val || ''}</span>
+            render: (val) => <span className="text-[13px] text-gray-600 dark:text-gray-400">{val || ''}</span>
         },
         {
             key: 'amount',
             label: 'Monto',
             sortable: true,
             render: (val) => (
-                <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">
+                <span className="font-medium text-gray-900 dark:text-white font-mono text-[13px]">
                     {val ? formatCOP(Number(val)) : '$ 0'}
                 </span>
             )
@@ -156,57 +162,22 @@ const TransfersView: React.FC = () => {
     ], []);
 
     return (
-        <div className="flex flex-col bg-white dark:bg-slate-900/50 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800">
-            {/* Header / Stats */}
-            <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50 rounded-t-2xl">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
-                        <BanknotesIcon className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white">Historial de Transferencias</h3>
-                        <p className="text-xs text-gray-500">Registro automático desde Arqueos de Caja</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={async () => {
-                            const corrupt = transfers.filter(t => !t.type || !t.amount);
-                            if (corrupt.length === 0) {
-                                setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: 'No se encontraron registros corruptos.' });
-                                return;
-                            }
-                            await handleBulkDelete(new Set(corrupt.map(t => t.id)), 'Esto eliminará TODOS los registros de transferencia que no tengan tipo o monto válido. ¿Continuar?');
-                        }}
-                        className="p-2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors uppercase tracking-widest"
-                        title="Limpiar registros corruptos"
-                    >
-                        Limpiar Basura
-                    </button>
-                    <button
-                        onClick={loadTransfers}
-                        className="p-2 text-gray-400 hover:text-primary transition-colors"
-                        title="Recargar datos"
-                    >
-                        <ArrowPathIcon className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
-            </div>
-
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
             {/* ERROR ALERT */}
             {error && (
-                <div className="mx-4 mt-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm border border-red-200">
+                <div className="mx-5 mt-5 p-3 bg-red-50 text-red-700 rounded-md text-xs font-medium border border-red-100 flex items-center gap-2">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {error}
                 </div>
             )}
 
-            {/* DATA TABLE - Removed overflow constraints */}
-            <div className="p-0">
+            {/* DATA TABLE */}
+            <div className="flex-1 min-h-0">
                 <SmartDataTable
                     data={transfers}
                     columns={columns}
                     enableSearch={true}
-                    searchPlaceholder="Buscar por referencia, monto..."
+                    searchPlaceholder="Buscar transferencias..."
                     enableSelection={true}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
@@ -215,14 +186,47 @@ const TransfersView: React.FC = () => {
                     onBulkDelete={handleBulkDelete}
                     exportDateField="date"
                     containerClassName="border-none shadow-none"
+                    // Botones extra en la barra de herramientas
+                    renderExtraFilters={() => (
+                        <>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={async () => {
+                                    const corrupt = transfers.filter(t => !t.type || !t.amount);
+                                    if (corrupt.length === 0) {
+                                        setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: 'No se encontraron registros corruptos.' });
+                                        return;
+                                    }
+                                    await handleBulkDelete(new Set(corrupt.map(t => t.id)), 'Esto eliminará TODOS los registros de transferencia que no tengan tipo o monto válido. ¿Continuar?');
+                                }}
+                                className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 text-gray-500 hover:text-red-600 hover:border-red-200"
+                                title="Limpiar registros corruptos"
+                            >
+                                <TrashIcon className="h-3.5 w-3.5" />
+                                Limpiar Basura
+                            </Button>
+
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={loadTransfers}
+                                className="h-8 w-8 p-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-gray-500 hover:text-purple-600"
+                                title="Recargar datos"
+                            >
+                                <ArrowPathIcon className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </>
+                    )}
                     // Eliminar individual
                     renderSelectionActions={(ids) => (
-                        <button
+                        <Button
+                            size="sm"
                             onClick={() => handleBulkDelete(ids)}
-                            className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border border-red-100"
+                            className="h-7 gap-1.5 bg-red-600 hover:bg-red-700 text-white border-none"
                         >
-                            Eliminar ({ids.size})
-                        </button>
+                            <TrashIcon className="h-3 w-3" /> Eliminar ({ids.size})
+                        </Button>
                     )}
                 />
             </div>

@@ -75,41 +75,43 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
             {/* Barra Principal */}
             <div className="flex flex-wrap gap-2 items-center justify-between">
                 {enableSearch && (
-                    <div className="relative flex-1 max-w-sm">
-                        <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <div className="relative w-full max-w-sm">
+                        <MagnifyingGlassIcon className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
                         <Input
                             placeholder={searchPlaceholder}
                             value={table.searchTerm}
                             onChange={(e) => table.setSearchTerm(e.target.value)}
-                            className="pl-9 h-9"
+                            className="pl-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 h-8 text-xs focus-visible:ring-indigo-500"
                         />
                     </div>
                 )}
 
-                {renderExtraFilters?.()}
+                <div className="flex items-center gap-3 ml-auto">
+                    {renderExtraFilters?.()}
 
-                <div className="flex items-center gap-2 ml-auto">
                     {/* Selector de Columnas */}
                     {enableColumnConfig && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="secondary" size="sm" className="h-9 gap-2">
-                                    <EyeIcon className="h-4 w-4" />
+                                <Button variant="secondary" size="sm" className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                                    <EyeIcon className="h-3.5 w-3.5" />
                                     Columnas
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuLabel>Configurar Columnas</DropdownMenuLabel>
+                            <DropdownMenuContent className="w-56" align="end">
+                                <DropdownMenuLabel>Columnas Visibles</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                {initialColumns.map(col => (
-                                    <DropdownMenuCheckboxItem
-                                        key={col.key}
-                                        checked={table.visibleColumns[col.key]}
-                                        onCheckedChange={(checked) => table.setVisibleColumns(prev => ({ ...prev, [col.key]: !!checked }))}
-                                    >
-                                        {col.label}
-                                    </DropdownMenuCheckboxItem>
-                                ))}
+                                {initialColumns
+                                    .filter(col => !col.defaultHidden && col.key !== 'actions')
+                                    .map(col => (
+                                        <DropdownMenuCheckboxItem
+                                            key={col.key}
+                                            checked={table.visibleColumns[col.key]}
+                                            onCheckedChange={(checked) => table.setVisibleColumns({ ...table.visibleColumns, [col.key]: checked })}
+                                        >
+                                            {col.label}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
@@ -118,8 +120,8 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                     {enableExport && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="secondary" size="sm" className="h-9 gap-2">
-                                    <ArrowDownTrayIcon className="h-4 w-4" />
+                                <Button variant="secondary" size="sm" className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700">
+                                    <ArrowDownTrayIcon className="h-3.5 w-3.5" />
                                     Exportar
                                 </Button>
                             </DropdownMenuTrigger>
@@ -136,16 +138,18 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
             </div>
 
             {/* --- TABLA --- */}
-            <div className="rounded-md border bg-card text-card-foreground shadow-sm flex-1 overflow-auto min-h-0 relative">
-                <Table className="w-full text-sm">
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent">
+            {/* --- TABLA --- */}
+            <div className="rounded-none bg-transparent flex-1 overflow-auto min-h-0 relative">
+                <Table className="w-full text-sm border-collapse">
+                    <TableHeader className="bg-white dark:bg-slate-800 sticky top-0 z-10">
+                        <TableRow className="hover:bg-transparent border-none">
                             {enableSelection && (
-                                <TableHead className="w-[40px] pl-4">
+                                <TableHead className="w-[40px] pl-4 py-3 bg-white dark:bg-slate-800">
                                     <Checkbox
                                         checked={table.selectedIds.size > 0 && table.selectedIds.size === table.processedData.length}
                                         onCheckedChange={table.toggleSelectAll}
                                         aria-label="Seleccionar todo"
+                                        className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                                     />
                                 </TableHead>
                             )}
@@ -154,15 +158,21 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                 return (
                                     <TableHead
                                         key={col.key}
-                                        className={cn("text-center", col.width)}
+                                        className={cn(
+                                            "text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700",
+                                            col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
+                                            col.width
+                                        )}
                                         title={col.tooltip}
                                     >
-                                        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-1">
-                                            <div />
+                                        <div className={cn(
+                                            "flex items-center gap-1",
+                                            col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : 'justify-start'
+                                        )}>
                                             <span
                                                 className={cn(
-                                                    "font-medium uppercase whitespace-nowrap",
-                                                    col.sortable !== false ? "cursor-pointer hover:text-foreground" : "",
+                                                    "whitespace-nowrap",
+                                                    col.sortable !== false ? "cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 transition-colors" : "",
                                                     col.tooltip ? "border-b border-dotted border-gray-400 cursor-help" : ""
                                                 )}
                                                 onClick={() => col.sortable !== false && table.toggleSort(col.key)}
@@ -170,12 +180,15 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                 {col.label}
                                             </span>
 
-                                            <div className="flex items-center gap-1 justify-start">
+                                            <div className="flex items-center">
                                                 {/* Sort Icon */}
                                                 {table.sortConfig.key === col.key && (
-                                                    table.sortConfig.direction === 'asc'
-                                                        ? <ChevronUpIcon className="h-3 w-3 text-primary" />
-                                                        : <ChevronDownIcon className="h-3 w-3 text-primary" />
+                                                    <span className="ml-1">
+                                                        {table.sortConfig.direction === 'asc'
+                                                            ? <ChevronUpIcon className="h-3 w-3 text-indigo-600" />
+                                                            : <ChevronDownIcon className="h-3 w-3 text-indigo-600" />
+                                                        }
+                                                    </span>
                                                 )}
 
                                                 {/* Filter Button */}
@@ -183,7 +196,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <button
-                                                                className={cn("p-0.5 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors", isFiltered ? "text-primary bg-primary/10" : "text-gray-400")}
+                                                                className={cn("ml-1 p-0.5 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors", isFiltered ? "text-indigo-600 bg-indigo-50" : "text-slate-300 hover:text-slate-500")}
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 <FunnelIcon className="h-3 w-3" />
@@ -195,7 +208,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                                 {isFiltered && (
                                                                     <button
                                                                         onClick={() => table.clearColumnFilter(col.key)}
-                                                                        className="text-[10px] text-destructive cursor-pointer hover:underline font-bold"
+                                                                        className="text-[10px] text-rose-500 cursor-pointer hover:underline font-bold"
                                                                     >
                                                                         BORRAR
                                                                     </button>
@@ -224,38 +237,55 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {table.paginatedData.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0)} className="h-24 text-center text-muted-foreground">
-                                    No se encontraron resultados.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
+                        {table.paginatedData.length > 0 ? (
                             table.paginatedData.map((item) => (
                                 <TableRow
                                     key={item.id}
                                     data-state={table.selectedIds.has(item.id) ? "selected" : undefined}
                                     onClick={() => onRowClick && onRowClick(item)}
-                                    className={cn(onRowClick && "cursor-pointer")}
+                                    className={cn(
+                                        onRowClick && "cursor-pointer",
+                                        "transition-colors border-b border-gray-50 dark:border-slate-800",
+                                        // Plain white background with simple hover
+                                        "bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700/50"
+                                    )}
                                 >
                                     {enableSelection && (
-                                        <TableCell className="pl-4">
+                                        <TableCell className="w-[40px] pl-4 py-1.5">
                                             <Checkbox
                                                 checked={table.selectedIds.has(item.id)}
                                                 onCheckedChange={() => table.toggleSelectRow(item.id)}
                                                 onClick={(e) => e.stopPropagation()}
+                                                className="h-3.5 w-3.5"
                                             />
                                         </TableCell>
                                     )}
-                                    {initialColumns.filter(c => table.visibleColumns[c.key]).map(col => (
-                                        <TableCell key={col.key} className={cn(col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : '', "py-3")}>
-                                            {item ? (
-                                                col.render ? col.render((item as any)[col.key], item) : table.getRenderedStringValue(item, col)
-                                            ) : null}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
+                                    {table.visibleColumns[initialColumns[0].key] && (
+                                        initialColumns.filter(c => table.visibleColumns[c.key]).map(col => (
+                                            <TableCell
+                                                key={col.key}
+                                                className={cn(
+                                                    col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
+                                                    "py-3.5 text-gray-600 dark:text-slate-300 text-[13px] align-middle font-normal",
+                                                    col.className
+                                                )}
+                                            >
+                                                {item ? (
+                                                    col.render ? col.render((item as any)[col.key], item) : table.getRenderedStringValue(item, col)
+                                                ) : null}
+                                            </TableCell>
+                                        ))
+                                    )}
+                                </TableRow>))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0)} className="h-32 text-center text-muted-foreground bg-white dark:bg-slate-800">
+                                    <div className="flex flex-col items-center justify-center gap-2">
+                                        <MagnifyingGlassIcon className="h-8 w-8 text-slate-200" />
+                                        <p>No se encontraron resultados.</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
                         )}
                     </TableBody>
                 </Table>

@@ -18,6 +18,7 @@ export interface Column<T> {
     getValue?: (item: T) => string | number;
     defaultHidden?: boolean;
     tooltip?: string;
+    className?: string;
 }
 
 export interface SmartDataTableProps<T extends { id: string }> {

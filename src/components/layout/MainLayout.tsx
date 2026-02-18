@@ -8,7 +8,7 @@ import { useUI } from '../../context/UIContext';
 import PageLoader from '../ui/PageLoader';
 import AlertModal from '../ui/AlertModal';
 
-type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections';
+type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections' | 'income-statement';
 
 const MainLayout: React.FC = () => {
     const { userName, userRole, handleLogout } = useAuth();
@@ -23,6 +23,7 @@ const MainLayout: React.FC = () => {
         if (path.includes('budget')) return 'budget';
         if (path.includes('arqueo')) return 'arqueo';
         if (path.includes('projections')) return 'projections';
+        if (path.includes('income-statement')) return 'income-statement';
         if (path.includes('users') || path.includes('usuarios')) return 'users';
         return 'dashboard';
     }, [location.pathname]);

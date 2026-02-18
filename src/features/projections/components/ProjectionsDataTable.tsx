@@ -11,6 +11,7 @@ interface ProjectionsDataTableProps {
     calculatedProjections: Record<string, ProjectionResult>;
     storedProjections: Record<string, SalesProjection>;
     realSales?: Record<string, number>;
+    containerClassName?: string;
 }
 
 export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
@@ -18,7 +19,8 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
     events,
     calculatedProjections,
     storedProjections,
-    realSales = {}
+    realSales = {},
+    containerClassName
 }) => {
     // Estado para ordenamiento (inicial: por fecha descendente - más reciente arriba)
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -406,7 +408,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
                 enableExport={true}
                 enableSelection={false}
                 searchPlaceholder="Buscar por fecha..."
-                containerClassName="flex-1"
+                containerClassName={`flex-1 ${containerClassName || ''}`}
                 exportDateField="dateStr"
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}

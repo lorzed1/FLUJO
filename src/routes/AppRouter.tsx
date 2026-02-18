@@ -25,6 +25,11 @@ const BudgetHistory = lazy(() => import('../features/budget/pages/BudgetHistory'
 // Projections
 const ProjectionsView = lazy(() => import('../features/projections/ProjectionsView').then(m => ({ default: m.ProjectionsView })));
 
+// Income Statement
+const IncomeStatementLayout = lazy(() => import('../features/income-statement/layouts/IncomeStatementLayout').then(m => ({ default: m.IncomeStatementLayout })));
+const IncomeStatementDashboard = lazy(() => import('../features/income-statement/pages/IncomeStatementDashboard').then(m => ({ default: m.IncomeStatementDashboard })));
+const IncomeStatementTable = lazy(() => import('../features/income-statement/pages/IncomeStatementTable').then(m => ({ default: m.IncomeStatementTable })));
+
 const AppRouter: React.FC = () => {
     // Contextos especializados
     const { isLoading: authLoading, isAuthenticated, userRole } = useAuth();
@@ -117,6 +122,12 @@ const AppRouter: React.FC = () => {
                     <Route path="categories" element={<BudgetCategories />} />
                     <Route path="execution" element={<BudgetExecution />} />
                     <Route path="history" element={<BudgetHistory />} />
+                </Route>
+
+                {/* Income Statement Module */}
+                <Route path="/income-statement" element={userRole === 'admin' ? <IncomeStatementLayout /> : <Navigate to="/arqueo" replace />}>
+                    <Route index element={<IncomeStatementDashboard />} />
+                    <Route path="table" element={<IncomeStatementTable />} />
                 </Route>
 
                 <Route path="/rescate" element={<RescueData />} />

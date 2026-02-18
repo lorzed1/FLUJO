@@ -4,10 +4,11 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { BudgetCommitment } from '../../../types/budget';
 import { budgetService } from '../../../services/budget';
 import { useBudgetContext } from '../layouts/BudgetLayout';
-import { SmartDataTable } from '../../../components/ui/SmartDataTable';
+import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
 import { startOfMonth, endOfMonth, endOfYear, startOfYear, format } from 'date-fns';
 import { useUI } from '../../../context/UIContext';
 import { DateSelectionModal } from '../components/DateSelectionModal';
+import { Button } from '@/components/ui/Button';
 
 export const BudgetTable: React.FC = () => {
     const { openForm, refreshTrigger } = useBudgetContext();
@@ -123,6 +124,7 @@ export const BudgetTable: React.FC = () => {
         });
     };
 
+    // Bulk delete logic...
     const handleBulkDelete = async (ids: Set<string>) => {
         const selectedItems = commitments.filter(c => ids.has(c.id));
         const ruleIds = new Set<string>();
@@ -150,19 +152,15 @@ export const BudgetTable: React.FC = () => {
             onConfirm: async () => {
                 try {
                     const promises: Promise<any>[] = [];
-
                     // Delete rules
                     ruleIds.forEach(ruleId => {
                         promises.push(budgetService.deleteRecurrenceRule(ruleId));
                     });
-
                     // Delete standalone
                     standaloneIds.forEach(id => {
                         promises.push(budgetService.deleteCommitment(id));
                     });
-
                     await Promise.all(promises);
-
                     loadData();
                     setSelectedIds(new Set());
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Elementos eliminados correctamente.' });
@@ -174,9 +172,7 @@ export const BudgetTable: React.FC = () => {
         });
     };
 
-
-
-    const columns = useMemo(() => [
+    const columns: Column<BudgetCommitment>[] = useMemo(() => [
         {
             key: 'title',
             label: 'Descripción / Proveedor',
@@ -184,11 +180,14 @@ export const BudgetTable: React.FC = () => {
             filterable: true,
             render: (value: string, item: BudgetCommitment) => (
                 <div>
-                    <span className="font-semibold text-slate-700 dark:text-slate-200 block">{value}</span>
+                    <span className="font-semibold text-[13px] text-gray-800 dark:text-gray-200 block">{value}</span>
                     {item.recurrenceRuleId && (
-                        <span className="text-[10px] uppercase bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold tracking-wider">
-                            {item.id.startsWith('projected-') ? 'Proyectado' : 'Recurrente'}
-                        </span>
+                        <div className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-800 w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                            <span className="text-[10px] font-medium uppercase text-indigo-700 dark:text-indigo-300 tracking-wide">
+                                {item.id.startsWith('projected-') ? 'Proyectado' : 'Recurrente'}
+                            </span>
+                        </div>
                     )}
                 </div>
             )
@@ -199,7 +198,7 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono font-medium text-slate-700 dark:text-slate-200">
+                <span className="font-medium text-[13px] text-gray-900 dark:text-white">
                     ${value.toLocaleString()}
                 </span>
             )
@@ -211,7 +210,7 @@ export const BudgetTable: React.FC = () => {
             filterable: true,
             width: 'w-32',
             render: (value: string) => (
-                <span className="text-slate-500 text-sm font-medium">
+                <span className="text-gray-500 text-[13px] font-normal">
                     {value}
                 </span>
             )
@@ -228,9 +227,9 @@ export const BudgetTable: React.FC = () => {
                         e.stopPropagation();
                         if (item.status === 'paid') handleQuickPay(item);
                     }}
-                    className={`text-sm font-medium transition-colors border-b border-transparent hover:border-current ${value
+                    className={`text-[13px] font-medium transition-colors border-b border-transparent hover:border-current ${value
                         ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer'
-                        : 'text-slate-300 dark:text-slate-600 cursor-default'
+                        : 'text-gray-300 dark:text-gray-600 cursor-default'
                         }`}
                     disabled={item.status !== 'paid'}
                     title={item.status === 'paid' ? "Cambiar fecha de pago" : ""}
@@ -245,7 +244,7 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             filterable: true,
             render: (value: string) => (
-                <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-xs font-bold uppercase tracking-wider">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border border-gray-200 bg-gray-50 text-gray-600 uppercase tracking-wide">
                     {value}
                 </span>
             )
@@ -256,15 +255,36 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             filterable: true,
             align: 'text-center' as const,
-            render: (value: string) => (
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider
-                    ${value === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
-                    ${value === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
-                    ${value === 'overdue' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : ''}
-                `}>
-                    {value === 'paid' ? 'Pagado' : value === 'pending' ? 'Pendiente' : 'Vencido'}
-                </span>
-            )
+            render: (value: string) => {
+                let dotColor = 'bg-gray-400';
+                let textColor = 'text-gray-700';
+                let borderColor = 'border-gray-200';
+                let label = '';
+
+                switch (value) {
+                    case 'paid':
+                        dotColor = 'bg-emerald-500';
+                        label = 'Pagado';
+                        break;
+                    case 'pending':
+                        dotColor = 'bg-amber-400';
+                        label = 'Pendiente';
+                        break;
+                    case 'overdue':
+                        dotColor = 'bg-rose-500';
+                        label = 'Vencido';
+                        break;
+                }
+
+                return (
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ${borderColor} bg-white dark:bg-slate-800 shadow-sm w-fit mx-auto`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                        <span className={`text-[11px] font-medium uppercase tracking-wide ${textColor} dark:text-gray-300`}>
+                            {label}
+                        </span>
+                    </div>
+                );
+            }
         },
         {
             key: 'actions',
@@ -284,14 +304,14 @@ export const BudgetTable: React.FC = () => {
                     )}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-                        className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                        className="text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors p-1 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20"
                         title="Editar"
                     >
                         <PencilSquareIcon className="w-4 h-4" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                        className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
+                        className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Eliminar"
                     >
                         <TrashIcon className="w-4 h-4" />
@@ -313,7 +333,7 @@ export const BudgetTable: React.FC = () => {
     }
 
     return (
-        <div className="h-full bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col p-4">
+        <div className="space-y-6">
             <PageHeader
                 title="Listado de Pasivos"
                 breadcrumbs={[
@@ -322,13 +342,14 @@ export const BudgetTable: React.FC = () => {
                 ]}
                 icon={<TableCellsIcon className="h-6 w-6" />}
                 actions={
-                    <button
+                    <Button
                         onClick={() => openForm()}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all"
+                        variant="primary"
+                        className="gap-2"
                     >
                         <PlusIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Nuevo</span>
-                    </button>
+                        <span className="hidden sm:inline">Nuevo Gasto</span>
+                    </Button>
                 }
             />
 
@@ -342,21 +363,24 @@ export const BudgetTable: React.FC = () => {
                 confirmText="Confirmar"
                 initialDate={paymentModal.item?.paidDate}
             />
-            <SmartDataTable
-                data={commitments}
-                columns={columns}
-                enableSearch={true}
-                enableColumnConfig={true}
-                enableExport={true}
-                enableSelection={true}
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                onBulkDelete={handleBulkDelete}
-                onRowClick={handleEdit}
-                searchPlaceholder="Buscar por proveedor, categoría..."
-                containerClassName="flex-1 min-h-0"
-                exportDateField="dueDate"
-            />
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
+                <SmartDataTable
+                    data={commitments}
+                    columns={columns}
+                    enableSearch={true}
+                    enableColumnConfig={true}
+                    enableExport={true}
+                    enableSelection={true}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onBulkDelete={handleBulkDelete}
+                    onRowClick={handleEdit}
+                    searchPlaceholder="Buscar por proveedor, categoría..."
+                    containerClassName="border-none shadow-none"
+                    exportDateField="dueDate"
+                />
+            </div>
         </div>
     );
 };

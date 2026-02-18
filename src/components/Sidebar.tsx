@@ -13,18 +13,20 @@ import {
   ChevronRightIcon,
   CreditCardIcon,
   ClipboardDocumentListIcon,
-  ChevronDownIcon,
   PresentationChartLineIcon,
   TableCellsIcon,
   ChartBarIcon,
   CalendarIcon,
   ArrowPathIcon,
   TagIcon,
-  ClockIcon
+  ClockIcon,
+  PlusIcon,
+  MinusIcon,
+  ChevronDownIcon
 } from './ui/Icons';
 import { useUI } from '../context/UIContext';
 
-type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections';
+type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections' | 'income-statement';
 
 interface SidebarProps {
   currentView: View;
@@ -127,6 +129,17 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       ]
     },
     {
+      id: 'income-statement',
+      label: 'Estado de Resultados',
+      icon: <PresentationChartLineIcon className="h-5 w-5" />,
+      roles: ['admin'],
+      path: '/income-statement',
+      children: [
+        { id: 'income-dashboard', label: 'Dashboard', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement' },
+        { id: 'income-table', label: 'Tabla de Datos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement/table' },
+      ]
+    },
+    {
       id: 'users',
       label: 'Usuarios',
       icon: <PencilIcon className="h-5 w-5" />,
@@ -141,7 +154,6 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
   const navItems = allNavItems.filter(item => userRole ? item.roles.includes(userRole) : false);
 
   const textClass = isCollapsed ? 'hidden' : 'hidden md:block';
-  const sidebarWidthClass = isCollapsed ? 'w-20' : 'w-64';
 
   const isActive = (path: string, end = false) => {
     if (end) return location.pathname === path;
@@ -151,17 +163,14 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
   return (
     <>
       {/* --- Desktop Sidebar --- */}
-      <aside className={`hidden md:flex ${sidebarWidthClass} min-h-screen bg-[#1a1e2c] border-r border-[#2a2e3c] flex-col transition-all duration-300 relative z-40 shadow-xl sticky top-0 h-screen`}>
+      <aside className={`hidden md:flex ${isCollapsed ? 'w-16' : 'w-[220px]'} min-h-screen bg-[#2e323b] border-r border-[#18191e] flex-col transition-all duration-300 relative z-40 shadow-xl sticky top-0 h-screen font-sans`}>
 
         {/* --- Header / Logo --- */}
-        <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center' : 'px-6'} bg-[#151824]`}>
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/20 p-2 rounded-lg text-primary">
-              <BanknotesIcon className="h-6 w-6" />
-            </div>
+        <div className={`h-14 flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} bg-[#18191e]`}>
+          <div className="flex items-center gap-2">
             {!isCollapsed && (
               <div className="hidden lg:block">
-                <h1 className="text-lg font-bold tracking-tight text-white leading-none">FlowTrack</h1>
+                <h1 className="text-xl font-medium tracking-tight text-white leading-none ml-1">FlowTrack</h1>
               </div>
             )}
           </div>
@@ -170,14 +179,14 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
         {/* --- Toggle (Desktop Only) --- */}
         <button
           onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-20 bg-[#2a2e3c] border border-[#3a3e4c] text-gray-400 hover:text-white p-1 rounded-full shadow-sm transition-all z-50 items-center justify-center"
+          className="hidden md:flex absolute -right-3 top-16 bg-[#18191e] border border-[#2e323b] text-slate-400 hover:text-white p-0.5 rounded-full shadow-sm transition-all z-50 items-center justify-center hover:scale-110"
         >
           {isCollapsed ? <ChevronRightIcon className="h-3 w-3" /> : <ChevronLeftIcon className="h-3 w-3" />}
         </button>
 
         {/* --- Navigation --- */}
-        <nav className="flex-1 py-6 space-y-1 overflow-y-auto custom-scrollbar">
-          {!isCollapsed && <p className="px-6 mb-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest hidden lg:block">Navegación</p>}
+        <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+          {!isCollapsed && <p className="px-4 mb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Navegación</p>}
 
           {navItems.map(item => {
             const hasChildren = item.children && item.children.length > 0;
@@ -188,39 +197,43 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
               <div key={item.id}>
                 <button
                   onClick={() => hasChildren ? toggleMenu(item.id) : handleNavigation(item.path, item.id)}
-                  className={`flex items-center w-full px-6 py-3 transition-colors duration-200 relative border-l-4
-                    ${isItemActive && !hasChildren
-                      ? 'border-primary bg-white/5 text-white'
-                      : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                  className={`flex items-center w-full px-4 py-2.5 transition-colors duration-200 relative group
+                    ${(isItemActive && !hasChildren)
+                      ? 'text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
                     }
-                    ${isCollapsed ? 'justify-center px-0 border-l-0' : ''}
+                    ${isCollapsed ? 'justify-center px-0' : ''}
                   `}
                   title={isCollapsed ? item.label : ''}
                 >
-                  <div className={`flex-shrink-0`}>{item.icon}</div>
-                  <span className={`${textClass} ml-3 text-sm font-medium flex-1 text-left`}>{item.label}</span>
+                  <div className={`flex-shrink-0 ${(isItemActive && !hasChildren) ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
+                    {React.cloneElement(item.icon as any, { className: "h-5 w-5" })}
+                  </div>
+                  <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal flex-1 text-left tracking-normal`}>{item.label}</span>
                   {!isCollapsed && hasChildren && (
-                    <ChevronDownIcon className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                    <div className="text-slate-500 group-hover:text-white transition-colors">
+                      {isExpanded ? <MinusIcon className="h-3.5 w-3.5" strokeWidth={2.5} /> : <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />}
+                    </div>
                   )}
                 </button>
 
                 {/* Submenus */}
                 {!isCollapsed && hasChildren && isExpanded && (
-                  <div className="bg-[#151824]/50 py-1">
+                  <div className="py-1 space-y-0.5">
                     {item.children?.map(child => {
                       const isChildActive = location.pathname === child.path;
                       return (
                         <button
                           key={child.id}
                           onClick={() => handleNavigation(child.path, child.id)}
-                          className={`flex items-center w-full pl-14 pr-6 py-2 transition-colors duration-200 text-sm
+                          className={`flex items-center w-full pl-12 pr-4 py-2 transition-colors duration-200 text-[13px] leading-[17.5px]
                             ${isChildActive
                               ? 'text-white font-medium'
-                              : 'text-gray-500 hover:text-gray-300'
+                              : 'text-slate-400 hover:text-white font-normal'
                             }
                           `}
                         >
-                          <span className="mr-2 opacity-70">{child.icon}</span>
+                          <span className={`mr-2.5 block text-[18px] leading-none ${isChildActive ? 'text-white' : 'text-slate-500'}`}>-</span>
                           {child.label}
                         </button>
                       );
@@ -232,25 +245,25 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
           })}
 
           {userRole === 'admin' && (
-            <div className="pt-8 pb-2">
-              {!isCollapsed && <p className="px-6 mb-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest hidden lg:block">Sistema</p>}
+            <div className="pt-6 pb-2">
+              {!isCollapsed && <p className="px-4 mb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Sistema</p>}
 
               <button
                 onClick={onExport}
-                className={`flex items-center w-full px-6 py-3 text-gray-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+                className={`flex items-center w-full px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="Exportar base de datos"
               >
-                <ArrowUpTrayIcon className="h-5 w-5" />
-                <span className={`${textClass} ml-3 text-sm font-medium`}>Exportar DB</span>
+                <ArrowUpTrayIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
+                <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal`}>Exportar DB</span>
               </button>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex items-center w-full px-6 py-3 text-gray-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+                className={`flex items-center w-full px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="Importar base de datos"
               >
-                <ArrowDownTrayIcon className="h-5 w-5" />
-                <span className={`${textClass} ml-3 text-sm font-medium`}>Importar DB</span>
+                <ArrowDownTrayIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
+                <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal`}>Importar DB</span>
               </button>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
 
@@ -275,27 +288,27 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                     }
                   });
                 }}
-                className={`flex items-center w-full px-6 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+                className={`flex items-center w-full px-4 py-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="Resetear Fábrica"
               >
-                <TrashIcon className="h-5 w-5" />
-                <span className={`${textClass} ml-3 text-sm font-medium`}>Reset Fábrica</span>
+                <TrashIcon className="h-5 w-5 opacity-70" />
+                <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal`}>Reset Fábrica</span>
               </button>
             </div>
           )}
         </nav>
 
         {/* --- Footer / User --- */}
-        <div className="p-4 border-t border-[#2a2e3c] bg-[#151824] mt-auto">
+        <div className="p-4 border-t border-[#18191e] bg-[#18191e] mt-auto">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold border border-primary/30 text-sm">
+            <div className="h-9 w-9 rounded-full bg-[#2e323b] flex items-center justify-center text-white font-bold border border-slate-600 text-sm">
               {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
             </div>
 
             {!isCollapsed && (
               <div className="hidden lg:flex flex-col overflow-hidden">
-                <p className="text-sm font-semibold text-gray-200 truncate max-w-[120px]">{userEmail?.split('@')[0]}</p>
-                <button onClick={onLogout} className="text-xs text-gray-500 hover:text-primary text-left transition-colors font-medium">Cerrar Sesión</button>
+                <p className="text-sm font-medium text-slate-200 truncate max-w-[120px]">{userEmail?.split('@')[0]}</p>
+                <button onClick={onLogout} className="text-xs text-slate-500 hover:text-white text-left transition-colors font-normal">Cerrar Sesión</button>
               </div>
             )}
 
