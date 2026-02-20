@@ -17,7 +17,7 @@ import {
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
-import { startOfMonth, endOfMonth, isSameDay, addDays } from 'date-fns';
+import { startOfMonth, endOfMonth, endOfWeek, isSameDay, isSameMonth, addDays } from 'date-fns';
 import { useData } from '../../../context/DataContext';
 import { useUI } from '../../../context/UIContext';
 import { BudgetPaymentModal } from '../components/BudgetPaymentModal';
@@ -257,9 +257,9 @@ export const BudgetCalendar: React.FC = () => {
     return (
         <div className="flex flex-col h-full">
             <PageHeader
-                title="Calendario Presupuestal"
+                title="Calendario de pagos"
                 breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Egresos', path: '/budget' },
                     { label: 'Calendario' }
                 ]}
                 icon={<CalendarDaysIcon className="h-6 w-6" />}
@@ -314,63 +314,180 @@ export const BudgetCalendar: React.FC = () => {
 
                         <Button
                             onClick={() => openForm(date)}
-                            className="!h-10 !px-5 font-bold text-[12px] uppercase tracking-wider shadow-lg shadow-primary/20"
+                            className="!h-8 !px-4 font-medium text-xs uppercase tracking-wider shadow-md"
                         >
-                            <PlusIcon className="w-4 h-4 mr-2" />
+                            <PlusIcon className="h-3.5 w-3.5 mr-2" />
                             Registrar Gasto
                         </Button>
                     </div>
                 }
             />
 
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 min-h-[600px] overflow-hidden flex flex-col mt-2">
+            <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 overflow-visible flex flex-col mt-2">
                 <style>{`
                     .rbc-calendar { font-family: inherit; }
-                    .rbc-month-view { border: none; }
-                    .rbc-month-row { border-top: 1px solid #f8fafc; overflow: visible !important; min-height: 100px; height: auto !important; }
-                    .rbc-day-bg + .rbc-day-bg { border-left: 1px solid #f8fafc; }
-                    .rbc-header { border-bottom: none !important; }
-                    .rbc-row-content { z-index: 2; overflow: visible !important; }
-                    .rbc-row { overflow: visible !important; }
-                    .rbc-off-range-bg { background-color: #fbfcfd; }
-                    .rbc-today { background-color: #f0f7ff !important; }
-                    .dark .rbc-off-range-bg { background-color: #0f172a / 5; }
-                    .dark .rbc-today { background-color: #1e293b / 50 !important; }
-                    .rbc-event { padding: 0 !important; background: transparent !important; border: none !important; margin: 1px 2px !important; }
-                    .rbc-show-more { font-size: 10px; font-bold: 600; color: #6366f1; background: transparent !important; }
                     .rbc-time-view { border: none; }
                     .rbc-time-content { border-top: 1px solid #f1f5f9; }
-                    .rbc-timeslot-group { border-bottom: 1px solid #f1f5f9; }
-                    .rbc-day-slot .rbc-event-label { display: none; }
                 `}</style>
-                <div className="flex-1 relative">
-                    <Calendar
-                        localizer={localizer}
-                        culture='es'
-                        events={events}
-                        startAccessor="start"
-                        endAccessor="end"
-                        date={date}
-                        view={view}
-                        views={['month', 'week']}
-                        onNavigate={onNavigate}
-                        onView={onView}
-                        onSelectEvent={onSelectEvent}
-                        onSelectSlot={onSelectSlot}
-                        selectable
-                        eventPropGetter={eventPropGetter}
-                        components={components}
-                        style={{ height: '100%' }}
-                        showAllEvents
-                        messages={{
-                            today: 'Hoy',
-                            previous: 'Anterior',
-                            next: 'Siguiente',
-                            month: 'Mes',
-                            week: 'Semana',
-                            day: 'Día'
-                        }}
-                    />
+                <div className="flex-1 relative overflow-auto">
+                    {view === 'month' ? (
+                        <div className="flex flex-col h-full min-w-[800px]">
+                            {/* Header Días Semana */}
+                            <div className="grid grid-cols-7 border-b border-gray-100 dark:border-slate-700">
+                                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => (
+                                    <div key={day} className="py-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center">
+                                        {day}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Grid Días */}
+                            <div className="grid grid-cols-7 auto-rows-auto bg-gray-100 dark:bg-slate-700 gap-px border border-gray-100 dark:border-slate-700">
+                                {(() => {
+                                    const startMonth = startOfMonth(date);
+                                    const endMonth = endOfMonth(date);
+                                    const startDate = startOfWeek(startMonth, { weekStartsOn: 1 });
+                                    const endDate = endOfWeek(endMonth, { weekStartsOn: 1 });
+
+                                    /* Generar días */
+                                    const days = [];
+                                    let day = startDate;
+                                    while (day <= endDate) {
+                                        days.push(day);
+                                        day = addDays(day, 1);
+                                    }
+
+                                    return days.map((dayItem, idx) => {
+                                        const dayEvents = events.filter(e => isSameDay(e.start, dayItem));
+                                        const isCurrentMonth = isSameMonth(dayItem, date);
+                                        const isToday = isSameDay(dayItem, new Date());
+
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={`
+                                                  min-h-[40px] p-2 bg-white dark:bg-slate-800 flex flex-col gap-1 transition-colors
+                                                  ${!isCurrentMonth ? '!bg-gray-50/50 dark:!bg-slate-900/50' : ''}
+                                                  ${isToday ? '!bg-blue-50/30 dark:!bg-blue-900/10' : ''}
+                                                  hover:bg-gray-50 dark:hover:bg-slate-750
+                                              `}
+                                                onClick={() => openForm(dayItem)}
+                                            >
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className={`
+                                                      text-[13px] font-semibold w-6 h-6 flex items-center justify-center rounded-full
+                                                      ${isToday
+                                                            ? 'bg-purple-600 text-white shadow-sm'
+                                                            : isCurrentMonth ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-600'}
+                                                  `}>
+                                                        {format(dayItem, 'd')}
+                                                    </span>
+                                                    {isToday && <span className="text-[11px] sm:hidden font-semibold text-purple-600 uppercase">Hoy</span>}
+                                                </div>
+
+                                                <div className="flex flex-col gap-1">
+                                                    {dayEvents.map((event) => {
+                                                        const isPaid = event.resource.status === 'paid';
+                                                        const isProjected = event.isProjected;
+                                                        const isOverdue = !isPaid && event.start < new Date(new Date().setHours(0, 0, 0, 0));
+
+                                                        let bgColor = '#fffbeb';
+                                                        let borderColor = '#f59e0b';
+                                                        let textColor = '#b45309';
+
+                                                        if (isPaid) {
+                                                            bgColor = '#ecfdf5';
+                                                            borderColor = '#10b981';
+                                                            textColor = '#047857';
+                                                        } else if (isOverdue) {
+                                                            bgColor = '#fef2f2';
+                                                            borderColor = '#ef4444';
+                                                            textColor = '#b91c1c';
+                                                        } else if (isProjected) {
+                                                            bgColor = '#f8fafc';
+                                                            borderColor = '#94a3b8';
+                                                            textColor = '#64748b';
+                                                        }
+
+                                                        return (
+                                                            <div
+                                                                key={event.id}
+                                                                style={{
+                                                                    backgroundColor: bgColor,
+                                                                    borderLeft: `3px solid ${borderColor}`,
+                                                                    color: textColor,
+                                                                }}
+                                                                className={`
+                                                                  rounded px-2 py-1 text-[11px] font-semibold cursor-pointer
+                                                                  hover:shadow-md transition-all relative group flex flex-col gap-0.5
+                                                                  ${isProjected ? 'opacity-85' : 'opacity-100'}
+                                                              `}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onSelectEvent(event);
+                                                                }}
+                                                            >
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="truncate leading-tight pr-4">{event.title}</span>
+                                                                    {isPaid && <CheckCircleIcon className="w-3 h-3 flex-shrink-0 text-emerald-600" />}
+                                                                </div>
+                                                                <span className="opacity-80 tabular-nums text-[10px]">
+                                                                    ${event.resource.amount.toLocaleString('es-CO')}
+                                                                </span>
+
+                                                                {/* Actions Hover */}
+                                                                <div className="absolute top-1 right-1 hidden group-hover:flex gap-1 bg-inherit pl-2">
+                                                                    {!isPaid && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setPaymentModal({ isOpen: true, commitment: event.resource });
+                                                                            }}
+                                                                            className="text-emerald-600 hover:text-emerald-700 bg-white dark:bg-slate-800 rounded-full p-0.5 shadow-sm"
+                                                                            title="Pagar"
+                                                                        >
+                                                                            <CreditCardIcon className="w-3 h-3" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
+                            </div>
+                        </div>
+                    ) : (
+                        <Calendar
+                            localizer={localizer}
+                            culture='es'
+                            events={events}
+                            startAccessor="start"
+                            endAccessor="end"
+                            date={date}
+                            view={view}
+                            views={['week']}
+                            onNavigate={onNavigate}
+                            onView={onView}
+                            onSelectEvent={onSelectEvent}
+                            onSelectSlot={onSelectSlot}
+                            selectable
+                            eventPropGetter={eventPropGetter}
+                            components={components}
+                            style={{ height: '100%' }}
+                            messages={{
+                                today: 'Hoy',
+                                previous: 'Anterior',
+                                next: 'Siguiente',
+                                month: 'Mes',
+                                week: 'Semana',
+                                day: 'Día'
+                            }}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -383,7 +500,7 @@ export const BudgetCalendar: React.FC = () => {
                     setAlertModal({ isOpen: true, type: 'success', title: 'Operación Exitosa', message: 'El pago ha sido conciliado en el calendario.' });
                 }}
             />
-        </div>
+        </div >
     );
 };
 

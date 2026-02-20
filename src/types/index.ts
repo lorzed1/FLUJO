@@ -143,6 +143,7 @@ export interface ArqueoRecord {
   fecha: string;
   cajero: string;
   ventaBruta: number;
+  /** @deprecated Ya no se usa. Usar ventaBruta. */
   venta_sc?: number; // Venta sin cover (ventaBruta - ingresoCovers) - calculado en runtime
   propina: number;
   efectivo: number;
@@ -159,6 +160,9 @@ export interface ArqueoRecord {
   baseDetail?: Record<string, number>; // Nuevo campo para persistir detalle de billetes
   cuadreDetail?: Record<string, number>; // Nuevo campo para persistir detalle de cuadre de venta
   totalIngresos?: number; // Campo calculado en runtime
+  ventaBrutaCalc?: number; // Venta POS - Covers
+  ventaBase?: number; // Venta Bruta / 1.108
+  inc?: number; // INC calculado (Venta Bruta - Venta Base)
   createdAt?: any;
 }
 

@@ -49,7 +49,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             return {
                 id: dateStr,
                 dateStr,
-                dateFormatted: format(day, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es }),
+                dateFormatted: format(day, 'dd/MM/yyyy'),
 
                 // Comparativos Históricos
                 yoySameDaySale: hc?.yoySameDaySale,
@@ -105,13 +105,13 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
     // Indicador de confiabilidad
     const renderConfidence = (value: 'high' | 'medium' | 'low') => {
         const config = {
-            high: { label: 'Alta', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-            medium: { label: 'Media', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
-            low: { label: 'Baja', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' }
+            high: { label: 'Alta', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800' },
+            medium: { label: 'Media', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-800' },
+            low: { label: 'Baja', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800' }
         };
         const c = config[value];
         return (
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${c.bg} ${c.color}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.bg} ${c.color}`}>
                 {c.label}
             </span>
         );
@@ -125,7 +125,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             tooltip: 'Fecha del día proyectado. Los cálculos se basan en este día de la semana.',
             sortable: true,
             filterable: true,
-            width: 'min-w-[220px]',
+            width: 'w-[120px]',
             render: (_: string, item: any) => (
                 <span className="font-medium text-slate-700 dark:text-slate-200">
                     {item.dateFormatted}
@@ -141,7 +141,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -153,7 +153,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -165,7 +165,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -178,7 +178,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -191,7 +191,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -204,7 +204,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-center' as const,
             width: 'w-24',
             render: (value: number) => (
-                <span className="inline-flex items-center justify-center px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-bold text-xs">
+                <span className="inline-flex items-center justify-center px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md font-mono text-xs border border-slate-100 dark:border-slate-700">
                     {value}
                 </span>
             )
@@ -218,7 +218,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {Math.round(value)}
                 </span>
             )
@@ -230,7 +230,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -243,7 +243,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono text-slate-700 dark:text-slate-300">
+                <span className="font-mono text-slate-600 dark:text-slate-300">
                     {formatCurrency(value)}
                 </span>
             )
@@ -255,7 +255,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -267,7 +267,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
                 </span>
             )
@@ -292,7 +292,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded">
                     {formatCurrency(value)}
                 </span>
             )
@@ -305,7 +305,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-500 dark:text-slate-500">
+                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
                     {formatCurrency(value)}
                 </span>
             )
@@ -318,7 +318,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-500 dark:text-slate-500">
+                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
                     {formatCurrency(value)}
                 </span>
             )
@@ -331,7 +331,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-500 dark:text-slate-500">
+                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
                     ±{formatCurrency(value)}
                 </span>
             )
@@ -398,21 +398,19 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
     ], []);
 
     return (
-        <div className="h-full flex flex-col">
-            <SmartDataTable
-                id="projections-data-table"
-                data={data}
-                columns={columns}
-                enableSearch={true}
-                enableColumnConfig={true}
-                enableExport={true}
-                enableSelection={false}
-                searchPlaceholder="Buscar por fecha..."
-                containerClassName={`flex-1 ${containerClassName || ''}`}
-                exportDateField="dateStr"
-                sortConfig={sortConfig}
-                onSortChange={setSortConfig}
-            />
-        </div>
+        <SmartDataTable
+            id="projections-data-table"
+            data={data}
+            columns={columns}
+            enableSearch={true}
+            enableColumnConfig={true}
+            enableExport={true}
+            enableSelection={false}
+            searchPlaceholder="Buscar por fecha..."
+            containerClassName={containerClassName}
+            exportDateField="dateStr"
+            sortConfig={sortConfig}
+            onSortChange={setSortConfig}
+        />
     );
 };

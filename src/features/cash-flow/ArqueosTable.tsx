@@ -87,10 +87,18 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             // User Rule: Descuadre = Total Egresos - Total Ingresos
             const descuadreCalculado = item.totalRecaudado - totalIngresosCalculado;
 
+            // Columnas calculadas contables
+            const ventaBrutaCalc = (item.ventaBruta || 0) - (item.ingresoCovers || 0);
+            const ventaBase = ventaBrutaCalc / 1.108;
+            const inc = ventaBrutaCalc - ventaBase; // Para que Venta Base + INC = Venta Bruta
+
             return {
                 ...item,
                 totalIngresos: totalIngresosCalculado,
-                descuadre: descuadreCalculado
+                descuadre: descuadreCalculado,
+                ventaBrutaCalc,
+                ventaBase,
+                inc
             };
         });
     }, [arqueos]);
@@ -197,6 +205,43 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onCancel={() => setEditingCell(null)}
                     displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.ventaBruta)}</span>}
                 />
+            )
+        },
+        // Columnas Calculadas Contables
+        {
+            key: 'ventaBrutaCalc',
+            label: 'VENTA BRUTA',
+            width: 'w-28',
+            align: 'text-right',
+            sortable: true,
+            render: (_, item) => (
+                <span className="text-blue-700 dark:text-blue-400 font-medium tabular-nums text-[13px]">
+                    {formatCompact(item.ventaBrutaCalc || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'ventaBase',
+            label: 'VENTA BASE',
+            width: 'w-28',
+            align: 'text-right',
+            sortable: true,
+            render: (_, item) => (
+                <span className="text-violet-700 dark:text-violet-400 font-medium tabular-nums text-[13px]">
+                    {formatCompact(Math.round(item.ventaBase || 0))}
+                </span>
+            )
+        },
+        {
+            key: 'inc',
+            label: 'INC (8%)',
+            width: 'w-24',
+            align: 'text-right',
+            sortable: true,
+            render: (_, item) => (
+                <span className="text-amber-700 dark:text-amber-400 font-medium tabular-nums text-[13px]">
+                    {formatCompact(Math.round(item.inc || 0))}
+                </span>
             )
         },
         {

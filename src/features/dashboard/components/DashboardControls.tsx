@@ -20,31 +20,31 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
     };
 
     return (
-        <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 px-4 py-2.5">
+        <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5">
             <div className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Período:</span>
-                <span className="text-base font-bold text-slate-800 dark:text-slate-200">
-                    {selectedDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
+                <CalendarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">Período:</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 capitalize">
+                    {selectedDate.toLocaleDateString('es-CO', { month: 'long' })}
                 </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
                 {/* Navegación Mes */}
                 <button
                     onClick={() => handleMonthChange(-1)}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
                     title="Mes anterior"
                 >
-                    <ChevronLeftIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <ChevronLeftIcon className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                 </button>
 
                 <button
                     onClick={() => handleMonthChange(1)}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
                     title="Mes siguiente"
                 >
-                    <ChevronRightIcon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <ChevronRightIcon className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                 </button>
 
                 <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>

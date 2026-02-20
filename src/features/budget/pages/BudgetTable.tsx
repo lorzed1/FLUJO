@@ -335,9 +335,9 @@ export const BudgetTable: React.FC = () => {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="Listado de Pasivos"
+                title="BD de gastos"
                 breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Egresos', path: '/budget' },
                     { label: 'Tabla' }
                 ]}
                 icon={<TableCellsIcon className="h-6 w-6" />}

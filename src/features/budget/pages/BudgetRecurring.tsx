@@ -7,8 +7,9 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { RecurrenceRuleFormModal } from '../components/RecurrenceRuleFormModal';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '@/components/ui/Button';
+import { BudgetCategories } from './BudgetCategories';
 
-export const BudgetRecurring: React.FC = () => {
+const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = ({ onSwitchToCategories }) => {
     const { setAlertModal } = useUI();
     const [rules, setRules] = useState<RecurrenceRule[]>([]);
     const [loading, setLoading] = useState(true);
@@ -252,29 +253,19 @@ export const BudgetRecurring: React.FC = () => {
             <PageHeader
                 title="Gastos Recurrentes"
                 breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Egresos', path: '/budget' },
                     { label: 'Recurrentes' }
                 ]}
                 icon={<ArrowPathIcon className="h-6 w-6" />}
                 actions={
                     <div className="flex gap-2">
                         <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={handleReset}
-                            className="bg-white text-rose-600 hover:bg-rose-50 border-rose-200 hover:border-rose-300"
-                            title="Borrar todas las reglas y empezar de cero"
-                        >
-                            <TrashIcon className="w-4 h-4 mr-2" />
-                            Resetear DB
-                        </Button>
-                        <Button
                             variant="secondary"
-                            onClick={handleSeed}
-                            className="bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
+                            size="sm"
+                            onClick={onSwitchToCategories}
+                            className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700"
                         >
-                            <ArrowPathIcon className="w-4 h-4 mr-2" />
-                            Cargar Plantilla
+                            Categorías
                         </Button>
                         <Button
                             variant="primary"
@@ -320,6 +311,24 @@ export const BudgetRecurring: React.FC = () => {
                 isDuplicate={isDuplicating}
                 onSubmit={handleSaveRule}
             />
+        </div>
+    );
+};
+
+export const BudgetRecurring: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'recurrent' | 'categories'>('recurrent');
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-hidden h-full">
+                {activeTab === 'recurrent' ? (
+                    <BudgetRecurringContent onSwitchToCategories={() => setActiveTab('categories')} />
+                ) : (
+                    <div className="h-full overflow-hidden">
+                        <BudgetCategories hideHeader={false} onSwitchToRecurrentes={() => setActiveTab('recurrent')} />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

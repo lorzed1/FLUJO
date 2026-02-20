@@ -21,6 +21,7 @@ const BudgetRecurring = lazy(() => import('../features/budget/pages/BudgetRecurr
 const BudgetCategories = lazy(() => import('../features/budget/pages/BudgetCategories').then(m => ({ default: m.BudgetCategories })));
 const BudgetExecution = lazy(() => import('../features/budget/pages/BudgetExecution').then(m => ({ default: m.BudgetExecution })));
 const BudgetHistory = lazy(() => import('../features/budget/pages/BudgetHistory').then(m => ({ default: m.BudgetHistory })));
+const BudgetPurchases = lazy(() => import('../features/budget/pages/BudgetPurchases').then(m => ({ default: m.BudgetPurchases })));
 
 // Projections
 const ProjectionsView = lazy(() => import('../features/projections/ProjectionsView').then(m => ({ default: m.ProjectionsView })));
@@ -122,6 +123,7 @@ const AppRouter: React.FC = () => {
                     <Route path="categories" element={<BudgetCategories />} />
                     <Route path="execution" element={<BudgetExecution />} />
                     <Route path="history" element={<BudgetHistory />} />
+                    <Route path="purchases" element={<BudgetPurchases />} />
                 </Route>
 
                 {/* Income Statement Module */}

@@ -178,16 +178,12 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
         }
     };
 
-    const getVentaSC = (record: ArqueoRecord) => {
-        // Usar el campo venta_sc si existe, sino calcularlo
-        if (record.venta_sc !== undefined && record.venta_sc !== null) {
-            return record.venta_sc;
-        }
-        // Fallback: calcular si no existe el campo
-        return (record.ventaBruta || 0) - (record.ingresoCovers || 0);
+    const getSaleValue = (record: ArqueoRecord) => {
+        // Usar ventaBruta como única fuente de verdad
+        return record.ventaBruta || 0;
     };
     const getTicket = (record: ArqueoRecord) => {
-        const sales = getVentaSC(record);
+        const sales = getSaleValue(record);
         const visits = record.visitas || 0;
         return visits > 0 ? sales / visits : 0;
     };
@@ -237,26 +233,26 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
 
     const extendedKPIs = useMemo((): ExtendedKPIs => {
         // Current period stats
-        const totalSales = currentData.reduce((sum, r) => sum + getVentaSC(r), 0);
+        const totalSales = currentData.reduce((sum, r) => sum + getSaleValue(r), 0);
         const totalVisits = currentData.reduce((sum, r) => sum + (r.visitas || 0), 0);
         const rappiSales = currentData.reduce((sum, r) => sum + (r.rappi || 0), 0);
         const daysCount = currentData.length;
 
         // Previous month stats
-        const prevMonthSales = previousMonthData.reduce((sum, r) => sum + getVentaSC(r), 0);
+        const prevMonthSales = previousMonthData.reduce((sum, r) => sum + getSaleValue(r), 0);
         const prevMonthVisits = previousMonthData.reduce((sum, r) => sum + (r.visitas || 0), 0);
 
         // Previous year stats
-        const prevYearSales = previousYearData.reduce((sum, r) => sum + getVentaSC(r), 0);
+        const prevYearSales = previousYearData.reduce((sum, r) => sum + getSaleValue(r), 0);
 
         // Tickets
         const currentTicket = totalVisits > 0 ? totalSales / totalVisits : 0;
         const prevMonthTicket = prevMonthVisits > 0 ? prevMonthSales / prevMonthVisits : 0;
 
         // Best/Worst Sales
-        const salesSorted = [...currentData].sort((a, b) => getVentaSC(b) - getVentaSC(a));
-        const bestSale = salesSorted.length > 0 ? { date: salesSorted[0].fecha, value: getVentaSC(salesSorted[0]) } : { date: '', value: 0 };
-        const worstSale = salesSorted.length > 0 ? { date: salesSorted[salesSorted.length - 1].fecha, value: getVentaSC(salesSorted[salesSorted.length - 1]) } : { date: '', value: 0 };
+        const salesSorted = [...currentData].sort((a, b) => getSaleValue(b) - getSaleValue(a));
+        const bestSale = salesSorted.length > 0 ? { date: salesSorted[0].fecha, value: getSaleValue(salesSorted[0]) } : { date: '', value: 0 };
+        const worstSale = salesSorted.length > 0 ? { date: salesSorted[salesSorted.length - 1].fecha, value: getSaleValue(salesSorted[salesSorted.length - 1]) } : { date: '', value: 0 };
 
         // Best/Worst Tickets
         const ticketsSorted = [...currentData].filter(r => r.visitas > 0).sort((a, b) => getTicket(b) - getTicket(a));
@@ -305,7 +301,7 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
             return {
                 day,
                 date: dateStr,
-                sales: record ? getVentaSC(record) : 0,
+                sales: record ? getSaleValue(record) : 0,
                 visits: record ? (record.visitas || 0) : 0,
                 ticket: record ? getTicket(record) : 0
             };
@@ -349,7 +345,7 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
                 weekMap.set(weekNum, { sales: 0, visits: 0, dates: [], records: [] });
             }
             const week = weekMap.get(weekNum)!;
-            const ventaSC = getVentaSC(record);
+            const ventaSC = getSaleValue(record);
             week.sales += ventaSC;
             week.visits += record.visitas || 0;
             week.dates.push(record.fecha);
@@ -427,12 +423,12 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
                 if (!dayRow[salesKey]) dayRow[salesKey] = 0;
                 if (!dayRow[visitsKey]) dayRow[visitsKey] = 0;
 
-                dayRow[salesKey] += getVentaSC(record);
+                dayRow[salesKey] += getSaleValue(record);
                 dayRow[visitsKey] += record.visitas || 0;
 
                 // También guardamos con el nombre original para compatibilidad (ventas por defecto)
                 if (!dayRow[weekLabel]) dayRow[weekLabel] = 0;
-                dayRow[weekLabel] += getVentaSC(record);
+                dayRow[weekLabel] += getSaleValue(record);
             }
         });
 
@@ -454,8 +450,8 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
             return {
                 month,
                 monthIndex: idx,
-                currentYear: currentYearMonthData.reduce((sum, r) => sum + getVentaSC(r), 0),
-                previousYear: prevYearMonthData.reduce((sum, r) => sum + getVentaSC(r), 0)
+                currentYear: currentYearMonthData.reduce((sum, r) => sum + getSaleValue(r), 0),
+                previousYear: prevYearMonthData.reduce((sum, r) => sum + getSaleValue(r), 0)
             };
         });
     }, [currentData, previousYearData, filters]);
@@ -501,7 +497,7 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
         currentData.forEach(record => {
             const dayIdx = getDayIndex(record.fecha);
             const dayData = dayMap.get(dayIdx)!;
-            dayData.totalSales += getVentaSC(record);
+            dayData.totalSales += getSaleValue(record);
             dayData.totalVisits += record.visitas || 0;
             dayData.count += 1;
         });
@@ -545,7 +541,7 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
 
             const monthIdx = recordDate.getMonth();
             const monthData = monthMap.get(monthIdx)!;
-            monthData.sales += getVentaSC(record);
+            monthData.sales += getSaleValue(record);
             monthData.visits += record.visitas || 0;
         });
 

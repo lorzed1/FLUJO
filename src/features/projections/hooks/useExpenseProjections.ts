@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useArqueos } from '../../../context/ArqueoContext';
 import { ArqueoRecord } from '../../../types';
 import {
@@ -40,27 +40,32 @@ export interface ExpenseProjectionWeek {
 export const useExpenseProjections = (currentDate: Date) => {
     const { arqueos } = useArqueos();
 
+    // Estabilizar la dependencia: solo recargar si cambia el mes real
+    const monthKey = useMemo(
+        () => `${currentDate.getFullYear()}-${currentDate.getMonth()}`,
+        [currentDate.getFullYear(), currentDate.getMonth()]
+    );
+
     // Estado
-    const [totalMonthlyGoal, setTotalMonthlyGoal] = useState<number>(0); // Suma de metas de venta
+    const [totalMonthlyGoal, setTotalMonthlyGoal] = useState<number>(0);
     const [isLoadingExpenses, setIsLoadingExpenses] = useState<boolean>(true);
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
+    const loadedMonthRef = useRef<string>('');
 
     // 1. Cargar Gastos (Rango extendido para cubrir la semana siguiente al fin de mes)
     useEffect(() => {
+        // Evitar recargas duplicadas del mismo mes
+        if (loadedMonthRef.current === monthKey) return;
+        loadedMonthRef.current = monthKey;
+
         const loadBudgetExpenses = async () => {
             setIsLoadingExpenses(true);
             try {
-                // Necesitamos leer gastos hasta la semana siguiente del fin de mes
-                // para calcular la meta de la última semana del mes actual.
                 const monthStart = startOfMonth(currentDate);
                 const monthEnd = endOfMonth(currentDate);
 
-                // Extendemos el rango de búsqueda visual un poco antes por si acaso (aunque no afecta cálculo futuro)
-                // Y extendemos AL MENOS 2 semanas después del fin de mes para asegurar cobertura completa de la 'siguiente semana'
                 const searchStart = format(startOfWeek(monthStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
                 const searchEnd = format(endOfWeek(addWeeks(monthEnd, 2), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-
-                console.log(`💰 useExpenseProjections: Cargando gastos extendidos ${searchStart} a ${searchEnd}`);
 
                 const budgetData = await budgetService.getCommitments(searchStart, searchEnd);
                 setCommitments(budgetData);
@@ -74,7 +79,7 @@ export const useExpenseProjections = (currentDate: Date) => {
         };
 
         loadBudgetExpenses();
-    }, [currentDate]);
+    }, [monthKey]);
 
     // 2. Calcular Pesos Históricos (Igual que antes)
     const dayWeights = useMemo(() => {

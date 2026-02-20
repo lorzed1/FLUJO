@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useUI } from '../../context/UIContext';
 import { useProjections } from './hooks/useProjections';
 import { ConfigModal } from './components/ConfigModal';
 import { ProjectionsMethodologyModal } from './components/ProjectionsMethodologyModal';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { ChartBarIcon, QuestionMarkCircleIcon, ChevronRightIcon, TableCellsIcon, PresentationChartLineIcon } from '../../components/ui/Icons';
+import { ChartBarIcon, QuestionMarkCircleIcon, ChevronRightIcon } from '../../components/ui/Icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ProjectionsDashboardPage } from './pages/ProjectionsDashboardPage';
@@ -23,7 +23,7 @@ export const ProjectionsView: React.FC = () => {
         loading,
         config,
         setConfig,
-        addEvent,
+        addEvent, // Note: If used in sub-pages, pass them. ProjectionsDatabasePage doesn't seem to use them in props interface shown before, but verify if needed. The interface I saw only had data props.
         deleteEvent,
         saveGoal,
         seedHolidays,
@@ -34,20 +34,27 @@ export const ProjectionsView: React.FC = () => {
     const { setAlertModal } = useUI();
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const location = useLocation();
+
+    // Determine breadcrumb based on active route
+    let breadcrumbLabel = 'Tablero';
+    if (location.pathname.includes('/projections/table')) breadcrumbLabel = 'Proyeccion Estadistica';
+    if (location.pathname.includes('/projections/statistics')) breadcrumbLabel = 'Proyeccion PE';
 
     return (
-        <div className="h-full flex flex-col bg-gray-50/50 font-sans p-6 overflow-hidden">
+        <div className="h-full flex flex-col font-sans overflow-hidden">
 
             {/* Page Header */}
             <PageHeader
-                title="Proyecciones"
+                title="Proyeccion de ventas"
                 breadcrumbs={[
-                    { label: 'Finanzas', path: '/projections' },
-                    { label: 'Proyecciones' }
+                    { label: 'Proyeccion de ventas', path: '/projections' },
+                    { label: breadcrumbLabel }
                 ]}
                 icon={<ChartBarIcon className="h-6 w-6" />}
                 actions={
                     <div className="flex flex-wrap items-center gap-3">
+
                         {/* Month Nav */}
                         <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
                             <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md text-gray-500 transition-colors">
@@ -82,23 +89,12 @@ export const ProjectionsView: React.FC = () => {
                 }
             />
 
-
-
             {/* Content Area */}
-            <div className="flex-1 overflow-hidden flex flex-col h-full relative">
+            <div className="flex-1 overflow-hidden flex flex-col h-full relative mt-4">
                 <Routes>
-                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route index element={<Navigate to="table" replace />} />
 
-                    <Route path="dashboard" element={
-                        <ProjectionsDashboardPage
-                            currentDate={currentDate}
-                            calculatedProjections={calculatedProjections}
-                            storedProjections={projections}
-                            realSales={realSales}
-                        />
-                    } />
-
-                    <Route path="database" element={
+                    <Route path="table" element={
                         <ProjectionsDatabasePage
                             currentDate={currentDate}
                             events={events}
@@ -109,14 +105,19 @@ export const ProjectionsView: React.FC = () => {
                         />
                     } />
 
-                    <Route path="equilibrium" element={
+                    <Route path="statistics" element={
                         <EquilibriumDatabasePage
                             currentDate={currentDate}
                             realSales={realSales}
                         />
                     } />
 
-                    <Route path="*" element={<Navigate to="dashboard" replace />} />
+                    {/* Keep dashboard route just in case or redirect */}
+                    <Route path="dashboard" element={
+                        <Navigate to="table" replace />
+                    } />
+
+                    <Route path="*" element={<Navigate to="table" replace />} />
                 </Routes>
             </div>
 

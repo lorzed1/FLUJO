@@ -6,7 +6,6 @@ import {
     endOfWeek,
     addWeeks,
     subWeeks,
-    isSameDay,
     parseISO,
     isBefore,
     startOfDay
@@ -14,15 +13,10 @@ import {
 import { es } from 'date-fns/locale';
 import {
     BanknotesIcon,
-    BuildingLibraryIcon,
-    CalculatorIcon,
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    CheckCircleIcon,
     ExclamationCircleIcon,
     ArrowPathIcon,
-    CreditCardIcon,
-    WalletIcon
+    CurrencyDollarIcon,
+    CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { BudgetCommitment } from '../../../types/budget';
 import { budgetService } from '../../../services/budget';
@@ -31,36 +25,32 @@ import { BudgetContextType } from '../layouts/BudgetLayout';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { CurrencyInput } from '../../../components/ui/CurrencyInput';
+import { BudgetHistory } from './BudgetHistory';
 
-export const BudgetExecution: React.FC = () => {
+/* ──────────────────────────────────────────────────────────
+   BudgetExecutionContent – Vista principal de pagos semanales
+   Sigue: Design System Aliaddo (SKILL.md)
+   ────────────────────────────────────────────────────────── */
+
+const BudgetExecutionContent: React.FC = () => {
     const { refreshTrigger } = useOutletContext<BudgetContextType>();
     const { setAlertModal } = useUI();
 
-    // Estado de Fecha (Semana Actual)
     const [currentDate, setCurrentDate] = useState(new Date());
-
-    // Estado de Datos
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Estado de "Tanque" (Disponibilidad Detallada)
     const [ctaCorriente, setCtaCorriente] = useState<string>('');
     const [ctaAhorrosJ, setCtaAhorrosJ] = useState<string>('');
     const [ctaAhorrosN, setCtaAhorrosN] = useState<string>('');
     const [efectivo, setEfectivo] = useState<string>('');
-
-    // Estado para debounce
     const [isSaving, setIsSaving] = useState(false);
-
-    // Estado de Selección
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    // Computed Values
-    const startDate = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]); // Lunes
-    const endDate = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]); // Domingo
+    const startDate = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
+    const endDate = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
 
-    // Cargar Datos
+    /* ── Data Loading ── */
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
@@ -73,7 +63,12 @@ export const BudgetExecution: React.FC = () => {
                     budgetService.getOverduePendingCommitments(startStr)
                 ]);
 
-                setCommitments([...overdueData, ...weekData]);
+                const uniqueCommitments = [...overdueData, ...weekData].reduce((acc, cur) => {
+                    if (!acc.find(i => i.id === cur.id)) acc.push(cur);
+                    return acc;
+                }, [] as BudgetCommitment[]);
+
+                setCommitments(uniqueCommitments);
 
                 const availability = await budgetService.getWeeklyAvailability(startStr);
                 if (availability) {
@@ -82,137 +77,105 @@ export const BudgetExecution: React.FC = () => {
                     setCtaAhorrosN(availability.ctaAhorrosN.toString());
                     setEfectivo(availability.efectivo.toString());
                 } else {
-                    setCtaCorriente('');
-                    setCtaAhorrosJ('');
-                    setCtaAhorrosN('');
-                    setEfectivo('');
+                    setCtaCorriente(''); setCtaAhorrosJ('');
+                    setCtaAhorrosN(''); setEfectivo('');
                 }
-            } catch (error) {
-                console.error("Error loading data:", error);
-            } finally {
-                setLoading(false);
-            }
+            } catch (err) { console.error("Error loading data:", err); }
+            finally { setLoading(false); }
         };
         loadData();
     }, [currentDate, refreshTrigger]);
 
-    // Cargar Selección Persistente
+    /* ── Persistent Selection ── */
     useEffect(() => {
         try {
-            const startStr = format(startDate, 'yyyy-MM-dd');
-            const saved = localStorage.getItem(`budget_selection_${startStr}`);
+            const key = `budget_selection_${format(startDate, 'yyyy-MM-dd')}`;
+            const saved = localStorage.getItem(key);
             if (saved) {
                 const ids = JSON.parse(saved);
-                if (Array.isArray(ids)) {
-                    setSelectedIds(new Set(ids));
-                }
-            } else {
-                setSelectedIds(new Set());
-            }
-        } catch (e) {
-            console.error("Error loading saved selection:", e);
-        }
+                if (Array.isArray(ids)) setSelectedIds(new Set(ids));
+            } else { setSelectedIds(new Set()); }
+        } catch (e) { console.error("Error loading saved selection:", e); }
     }, [startDate]);
 
-    // Guardar Selección cuando cambia
     useEffect(() => {
         try {
-            const startStr = format(startDate, 'yyyy-MM-dd');
-            localStorage.setItem(`budget_selection_${startStr}`, JSON.stringify(Array.from(selectedIds)));
-        } catch (e) {
-            console.error("Error saving selection:", e);
-        }
+            localStorage.setItem(
+                `budget_selection_${format(startDate, 'yyyy-MM-dd')}`,
+                JSON.stringify(Array.from(selectedIds))
+            );
+        } catch (e) { console.error("Error saving selection:", e); }
     }, [selectedIds, startDate]);
 
-    // Helpers de Cálculo
+    /* ── Calculations ── */
     const totalAvailable = useMemo(() => {
-        const cc = parseFloat(ctaCorriente) || 0;
-        const caj = parseFloat(ctaAhorrosJ) || 0;
-        const can = parseFloat(ctaAhorrosN) || 0;
-        const ef = parseFloat(efectivo) || 0;
-        return cc + caj + can + ef;
+        return (parseFloat(ctaCorriente) || 0) +
+            (parseFloat(ctaAhorrosJ) || 0) +
+            (parseFloat(ctaAhorrosN) || 0) +
+            (parseFloat(efectivo) || 0);
     }, [ctaCorriente, ctaAhorrosJ, ctaAhorrosN, efectivo]);
 
-    // Persistencia Automática (onBlur)
     const handleSaveAvailability = async () => {
         setIsSaving(true);
         try {
-            const startStr = format(startDate, 'yyyy-MM-dd');
             await budgetService.saveWeeklyAvailability({
-                weekStartDate: startStr,
+                weekStartDate: format(startDate, 'yyyy-MM-dd'),
                 ctaCorriente: parseFloat(ctaCorriente) || 0,
                 ctaAhorrosJ: parseFloat(ctaAhorrosJ) || 0,
                 ctaAhorrosN: parseFloat(ctaAhorrosN) || 0,
                 efectivo: parseFloat(efectivo) || 0,
-                totalAvailable: totalAvailable
+                totalAvailable
             });
-        } catch (error) {
-            console.error("Error saving availability:", error);
-        } finally {
-            setIsSaving(false);
-        }
+        } catch (err) { console.error("Error saving availability:", err); }
+        finally { setIsSaving(false); }
     };
 
     const totalSelected = useMemo(() => {
         return commitments
-            .filter(c => selectedIds.has(c.id))
+            .filter(c => selectedIds.has(c.id) && c.status === 'pending')
             .reduce((sum, c) => sum + c.amount, 0);
     }, [commitments, selectedIds]);
 
     const remainingBalance = totalAvailable - totalSelected;
     const isDeficit = remainingBalance < 0;
 
-    // Handlers
-    const toggleSelection = (id: string) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
-        }
-        setSelectedIds(newSet);
+    /* ── Handlers ── */
+    const toggleSelection = (id: string, status: string) => {
+        if (status !== 'pending') return;
+        const next = new Set(selectedIds);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setSelectedIds(next);
     };
 
     const handleExecute = () => {
         if (selectedIds.size === 0) return;
 
         setAlertModal({
-            isOpen: true,
-            type: 'info',
+            isOpen: true, type: 'info',
             title: 'Confirmar Pagos',
             message: `Vas a registrar el pago de ${selectedIds.size} compromisos por un total de $${totalSelected.toLocaleString('es-CO')}. ¿Confirmar?`,
-            showCancel: true,
-            confirmText: 'Ejecutar Pagos',
+            showCancel: true, confirmText: 'Ejecutar Pagos',
             onConfirm: async () => {
                 setAlertModal({ isOpen: false, message: '' });
-
                 await handleSaveAvailability();
-
                 try {
                     const promises = Array.from(selectedIds).map(async (id) => {
-                        const commitment = commitments.find(c => c.id === id);
-                        if (!commitment) return;
-
+                        const c = commitments.find(x => x.id === id);
+                        if (!c || c.status !== 'pending') return;
                         if (id.startsWith('projected-')) {
-                            const cleanTitle = commitment.title.replace(' (Proyectado)', '');
                             return budgetService.addCommitment({
-                                title: cleanTitle,
-                                amount: commitment.amount,
-                                dueDate: commitment.dueDate,
-                                status: 'paid',
-                                category: commitment.category,
-                                recurrenceRuleId: commitment.recurrenceRuleId,
+                                title: c.title.replace(' (Proyectado)', ''),
+                                amount: c.amount, dueDate: c.dueDate,
+                                status: 'paid', category: c.category,
+                                recurrenceRuleId: c.recurrenceRuleId,
                                 paidDate: format(new Date(), 'yyyy-MM-dd'),
-                                description: commitment.description
-                            });
-                        } else {
-                            return budgetService.updateCommitment(id, {
-                                status: 'paid',
-                                paidDate: format(new Date(), 'yyyy-MM-dd')
+                                description: c.description
                             });
                         }
+                        return budgetService.updateCommitment(id, {
+                            status: 'paid', paidDate: format(new Date(), 'yyyy-MM-dd')
+                        });
                     });
-
                     await Promise.all(promises);
 
                     const startStr = format(startDate, 'yyyy-MM-dd');
@@ -224,357 +187,373 @@ export const BudgetExecution: React.FC = () => {
                             ctaAhorrosJ: parseFloat(ctaAhorrosJ) || 0,
                             ctaAhorrosN: parseFloat(ctaAhorrosN) || 0,
                             efectivo: parseFloat(efectivo) || 0,
-                            totalAvailable: totalAvailable
+                            totalAvailable
                         },
                         totalPaid: totalSelected,
                         finalBalance: remainingBalance,
                         itemsCount: selectedIds.size
                     });
 
-                    setAlertModal({
-                        isOpen: true,
-                        type: 'success',
-                        title: 'Éxito',
-                        message: 'Pagos registrados y snapshot guardado.'
-                    });
-
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Pagos registrados y snapshot guardado.' });
                     localStorage.removeItem(`budget_selection_${startStr}`);
+                    setSelectedIds(new Set());
 
                     const endStr = format(endDate, 'yyyy-MM-dd');
-                    const [weekData, overdueData] = await Promise.all([
+                    const [w, o] = await Promise.all([
                         budgetService.getCommitments(startStr, endStr),
                         budgetService.getOverduePendingCommitments(startStr)
                     ]);
-                    setCommitments([...overdueData, ...weekData]);
-                    setSelectedIds(new Set());
-
-                } catch (error) {
-                    console.error("Error executing payments:", error);
-                    setAlertModal({
-                        isOpen: true,
-                        type: 'error',
-                        title: 'Error',
-                        message: 'Hubo un problema al registrar los pagos.'
-                    });
+                    setCommitments([...o, ...w].reduce((acc, cur) => {
+                        if (!acc.find(i => i.id === cur.id)) acc.push(cur);
+                        return acc;
+                    }, [] as BudgetCommitment[]));
+                } catch (err) {
+                    console.error("Error executing payments:", err);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Hubo un problema al registrar los pagos.' });
                 }
             }
         });
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-CO', {
-            style: 'currency',
-            currency: 'COP',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
+    const fmt = (n: number) =>
+        new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 
-    const activeCommitments = useMemo(() => {
-        return commitments.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    }, [commitments]);
+    const sorted = useMemo(() => [...commitments].sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [commitments]);
+    const pending = sorted.filter(c => c.status === 'pending');
+    const paid = sorted.filter(c => c.status === 'paid');
+    const overdue = pending.filter(c => isBefore(parseISO(c.dueDate), startOfDay(new Date())));
+    const upcoming = pending.filter(c => !isBefore(parseISO(c.dueDate), startOfDay(new Date())));
 
-    const pendingCommitments = activeCommitments.filter(c => c.status === 'pending');
-    const paidCommitments = activeCommitments.filter(c => c.status === 'paid');
+    /* ════════════════════════════════════════════════════════
+       RENDER – Aliaddo Design System
+       ════════════════════════════════════════════════════════ */
+    return (
+        <div className="flex flex-col h-full space-y-4">
+            {/* ── Week Navigator (inline, sin PageHeader propio) ── */}
+            <div className="flex items-center justify-end">
+                <div className="flex items-center bg-white dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+                    <button
+                        onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
+                        className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 transition-colors"
+                    >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <div className="px-3 text-center min-w-[140px]">
+                        <span className="block text-[10px] text-gray-400 uppercase font-semibold tracking-wider leading-tight">Semana</span>
+                        <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
+                            {format(startDate, 'd MMM', { locale: es })} — {format(endDate, 'd MMM', { locale: es })}
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
+                        className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 transition-colors"
+                    >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Disponibilidad (Tank) ─ Card Aliaddo ── */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                    <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Corriente</label>
+                        <Input type="number" value={ctaCorriente} onChange={e => setCtaCorriente(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Ahorros J</label>
+                        <Input type="number" value={ctaAhorrosJ} onChange={e => setCtaAhorrosJ(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Ahorros N</label>
+                        <Input type="number" value={ctaAhorrosN} onChange={e => setCtaAhorrosN(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Efectivo</label>
+                        <Input type="number" value={efectivo} onChange={e => setEfectivo(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                    </div>
+                    {/* Total disponible - inline summary */}
+                    <div className="flex items-center justify-center md:justify-end gap-2 py-1">
+                        {isSaving && <ArrowPathIcon className="animate-spin h-3.5 w-3.5 text-purple-600" />}
+                        <div className="text-right">
+                            <span className="block text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Disponible</span>
+                            <span className="text-lg font-bold text-emerald-600 font-mono tracking-tight">{fmt(totalAvailable)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Main Content: Table (2/3) + Summary Panel (1/3) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
+
+                {/* ── Tabla de Compromisos ── */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                    {/* Card Header (Section 5 / Aliaddo) */}
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 flex justify-between items-center">
+                        <h3 className="text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-white">
+                            Compromisos Pendientes
+                        </h3>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-[11px] font-medium text-gray-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                            {pending.length} por pagar
+                        </span>
+                    </div>
+
+                    {/* Table (Section 6 / Aliaddo) */}
+                    <div className="flex-1 overflow-y-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 w-10"></th>
+                                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Concepto</th>
+                                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Categoría</th>
+                                    <th className="text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Vencimiento</th>
+                                    <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading && (
+                                    <tr>
+                                        <td colSpan={5} className="py-16 text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                                <span className="text-xs text-gray-400">Cargando compromisos...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {!loading && pending.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-16 text-center text-sm text-gray-400">
+                                            No hay compromisos pendientes para esta semana.
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {!loading && [...overdue, ...upcoming].map(c => {
+                                    const sel = selectedIds.has(c.id);
+                                    const late = isBefore(parseISO(c.dueDate), startOfDay(new Date()));
+                                    return (
+                                        <tr
+                                            key={c.id}
+                                            onClick={() => toggleSelection(c.id, c.status)}
+                                            className={`
+                                                cursor-pointer transition-colors border-b border-gray-50 dark:border-slate-800
+                                                ${sel
+                                                    ? 'bg-purple-50/70 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/15'
+                                                    : 'bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                                                }
+                                            `}
+                                        >
+                                            {/* Checkbox */}
+                                            <td className="px-4 py-3.5">
+                                                <div className={`
+                                                    h-4 w-4 rounded border flex items-center justify-center transition-colors
+                                                    ${sel ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900'}
+                                                `}>
+                                                    {sel && (
+                                                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            {/* Concepto */}
+                                            <td className="px-4 py-3.5">
+                                                <span className={`text-[13px] font-medium ${sel ? 'text-purple-800' : 'text-gray-900 dark:text-white'}`}>
+                                                    {c.title}
+                                                </span>
+                                            </td>
+                                            {/* Categoría */}
+                                            <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-400">
+                                                {c.category}
+                                            </td>
+                                            {/* Vencimiento */}
+                                            <td className="px-4 py-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    {late && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border bg-white text-[10px] font-semibold border-red-200 text-red-600">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                                            Vencido
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-[13px] font-medium ${late ? 'text-red-500' : 'text-gray-600'}`}>
+                                                        {format(parseISO(c.dueDate), 'EEE d MMM', { locale: es })}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            {/* Monto */}
+                                            <td className="px-4 py-3.5 text-right">
+                                                <span className={`text-[13px] font-bold ${sel ? 'text-purple-700' : 'text-gray-900 dark:text-white'}`}>
+                                                    {fmt(c.amount)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+
+                                {/* ── Separador Pagados ── */}
+                                {!loading && paid.length > 0 && (
+                                    <>
+                                        <tr>
+                                            <td colSpan={5} className="py-2 px-4 bg-gray-50/30 dark:bg-slate-900/20 text-[10px] uppercase font-bold text-gray-400 tracking-[0.15em] border-y border-gray-100 dark:border-slate-700/50">
+                                                Historial Semanal (Pagados)
+                                            </td>
+                                        </tr>
+                                        {paid.map(c => (
+                                            <tr key={c.id} className="bg-white dark:bg-slate-800 opacity-50 hover:opacity-80 transition-opacity border-b border-gray-50">
+                                                <td className="px-4 py-3">
+                                                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                                                </td>
+                                                <td className="px-4 py-3 text-[13px] font-medium text-gray-500 line-through">{c.title}</td>
+                                                <td className="px-4 py-3 text-[13px] text-gray-400">{c.category}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">Liquidado</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-[13px] font-bold text-gray-400">{fmt(c.amount)}</td>
+                                            </tr>
+                                        ))}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* ── Panel Resumen (Sticky) ── */}
+                <div className="lg:col-span-1">
+                    <div className="sticky top-6 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 p-6">
+                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.1em] mb-6 flex items-center gap-2">
+                            <CurrencyDollarIcon className="h-4 w-4" />
+                            Resumen de Operación
+                        </h4>
+
+                        <div className="space-y-4 mb-6">
+                            <div className="flex justify-between items-center text-[13px]">
+                                <span className="text-gray-500 font-medium">Disponible esta semana</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">{fmt(totalAvailable)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[13px]">
+                                <span className="text-gray-500 font-medium">Seleccionado para pagar</span>
+                                <span className="font-bold text-red-500">− {fmt(totalSelected)}</span>
+                            </div>
+                            <div className="pt-4 border-t border-gray-100 dark:border-slate-700">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-[12px] font-bold text-gray-800 dark:text-gray-200 uppercase">Balance Residual</span>
+                                    <span className={`text-2xl font-bold font-mono tracking-tighter ${isDeficit ? 'text-red-600' : 'text-emerald-600'}`}>
+                                        {fmt(remainingBalance)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Progreso */}
+                        <div className="mb-6">
+                            <div className="flex justify-between text-[11px] mb-2 font-bold uppercase tracking-wider">
+                                <span className="text-gray-400">Uso de recursos</span>
+                                <span className={isDeficit ? 'text-red-500' : 'text-purple-600'}>
+                                    {totalAvailable > 0 ? Math.round((totalSelected / totalAvailable) * 100) : 0}%
+                                </span>
+                            </div>
+                            <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full transition-all duration-700 rounded-full ${isDeficit ? 'bg-red-500' : 'bg-purple-600'}`}
+                                    style={{ width: `${Math.min((totalSelected / (totalAvailable || 1)) * 100, 100)}%` }}
+                                />
+                            </div>
+
+                            {isDeficit && (
+                                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg flex items-start gap-2 border border-red-100 dark:border-red-900/20">
+                                    <ExclamationCircleIcon className="h-5 w-5 text-red-500 shrink-0" />
+                                    <p className="text-[11px] text-red-600 dark:text-red-400 font-medium leading-relaxed">
+                                        Los pagos seleccionados superan tu liquidez disponible por <strong>{fmt(Math.abs(remainingBalance))}</strong>.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Primary Action – Aliaddo purple-600 */}
+                        <Button
+                            variant="primary"
+                            onClick={handleExecute}
+                            disabled={selectedIds.size === 0 || isDeficit}
+                            className={`w-full !py-3 !rounded-lg shadow-md font-medium text-sm transition-all
+                                ${selectedIds.size === 0 || isDeficit
+                                    ? '!bg-gray-200 !text-gray-400 !shadow-none cursor-not-allowed'
+                                    : '!bg-purple-600 hover:!bg-purple-700 !text-white'
+                                }`}
+                        >
+                            {selectedIds.size === 0
+                                ? 'Seleccionar para pagar'
+                                : `Ejecutar ${selectedIds.size} Pagos (${fmt(totalSelected)})`
+                            }
+                        </Button>
+
+                        <p className="text-[11px] text-center text-gray-400 mt-4 leading-relaxed italic">
+                            Al confirmar, los registros se actualizarán en el historial permanente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ══════════════════════════════════════════════════════════
+   BudgetExecution – Wrapper con Tabs en PageHeader Actions
+   Design System §5: Sub-Navigation en el área de Actions
+   ══════════════════════════════════════════════════════════ */
+export const BudgetExecution: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'execution' | 'history'>('execution');
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full space-y-4">
+            {/* PageHeader con Segmented Control en Actions (§5) */}
             <PageHeader
-                title="Ejecución de Presupuesto"
+                title="Ejecución Presupuestal"
                 breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
-                    { label: 'Ejecución' }
+                    { label: 'Egresos', path: '/budget' },
+                    { label: 'Pagos Semanales' }
                 ]}
                 icon={<BanknotesIcon className="h-6 w-6" />}
                 actions={
-                    <div className="flex items-center bg-white dark:bg-slate-800 p-1.5 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
-                        <Button
-                            variant="secondary"
-                            className="!h-8 !p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700"
-                            onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
+                    <div className="flex p-1 space-x-1 bg-gray-100 dark:bg-slate-700/50 rounded-lg">
+                        <button
+                            onClick={() => setActiveTab('execution')}
+                            className={`
+                                px-4 py-1.5 text-xs font-semibold rounded-md transition-all
+                                ${activeTab === 'execution'
+                                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                                }
+                            `}
                         >
-                            <ChevronLeftIcon className="h-4 w-4" />
-                        </Button>
-                        <div className="px-4 text-center min-w-[160px]">
-                            <span className="block text-[10px] text-gray-400 uppercase font-bold tracking-wider leading-tight">Semana</span>
-                            <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
-                                {format(startDate, 'dd MMM', { locale: es })} — {format(endDate, 'dd MMM', { locale: es })}
-                            </span>
-                        </div>
-                        <Button
-                            variant="secondary"
-                            className="!h-8 !p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700"
-                            onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
+                            Pagos Semanal
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            className={`
+                                px-4 py-1.5 text-xs font-semibold rounded-md transition-all
+                                ${activeTab === 'history'
+                                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                                }
+                            `}
                         >
-                            <ChevronRightIcon className="h-4 w-4" />
-                        </Button>
+                            Historial de Pagos
+                        </button>
                     </div>
                 }
             />
 
-            <div className="space-y-6">
-                {/* --- SECCIÓN 1: DISPONIBILIDAD (TANK) --- */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 sm:p-6 transition-all">
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1 w-full">
-                            <div>
-                                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Cta Corriente</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <CreditCardIcon className="h-4 w-4 text-gray-300 group-focus-within:text-primary transition-colors" />
-                                    </div>
-                                    <Input
-                                        type="number"
-                                        value={ctaCorriente}
-                                        onChange={(e) => setCtaCorriente(e.target.value)}
-                                        onBlur={handleSaveAvailability}
-                                        className="!pl-9 !h-10 font-medium !text-gray-900 dark:!text-white"
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Cta Ahorros J</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <BuildingLibraryIcon className="h-4 w-4 text-gray-300 group-focus-within:text-primary transition-colors" />
-                                    </div>
-                                    <Input
-                                        type="number"
-                                        value={ctaAhorrosJ}
-                                        onChange={(e) => setCtaAhorrosJ(e.target.value)}
-                                        onBlur={handleSaveAvailability}
-                                        className="!pl-9 !h-10 font-medium !text-gray-900 dark:!text-white"
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Cta Ahorros N</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <BuildingLibraryIcon className="h-4 w-4 text-gray-300 group-focus-within:text-primary transition-colors" />
-                                    </div>
-                                    <Input
-                                        type="number"
-                                        value={ctaAhorrosN}
-                                        onChange={(e) => setCtaAhorrosN(e.target.value)}
-                                        onBlur={handleSaveAvailability}
-                                        className="!pl-9 !h-10 font-medium !text-gray-900 dark:!text-white"
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Efectivo</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <WalletIcon className="h-4 w-4 text-gray-300 group-focus-within:text-primary transition-colors" />
-                                    </div>
-                                    <Input
-                                        type="number"
-                                        value={efectivo}
-                                        onChange={(e) => setEfectivo(e.target.value)}
-                                        onBlur={handleSaveAvailability}
-                                        className="!pl-9 !h-10 font-medium !text-gray-900 dark:!text-white"
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col items-center md:items-end justify-center px-6 py-2 border-t md:border-t-0 md:border-l border-gray-100 dark:border-slate-700 min-w-[200px] w-full md:w-auto">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[11px] text-green-600 dark:text-green-400 font-bold uppercase tracking-widest">Total Disponible</span>
-                                {isSaving && <ArrowPathIcon className="animate-spin h-3.5 w-3.5 text-green-500" />}
-                            </div>
-                            <span className="text-2xl font-bold text-green-600 dark:text-green-400 font-sans tracking-tight">
-                                {totalAvailable.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex flex-col lg:flex-row gap-6">
-                    {/* --- COLUMNA IZQUIERDA: LISTADO --- */}
-                    <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col">
-                        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <CalculatorIcon className="h-5 w-5 text-primary" />
-                                <h3 className="font-semibold text-gray-900 dark:text-white text-[15px]">Compromisos Pendientes</h3>
-                            </div>
-                            <span className="text-[11px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 px-2.5 py-1 rounded-full uppercase tracking-tighter">
-                                {pendingCommitments.length} por pagar
-                            </span>
-                        </div>
-
-                        <div className="p-2 overflow-y-auto max-h-[600px] divide-y divide-gray-50 dark:divide-slate-700/50">
-                            {loading ? (
-                                <div className="flex flex-col justify-center items-center h-48 gap-3">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                    <span className="text-xs text-gray-400 font-medium">Cargando compromisos...</span>
-                                </div>
-                            ) : pendingCommitments.length === 0 && paidCommitments.length === 0 ? (
-                                <div className="flex flex-col justify-center items-center h-48 text-gray-400">
-                                    <span className="text-sm">No se encontraron registros para esta semana.</span>
-                                </div>
-                            ) : (
-                                <>
-                                    {pendingCommitments.map(commitment => {
-                                        const isSelected = selectedIds.has(commitment.id);
-                                        const isOverdue = isBefore(parseISO(commitment.dueDate), startOfDay(new Date()));
-
-                                        return (
-                                            <div
-                                                key={commitment.id}
-                                                onClick={() => toggleSelection(commitment.id)}
-                                                className={`
-                                                    group flex items-center p-4 cursor-pointer transition-all border-l-4
-                                                    ${isSelected
-                                                        ? 'bg-blue-50/70 dark:bg-blue-900/10 border-blue-500'
-                                                        : isOverdue
-                                                            ? 'bg-red-50/30 dark:bg-red-900/5 border-red-400 hover:bg-red-50/50'
-                                                            : 'bg-white dark:bg-slate-800 border-transparent hover:bg-gray-50 dark:hover:bg-slate-700/50'
-                                                    }
-                                                `}
-                                            >
-                                                <div className={`
-                                                    flex items-center justify-center h-5 w-5 rounded border transition-all
-                                                    ${isSelected
-                                                        ? 'bg-blue-600 border-blue-600'
-                                                        : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900'
-                                                    }
-                                                `}>
-                                                    {isSelected && <CheckCircleIcon className="h-4 w-4 text-white" />}
-                                                </div>
-
-                                                <div className="ml-4 flex-1">
-                                                    <div className="flex justify-between items-center">
-                                                        <div>
-                                                            <p className={`text-[14px] font-semibold tracking-tight ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
-                                                                {commitment.title}
-                                                            </p>
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className="text-[11px] text-gray-400 font-medium">{commitment.category}</span>
-                                                                {isOverdue && (
-                                                                    <span className="flex items-center text-[10px] text-red-500 font-bold uppercase tracking-tighter">
-                                                                        <ExclamationCircleIcon className="h-3 w-3 mr-0.5" /> Vencido
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className={`text-[15px] font-bold ${isSelected ? 'text-blue-800 dark:text-blue-200' : 'text-gray-900 dark:text-white'}`}>
-                                                                {formatCurrency(commitment.amount)}
-                                                            </p>
-                                                            <p className={`text-[11px] font-medium mt-0.5 ${isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
-                                                                {format(parseISO(commitment.dueDate), 'EEE d MMM', { locale: es }).toUpperCase()}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {paidCommitments.length > 0 && (
-                                        <div className="py-2 px-5 bg-gray-50/30 dark:bg-slate-900/20 text-[10px] uppercase font-bold text-gray-400 tracking-[0.2em] border-y border-gray-100 dark:border-slate-700/50">
-                                            Historial Semanal (Pagados)
-                                        </div>
-                                    )}
-
-                                    {paidCommitments.map(commitment => (
-                                        <div key={commitment.id} className="flex items-center p-4 bg-white dark:bg-slate-800 opacity-50 grayscale hover:grayscale-0 transition-all">
-                                            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                                            <div className="ml-4 flex-1">
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 line-through tracking-tight">
-                                                            {commitment.title}
-                                                        </p>
-                                                        <p className="text-[11px] text-gray-400">{commitment.category}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[13px] font-bold text-gray-400">{formatCurrency(commitment.amount)}</p>
-                                                        <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">Liquidado</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* --- BARRA LATERAL: RESUMEN --- */}
-                    <div className="lg:w-96">
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 p-6 sticky top-6">
-                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.1em] mb-6">Resumen de Operación</h4>
-
-                            <div className="space-y-4 mb-8">
-                                <div className="flex justify-between items-center text-[13px]">
-                                    <span className="text-gray-500 font-medium">Disponible para esta semana</span>
-                                    <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(totalAvailable)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[13px]">
-                                    <span className="text-gray-500 font-medium">Compromisos seleccionados</span>
-                                    <span className="font-bold text-red-500">− {formatCurrency(totalSelected)}</span>
-                                </div>
-                                <div className="pt-4 border-t border-gray-100 dark:border-slate-700">
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-[12px] font-bold text-gray-800 dark:text-gray-200 uppercase">Balance Residual</span>
-                                        <span className={`text-2xl font-bold font-sans tracking-tighter ${isDeficit ? 'text-red-600' : 'text-green-600'}`}>
-                                            {formatCurrency(remainingBalance)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Progreso de Disponibilidad */}
-                            <div className="mb-8">
-                                <div className="flex justify-between text-[11px] mb-2 font-bold uppercase tracking-wider">
-                                    <span className="text-gray-400">Uso de recursos</span>
-                                    <span className={isDeficit ? 'text-red-500' : 'text-primary'}>
-                                        {totalAvailable > 0 ? Math.round((totalSelected / totalAvailable) * 100) : 0}%
-                                    </span>
-                                </div>
-                                <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full transition-all duration-700 rounded-full ${isDeficit ? 'bg-red-500' : 'bg-primary'}`}
-                                        style={{ width: `${Math.min((totalSelected / (totalAvailable || 1)) * 100, 100)}%` }}
-                                    />
-                                </div>
-                                {isDeficit && (
-                                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg flex items-start gap-2 border border-red-100 dark:border-red-900/20">
-                                        <ExclamationCircleIcon className="h-5 w-5 text-red-500 shrink-0" />
-                                        <p className="text-[11px] text-red-600 dark:text-red-400 font-medium leading-relaxed">
-                                            ALERTA: Los pagos seleccionados superan tu liquidez disponible.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <Button
-                                variant="primary"
-                                onClick={handleExecute}
-                                disabled={selectedIds.size === 0 || isDeficit}
-                                className={`w-full !py-6 !rounded-xl !text-sm font-bold shadow-indigo-200 dark:shadow-none transition-all
-                                    ${selectedIds.size === 0 || isDeficit ? 'grayscale opacity-80' : 'hover:scale-[1.02] active:scale-[0.98]'}
-                                `}
-                            >
-                                {selectedIds.size === 0
-                                    ? 'Seleccionar para pagar'
-                                    : `Ejecutar ${selectedIds.size} Pagos (${formatCurrency(totalSelected)})`
-                                }
-                            </Button>
-
-                            <p className="text-[11px] text-center text-gray-400 mt-5 leading-relaxed italic">
-                                Al confirmar, los registros se actualizarán permanentemente en el historial.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            {/* Content */}
+            <div className="flex-1 overflow-hidden h-full">
+                {activeTab === 'execution' ? <BudgetExecutionContent /> : <BudgetHistory hideHeader={false} />}
             </div>
         </div>
     );

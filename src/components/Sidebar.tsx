@@ -90,42 +90,38 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
     },
     {
       id: 'arqueo',
-      label: 'Arqueo de Caja',
+      label: 'Caja',
       icon: <ClipboardDocumentListIcon className="h-5 w-5" />,
       roles: ['admin', 'cajero'],
       path: '/arqueo',
       children: [
-        { id: 'arqueo-form', label: 'Formulario Diarios', icon: <ClipboardDocumentListIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/form' },
-        { id: 'arqueo-transfers', label: 'Transferencias', icon: <ArrowRightOnRectangleIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/transfers' },
-        { id: 'arqueo-history', label: 'Historial Cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/history' },
+        { id: 'arqueo-form', label: 'Arqueo diario', icon: <ClipboardDocumentListIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/form' },
+        { id: 'arqueo-history', label: 'Historial de cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/history' },
       ]
     },
     {
       id: 'budget',
-      label: 'Presupuestos',
+      label: 'Egresos',
       icon: <CreditCardIcon className="h-5 w-5" />,
       roles: ['admin'],
       path: '/budget',
       children: [
-        { id: 'budget-dashboard', label: 'Resumen', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget' },
-        { id: 'budget-execution', label: 'Ejecución Semanal', icon: <BanknotesIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/execution' },
-        { id: 'budget-history', label: 'Historial Pagos', icon: <ClockIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/history' },
-        { id: 'budget-calendar', label: 'Calendario', icon: <CalendarIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/calendar' },
-        { id: 'budget-list', label: 'Tabla de Gastos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/list' },
-        { id: 'budget-recurrent', label: 'Recurrentes', icon: <ArrowPathIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/recurrent' },
-        { id: 'budget-categories', label: 'Categorías', icon: <TagIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/categories' },
+        { id: 'budget-execution', label: 'Pagos semanal', icon: <BanknotesIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/execution' },
+        { id: 'budget-calendar', label: 'Calendario de gastos', icon: <CalendarIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/calendar' },
+        { id: 'budget-recurrent', label: 'Gastos recurrentes', icon: <ArrowPathIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/recurrent' },
+        { id: 'budget-list', label: 'BD de gastos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/list' },
+        { id: 'budget-purchases', label: 'Compras', icon: <TagIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/purchases' },
       ]
     },
     {
       id: 'projections',
-      label: 'Proyecciones',
+      label: 'Proyeccion de ventas',
       icon: <ChartBarIcon className="h-5 w-5" />,
       roles: ['admin'],
       path: '/projections',
       children: [
-        { id: 'projections-dashboard', label: 'Dashboard', icon: <PresentationChartLineIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/dashboard' },
-        { id: 'projections-equilibrium', label: 'BD Proyección Eq.', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/equilibrium' },
-        { id: 'projections-database', label: 'Base de Datos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/database' },
+        { id: 'projections-table', label: 'Proyeccion Estadistica', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/table' },
+        { id: 'projections-statistics', label: 'Proyeccion PE', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/statistics' },
       ]
     },
     {
@@ -135,8 +131,8 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       roles: ['admin'],
       path: '/income-statement',
       children: [
-        { id: 'income-dashboard', label: 'Dashboard', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement' },
-        { id: 'income-table', label: 'Tabla de Datos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement/table' },
+        { id: 'income-dashboard', label: 'BI PYG', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement' },
+        { id: 'income-table', label: 'BD Estado de resultados', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement/table' },
       ]
     },
     {
@@ -170,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
           <div className="flex items-center gap-2">
             {!isCollapsed && (
               <div className="hidden lg:block">
-                <h1 className="text-xl font-medium tracking-tight text-white leading-none ml-1">FlowTrack</h1>
+                <h1 className="text-xl font-medium tracking-tight text-white leading-none ml-1">Data BI</h1>
               </div>
             )}
           </div>

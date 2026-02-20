@@ -46,7 +46,7 @@ interface DailySalesChartProps {
 
 export const DailySalesChart: React.FC<DailySalesChartProps> = ({ data, viewMode }) => {
     return (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -84,7 +84,7 @@ interface WeeklySalesChartProps {
 
 export const WeeklySalesChart: React.FC<WeeklySalesChartProps> = ({ data, viewMode }) => {
     return (
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="weekLabel" tick={{ fontSize: 12 }} stroke="#6b7280" padding={{ left: 20, right: 20 }} />
@@ -130,7 +130,7 @@ export const DayOfWeekByWeekChart: React.FC<DayOfWeekByWeekChartProps> = ({ data
     const dataSuffix = viewMode === 'visits' ? '_visits' : '_sales';
 
     return (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={220}>
             <BarChart
                 data={data}
                 barCategoryGap="15%"
@@ -179,7 +179,7 @@ export const MonthlyYearOverYearChart: React.FC<MonthlyYearOverYearChartProps> =
     const previousYear = currentYear - 1;
 
     return (
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#6b7280" padding={{ left: 20, right: 20 }} />
@@ -233,7 +233,7 @@ export const PaymentMixPieChart: React.FC<PaymentMixPieChartProps> = ({ data }) 
 
     return (
         <div className="flex items-center justify-center gap-8">
-            <ResponsiveContainer width="60%" height={280}>
+            <ResponsiveContainer width="60%" height={220}>
                 <PieChart>
                     <Pie
                         data={data}
@@ -277,7 +277,7 @@ interface AvgByDayOfWeekChartProps {
 
 export const AvgByDayOfWeekChart: React.FC<AvgByDayOfWeekChartProps> = ({ data, viewMode }) => {
     return (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -339,7 +339,7 @@ interface MonthlySummaryChartProps {
 
 export const MonthlySummaryChart: React.FC<MonthlySummaryChartProps> = ({ data, viewMode }) => {
     return (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis

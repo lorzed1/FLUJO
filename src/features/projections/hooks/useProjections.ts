@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { SalesEvent, SalesProjection, ArqueoRecord } from '../../../types';
 import { projectionsService } from '../../../services/projectionsService';
 import { calculateDailyProjection, ProjectionResult, ProjectionOptions } from '../../../utils/projections';
@@ -26,6 +26,12 @@ export const useProjections = () => {
 
     const [realSales, setRealSales] = useState<Record<string, number>>({});
 
+    // Usar refs para evitar re-creación de loadMonthData
+    const arqueosRef = useRef(arqueos);
+    const configRef = useRef(config);
+    useEffect(() => { arqueosRef.current = arqueos; }, [arqueos]);
+    useEffect(() => { configRef.current = config; }, [config]);
+
     const loadMonthData = useCallback(async () => {
         setLoading(true);
         try {
@@ -36,21 +42,15 @@ export const useProjections = () => {
             const monthEvents = await projectionsService.getSalesEvents(start, end);
             setEvents(monthEvents);
 
-            // 2. Fetch Stored Projections (Metas manuales/bloqueadas)
+            // 2. Fetch Stored Projections
             const stored = await projectionsService.getSalesProjections(start, end);
             const storedMap = stored.reduce((acc, p) => ({ ...acc, [p.date]: p }), {});
             setProjections(storedMap);
 
-            // 3. Calculate Real-time Projections for the whole month
-            // We need ALL events (not just this month's) to exclude historical outliers?
-            // Actually, for the calc of a specific day, we need past events.
-            // Optimization: Fetch all events once? Or fetch past events on demand?
-            // For now, let's assume we fetch all events or a large enough window if performance allows.
-            // Let's just fetch ALL events for simplicity in the prototype phase as data volume is low.
+            // 3. Calculate Real-time Projections
             const allEvents = await projectionsService.getSalesEvents();
 
             const results: Record<string, ProjectionResult> = {};
-
             let day = startOfMonth(currentDate);
             const endDay = endOfMonth(currentDate);
 
@@ -58,13 +58,11 @@ export const useProjections = () => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const calc = calculateDailyProjection(
                     dateStr,
-                    arqueos, // Historial completo
+                    arqueosRef.current,
                     allEvents,
-                    config
+                    configRef.current
                 );
                 results[dateStr] = calc;
-
-                // Next day
                 day.setDate(day.getDate() + 1);
             }
 
@@ -75,7 +73,7 @@ export const useProjections = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentDate, arqueos, config]);
+    }, [currentDate]); // Solo depende de currentDate ahora
 
     useEffect(() => {
         loadMonthData();
@@ -222,25 +220,12 @@ export const useProjections = () => {
                 const dateKey = r.fecha.substring(0, 10);
                 let val = 0;
 
-                // Prioridad: venta_sc (campo explícito si existe)
-                if (r.venta_sc !== undefined && r.venta_sc !== null) {
-                    if (typeof r.venta_sc === 'number') {
-                        val = r.venta_sc;
-                    } else if (typeof r.venta_sc === 'string') {
-                        const clean = r.venta_sc.replace(/\./g, '').replace(',', '.');
-                        val = parseFloat(clean) || 0;
-                    }
-                } else {
-                    // Fallback: ventaBruta - ingresoCovers
-                    const bruta = typeof r.ventaBruta === 'string'
-                        ? parseFloat(r.ventaBruta.replace(/\./g, '').replace(',', '.'))
-                        : (r.ventaBruta || 0);
-                    const cover = typeof r.ingresoCovers === 'string'
-                        ? parseFloat(r.ingresoCovers.replace(/\./g, '').replace(',', '.'))
-                        : (r.ingresoCovers || 0);
+                // Prioridad: Usar siempre ventaBruta como fuente de verdad
+                const bruta = typeof r.ventaBruta === 'string'
+                    ? parseFloat(r.ventaBruta.replace(/\./g, '').replace(',', '.'))
+                    : (r.ventaBruta || 0);
 
-                    val = bruta - cover;
-                }
+                val = bruta;
 
                 // Acumular si hay múltiples arqueos por día (turnos)
                 salesMap[dateKey] = (salesMap[dateKey] || 0) + val;

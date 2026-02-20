@@ -8,7 +8,12 @@ import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 
-export const BudgetCategories: React.FC = () => {
+interface BudgetCategoriesProps {
+    hideHeader?: boolean;
+    onSwitchToRecurrentes?: () => void;
+}
+
+export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader = false, onSwitchToRecurrentes }) => {
     const { categories, addCategory, deleteCategory } = useData();
     const { setAlertModal } = useUI();
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -92,14 +97,29 @@ export const BudgetCategories: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full">
-            <PageHeader
-                title="Categorización de Finanzas"
-                breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
-                    { label: 'Categorías' }
-                ]}
-                icon={<TagIcon className="h-6 w-6" />}
-            />
+            {!hideHeader && (
+                <PageHeader
+                    title="Categorías"
+                    breadcrumbs={[
+                        { label: 'Egresos', path: '/budget' },
+                        { label: 'Categorías' }
+                    ]}
+                    icon={<TagIcon className="h-6 w-6" />}
+                    actions={
+                        onSwitchToRecurrentes ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={onSwitchToRecurrentes}
+                                className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700"
+                            >
+                                <ArrowPathIcon className="w-3.5 h-3.5 mr-2" />
+                                Gastos Recurrentes
+                            </Button>
+                        ) : undefined
+                    }
+                />
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Panel lateral de creación */}

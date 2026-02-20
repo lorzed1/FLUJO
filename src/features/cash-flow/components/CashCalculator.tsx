@@ -147,27 +147,27 @@ const DenominationTable: React.FC<DenominationTableProps> = ({
     onUpdate,
     keyPrefix
 }) => (
-    <div className="space-y-3">
-        <div className="flex justify-between items-center px-1">
-            <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h4>
-            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{formatCurrencyValue(total)}</span>
+    <div className="space-y-4">
+        <div className="flex justify-between items-center px-2">
+            <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h4>
+            <span className="text-lg font-bold text-gray-700 dark:text-gray-200">{formatCurrencyValue(total)}</span>
         </div>
-        <div className="bg-gray-50/50 dark:bg-slate-900/30 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden">
-            <table className="w-full text-xs">
+        <div className="bg-gray-50/50 dark:bg-slate-900/30 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <table className="w-full text-base">
                 <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                     {Object.keys(denominations).map((denom) => (
                         <tr key={`${keyPrefix}-${denom}`}>
-                            <td className="py-2 px-3 font-medium text-gray-500">{formatCurrencyValue(parseInt(denom))}</td>
-                            <td className="py-1 px-1">
+                            <td className="py-3 px-4 font-bold text-gray-500">{formatCurrencyValue(parseInt(denom))}</td>
+                            <td className="py-2 px-2">
                                 <input
                                     type="number"
                                     value={denominations[denom] || ''}
                                     onChange={(e) => onUpdate(denom, e.target.value)}
-                                    className="w-full text-center py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full text-center py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg font-bold"
                                     placeholder="0"
                                 />
                             </td>
-                            <td className="py-2 px-3 text-right font-bold text-gray-700 dark:text-gray-300">
+                            <td className="py-3 px-4 text-right font-bold text-gray-700 dark:text-gray-300">
                                 {formatCurrencyValue(parseInt(denom) * (denominations[denom] || 0))}
                             </td>
                         </tr>

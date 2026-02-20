@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { TransferRecord } from '../../types';
 import { DatabaseService } from '../../services/database';
 import { ArrowPathIcon, BanknotesIcon, TrashIcon } from '../../components/ui/Icons';
@@ -13,23 +13,21 @@ const TransfersView: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const isLoadedRef = useRef(false);
 
-    const loadTransfers = async () => {
+    const loadTransfers = useCallback(async (force = false) => {
+        // Evitar recargas si ya se cargó (excepto si se fuerza)
+        if (isLoadedRef.current && !force) return;
+
         setIsLoading(true);
         try {
             const data = await DatabaseService.getTransfers();
-            console.log('📊 TransfersView: Datos brutos de Firestore:', data);
 
-            // User Request: Sanitizar registros
             const validData = (data || []).filter(t => {
                 if (!t || typeof t !== 'object') return false;
-                // Al menos debe tener un ID para ser procesable por la tabla
                 return (t as any).id;
             });
 
-            console.log('✅ TransfersView: Datos válidos procesados:', validData);
-
-            // Ordenar por fecha descendente
             const sorted = validData.sort((a, b) => {
                 const dateA = new Date(a.date || 0).getTime();
                 const dateB = new Date(b.date || 0).getTime();
@@ -38,17 +36,18 @@ const TransfersView: React.FC = () => {
 
             setTransfers(sorted);
             setError(null);
+            isLoadedRef.current = true;
         } catch (err: any) {
             console.error('❌ Error en loadTransfers:', err);
             setError(`Error al cargar las transferencias: ${err.message}`);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadTransfers();
-    }, []);
+    }, [loadTransfers]);
 
     const handleDelete = async (id: string) => {
         setAlertModal({
@@ -210,7 +209,7 @@ const TransfersView: React.FC = () => {
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={loadTransfers}
+                                onClick={() => loadTransfers(true)}
                                 className="h-8 w-8 p-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-gray-500 hover:text-purple-600"
                                 title="Recargar datos"
                             >

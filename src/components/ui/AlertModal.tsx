@@ -1,6 +1,5 @@
 import React, { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-// import { Button } from './Button';
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, InformationCircleIcon } from './Icons';
 
 interface AlertModalProps {
@@ -26,52 +25,19 @@ const AlertModal: React.FC<AlertModalProps> = ({
     cancelText = 'Cancelar',
     showCancel = false
 }) => {
-    const getStyles = () => {
+    const getIcon = () => {
+        const iconClasses = "w-5 h-5";
         switch (type) {
             case 'success':
-                return {
-                    bg: 'bg-green-50 dark:bg-green-900/30',
-                    border: 'border-green-200 dark:border-green-800',
-                    icon: <CheckCircleIcon className="w-8 h-8 text-green-600 dark:text-green-400" />,
-                    iconBg: 'bg-green-100 dark:bg-green-900/50',
-                    iconColor: 'text-green-600 dark:text-green-400',
-                    titleColor: 'text-green-900 dark:text-green-100',
-                    buttonBg: 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white',
-                };
+                return <CheckCircleIcon className={`${iconClasses} text-emerald-600`} />;
             case 'error':
-                return {
-                    bg: 'bg-red-50 dark:bg-red-900/30',
-                    border: 'border-red-200 dark:border-red-800',
-                    icon: <XCircleIcon className="w-8 h-8 text-red-600 dark:text-red-400" />,
-                    iconBg: 'bg-red-100 dark:bg-red-900/50',
-                    iconColor: 'text-red-600 dark:text-red-400',
-                    titleColor: 'text-red-900 dark:text-red-100',
-                    buttonBg: 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white',
-                };
+                return <XCircleIcon className={`${iconClasses} text-red-600`} />;
             case 'warning':
-                return {
-                    bg: 'bg-amber-50 dark:bg-amber-900/30',
-                    border: 'border-amber-200 dark:border-amber-800',
-                    icon: <ExclamationTriangleIcon className="w-8 h-8 text-amber-600 dark:text-amber-400" />,
-                    iconBg: 'bg-amber-100 dark:bg-amber-900/50',
-                    iconColor: 'text-amber-600 dark:text-amber-400',
-                    titleColor: 'text-amber-900 dark:text-amber-100',
-                    buttonBg: 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white',
-                };
+                return <ExclamationTriangleIcon className={`${iconClasses} text-amber-500`} />;
             default:
-                return {
-                    bg: 'bg-white dark:bg-slate-800',
-                    border: 'border-gray-200 dark:border-slate-700',
-                    icon: <InformationCircleIcon className="w-8 h-8 text-primary dark:text-blue-400" />,
-                    iconBg: 'bg-indigo-50 dark:bg-indigo-900/30',
-                    iconColor: 'text-primary dark:text-blue-400',
-                    titleColor: 'text-gray-900 dark:text-white',
-                    buttonBg: 'bg-primary hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-500 text-white',
-                };
+                return <InformationCircleIcon className={`${iconClasses} text-purple-600`} />;
         }
     };
-
-    const styles = getStyles();
 
     return (
         <Transition appear show={isOpen} as={Fragment}>
@@ -85,7 +51,7 @@ const AlertModal: React.FC<AlertModalProps> = ({
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px]" />
                 </Transition.Child>
 
                 <div className="fixed inset-0 overflow-y-auto">
@@ -99,32 +65,35 @@ const AlertModal: React.FC<AlertModalProps> = ({
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <Dialog.Panel className={`${styles.bg} border ${styles.border} w-full max-w-md transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all`}>
-                                <div className="flex items-start gap-4">
-                                    <div className={`${styles.iconBg} ${styles.iconColor} rounded-full w-12 h-12 flex items-center justify-center text-2xl font-bold flex-shrink-0`}>
-                                        {styles.icon}
-                                    </div>
-                                    <div className="flex-1">
-                                        {title && (
-                                            <Dialog.Title as="h3" className={`text-lg font-bold ${styles.titleColor} mb-2`}>
-                                                {title}
-                                            </Dialog.Title>
-                                        )}
-                                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                                            {message}
-                                        </p>
-                                    </div>
+                            <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-2xl text-left align-middle transition-all">
+                                {/* Header */}
+                                <div className="bg-gray-50 dark:bg-slate-800/50 px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center gap-3">
+                                    {getIcon()}
+                                    <Dialog.Title as="h3" className="text-base font-bold text-gray-800 dark:text-gray-100">
+                                        {title || (type === 'error' ? 'Error' : type === 'success' ? 'Éxito' : 'Información')}
+                                    </Dialog.Title>
                                 </div>
-                                <div className="mt-6 flex justify-end gap-3">
+
+                                {/* Content */}
+                                <div className="p-5">
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                                        {message}
+                                    </p>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="bg-gray-50 dark:bg-slate-800/50 px-5 py-3 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3">
                                     {(showCancel || onConfirm) && (
                                         <button
+                                            type="button"
                                             onClick={onClose}
-                                            className="px-4 py-2 text-gray-600 dark:text-gray-400 font-semibold hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                            className="h-8 px-3 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-600 transition-colors"
                                         >
                                             {cancelText}
                                         </button>
                                     )}
                                     <button
+                                        type="button"
                                         onClick={() => {
                                             if (onConfirm) {
                                                 onConfirm();
@@ -132,7 +101,7 @@ const AlertModal: React.FC<AlertModalProps> = ({
                                                 onClose();
                                             }
                                         }}
-                                        className={`px-6 py-2 rounded-lg font-semibold transition-colors text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${styles.buttonBg}`}
+                                        className="h-8 px-4 rounded-lg bg-purple-600 hover:bg-purple-700 text-xs font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors border-transparent"
                                     >
                                         {confirmText}
                                     </button>

@@ -13,11 +13,10 @@ export const IncomeStatementDashboard: React.FC = () => {
     return (
         <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pr-2 pb-10">
             <PageHeader
-                title="Estado de Resultados"
+                title="BI PYG"
                 breadcrumbs={[
-                    { label: 'Finanzas' },
                     { label: 'Estado de Resultados' },
-                    { label: 'Dashboard' }
+                    { label: 'BI PYG' }
                 ]}
                 icon={<PresentationChartLineIcon className="h-6 w-6" />}
                 actions={

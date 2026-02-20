@@ -34,74 +34,105 @@ export const BudgetDashboard: React.FC = () => {
 
     const textIsDataLoaded = () => transactions.length > 0;
 
+    const [monthlyStats, setMonthlyStats] = useState<{
+        summary: { totalMes: number, pagado: number, pendiente: number, vencido: number };
+        weeklyChart: { name: string; amount: number; fullLabel: string }[];
+        categoryChart: { name: string; value: number }[];
+    } | null>(null);
+
+    // Cargar datos optimizados desde Vistas SQL
     useEffect(() => {
-        const loadData = async () => {
+        const loadDashboardMetrics = async () => {
             setIsLoading(true);
             try {
                 const start = startOfMonth(selectedMonth);
                 const end = endOfMonth(selectedMonth);
 
-                let data = await budgetService.getCommitments(
+                // 1. Cargar Compromisos (Detalle para lista "Próximos")
+                const commitmentsData = await budgetService.getCommitments(
                     format(start, 'yyyy-MM-dd'),
                     format(end, 'yyyy-MM-dd')
                 );
+                setCommitments(commitmentsData); // Mantenemos el detalle solo para la lista "Próximos"
 
-                if (data.length === 0 && textIsDataLoaded()) {
-                    const fallbackData = transactions
-                        .filter(t => {
-                            const d = parseISO(t.date);
-                            return isWithinInterval(d, { start, end });
-                        })
-                        .map(t => ({
-                            id: t.id,
-                            title: t.description || 'Transacción',
-                            amount: t.amount,
-                            dueDate: t.date,
-                            status: 'paid',
-                            paidDate: t.date,
-                            category: t.categoryId,
-                            description: 'Historical fallback',
-                            isProjected: false,
-                            createdAt: 0,
-                            updatedAt: 0
-                        } as BudgetCommitment));
+                // 2. Calcular KPIs sobre los datos filtrados (Más rápido que antes, pero idealmente sería otra Vista si crece mucho)
+                // Usamos la lógica de negocio existente sobre los compromisos ya traídos (que incluyen proyecciones virtuales)
+                const currentMonthItems = commitmentsData;
 
-                    if (fallbackData.length > 0) {
-                        data = fallbackData;
-                    }
+                const totalPending = currentMonthItems
+                    .filter(c => c.status === 'pending' || c.status === 'overdue')
+                    .reduce((sum, c) => sum + c.amount, 0);
+
+                const totalPaid = currentMonthItems
+                    .filter(c => c.status === 'paid')
+                    .reduce((sum, c) => sum + c.amount, 0);
+
+                const totalOverdue = currentMonthItems
+                    .filter(c => c.status === 'overdue')
+                    .reduce((sum, c) => sum + c.amount, 0);
+
+                // 3. Preparar Gráfico Semanal (Client-Side aggregation sobre el set reducido es aceptable por ahora para soportar proyecciones virtuales)
+                const weeks: { name: string; amount: number; fullLabel: string }[] = [];
+                let weekStart = startOfWeek(start, { weekStartsOn: 1 });
+                while (weekStart <= end) {
+                    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+                    const weekTotal = currentMonthItems
+                        .filter(c => isWithinInterval(parseISO(c.dueDate), { start: weekStart, end: weekEnd }))
+                        .reduce((sum, c) => sum + c.amount, 0);
+
+                    weeks.push({
+                        name: `Sem ${format(weekStart, 'w', { locale: es })}`,
+                        fullLabel: `${format(weekStart, 'd MMM')} - ${format(weekEnd, 'd MMM')}`,
+                        amount: weekTotal
+                    });
+                    weekStart = addDays(weekStart, 7);
                 }
 
-                setCommitments(data);
+                // 4. Preparar Gráfico Categorías
+                const categoryMap = new Map<string, number>();
+                currentMonthItems.forEach(item => {
+                    const catName = getCategoryName(item.category || '');
+                    const current = categoryMap.get(catName) || 0;
+                    categoryMap.set(catName, current + item.amount);
+                });
+                const catChart = Array.from(categoryMap.entries())
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value);
+
+                setMonthlyStats({
+                    summary: {
+                        totalMes: totalPending + totalPaid,
+                        pagado: totalPaid,
+                        pendiente: totalPending,
+                        vencido: totalOverdue
+                    },
+                    weeklyChart: weeks,
+                    categoryChart: catChart
+                });
+
             } catch (error) {
-                console.error("Error loading dashboard data:", error);
+                console.error("Error loading dashboard metrics:", error);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadData();
-    }, [selectedMonth, transactions]);
+
+        loadDashboardMetrics();
+    }, [selectedMonth]); // Solo recargar cuando cambie el mes seleccionado
+
+
+    // --- Lógica Legacy de Fallback eliminada para simplificar limpieza ---
+    // El servicio getCommitments ya maneja la fusión de reales + virtuales.
 
     const [overdueItems, setOverdueItems] = useState<BudgetCommitment[]>([]);
 
+    // Carga de Vencidos (Mantiene lógica de negocio compleja de "Mora")
     useEffect(() => {
         const loadOverdue = async () => {
+            // ... (Optimizado: ahora getOverduePendingCommitments usa índices)
             try {
-                const start = subMonths(new Date(), 6);
-                const end = subDays(new Date(), 1);
-
-                const data = await budgetService.getCommitments(
-                    format(start, 'yyyy-MM-dd'),
-                    format(end, 'yyyy-MM-dd')
-                );
-
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                const overdue = data.filter(c => {
-                    const d = parseISO(c.dueDate);
-                    d.setHours(0, 0, 0, 0);
-                    return c.status !== 'paid' && d < today;
-                });
+                // Usamos la función dedicada del servicio que ya optimizamos con índices
+                const overdue = await budgetService.getOverduePendingCommitments(format(new Date(), 'yyyy-MM-dd'));
                 setOverdueItems(overdue);
             } catch (e) {
                 console.error("Error loading overdue", e);
@@ -131,32 +162,16 @@ export const BudgetDashboard: React.FC = () => {
     }, [overdueItems]);
 
     const stats = useMemo(() => {
-        const start = startOfMonth(selectedMonth);
-        const end = endOfMonth(selectedMonth);
-
-        const currentMonthItems = commitments.filter(c =>
-            isWithinInterval(parseISO(c.dueDate), { start, end })
-        );
-
-        const totalPending = currentMonthItems
-            .filter(c => c.status === 'pending' || c.status === 'overdue')
-            .reduce((sum, c) => sum + c.amount, 0);
-
-        const totalPaid = currentMonthItems
-            .filter(c => c.status === 'paid')
-            .reduce((sum, c) => sum + c.amount, 0);
-
-        const totalOverdueAmount = currentMonthItems
-            .filter(c => c.status === 'overdue')
-            .reduce((sum, c) => sum + c.amount, 0);
+        if (!monthlyStats) return [];
+        const { summary } = monthlyStats;
 
         return [
-            { name: 'Total Mes', value: (totalPending + totalPaid), icon: BanknotesIcon, color: 'text-gray-600', bg: 'bg-gray-100', colorDark: 'dark:text-gray-400', bgDark: 'dark:bg-slate-700/50' },
-            { name: 'Pagado', value: totalPaid, icon: CheckCircleIcon, color: 'text-emerald-600', bg: 'bg-emerald-50', colorDark: 'dark:text-emerald-400', bgDark: 'dark:bg-emerald-900/20' },
-            { name: 'Pendiente', value: totalPending, icon: CurrencyDollarIcon, color: 'text-indigo-600', bg: 'bg-indigo-50', colorDark: 'dark:text-indigo-400', bgDark: 'dark:bg-indigo-900/20' },
+            { name: 'Total Mes', value: summary.totalMes, icon: BanknotesIcon, color: 'text-gray-600', bg: 'bg-gray-100', colorDark: 'dark:text-gray-400', bgDark: 'dark:bg-slate-700/50' },
+            { name: 'Pagado', value: summary.pagado, icon: CheckCircleIcon, color: 'text-emerald-600', bg: 'bg-emerald-50', colorDark: 'dark:text-emerald-400', bgDark: 'dark:bg-emerald-900/20' },
+            { name: 'Pendiente', value: summary.pendiente, icon: CurrencyDollarIcon, color: 'text-indigo-600', bg: 'bg-indigo-50', colorDark: 'dark:text-indigo-400', bgDark: 'dark:bg-indigo-900/20' },
             {
                 name: overdueStats.count > 0 ? 'Mora Consolidada' : 'Vencido (Mes)',
-                value: overdueStats.count > 0 ? overdueStats.total : totalOverdueAmount,
+                value: overdueStats.count > 0 ? overdueStats.total : summary.vencido,
                 icon: ExclamationCircleIcon,
                 color: 'text-rose-600',
                 bg: 'bg-rose-50',
@@ -164,50 +179,10 @@ export const BudgetDashboard: React.FC = () => {
                 bgDark: 'dark:bg-rose-900/20'
             },
         ];
-    }, [commitments, selectedMonth, overdueStats]);
+    }, [monthlyStats, overdueStats]);
 
-    const chartData = useMemo(() => {
-        const startMonth = startOfMonth(selectedMonth);
-        const endMonth = endOfMonth(selectedMonth);
-        const weeks: { name: string; amount: number; fullLabel: string }[] = [];
-        let weekStart = startOfWeek(startMonth, { weekStartsOn: 1 });
-
-        while (weekStart <= endMonth) {
-            const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-            const weekTotal = commitments
-                .filter(c => {
-                    const d = parseISO(c.dueDate);
-                    return isWithinInterval(d, { start: weekStart, end: weekEnd });
-                })
-                .reduce((sum, c) => sum + c.amount, 0);
-
-            weeks.push({
-                name: `Sem ${format(weekStart, 'w', { locale: es })}`,
-                fullLabel: `${format(weekStart, 'd MMM')} - ${format(weekEnd, 'd MMM')}`,
-                amount: weekTotal
-            });
-            weekStart = addDays(weekStart, 7);
-        }
-        return weeks;
-    }, [commitments, selectedMonth]);
-
-    const categoryData = useMemo(() => {
-        const start = startOfMonth(selectedMonth);
-        const end = endOfMonth(selectedMonth);
-        const monthlyItems = commitments.filter(c =>
-            isWithinInterval(parseISO(c.dueDate), { start, end })
-        );
-        const categoryMap = new Map<string, number>();
-        monthlyItems.forEach(item => {
-            const catName = getCategoryName(item.category || '');
-            const current = categoryMap.get(catName) || 0;
-            categoryMap.set(catName, current + item.amount);
-        });
-        return Array.from(categoryMap.entries())
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value);
-
-    }, [commitments, selectedMonth, categories]);
+    const chartData = monthlyStats?.weeklyChart || [];
+    const categoryData = monthlyStats?.categoryChart || [];
 
     const upcomingList = useMemo(() => {
         const now = new Date();
@@ -233,9 +208,9 @@ export const BudgetDashboard: React.FC = () => {
     return (
         <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pr-2 pb-10">
             <PageHeader
-                title="Control Presupuestal"
+                title="BI Egresos"
                 breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
+                    { label: 'Egresos', path: '/budget' },
                     { label: 'Tablero' }
                 ]}
                 icon={<PresentationChartLineIcon className="h-6 w-6" />}
@@ -353,81 +328,103 @@ export const BudgetDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Right Column: Alerts & Side Panels */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                    {/* Overdue Alerts */}
+                {/* Right Column: Tables */}
+                <div className="lg:col-span-4 flex flex-col gap-4">
+
+                    {/* ── Cartera en Mora ── */}
                     {overdueStats.count > 0 && (
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border-2 border-rose-100 dark:border-rose-900/30 overflow-hidden relative">
-                            <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500" />
-                            <h3 className="text-[11px] font-bold text-rose-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                <ExclamationCircleIcon className="w-4 h-4" />
-                                Alerta de Morosidad
-                            </h3>
-                            <div className="space-y-3">
-                                {overdueStats.chartData.slice(0, 4).map((item, idx) => (
-                                    <div key={`${item.name}-${idx}`} className="flex items-center justify-between p-3 bg-rose-50/50 dark:bg-rose-900/10 rounded-lg border border-rose-50 dark:border-rose-900/20">
-                                        <div className="min-w-0">
-                                            <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100 truncate tracking-tight">{item.name}</p>
-                                            <p className="text-[11px] text-rose-600 font-bold uppercase tracking-tighter mt-0.5">{item.days} días de mora</p>
-                                        </div>
-                                        <div className="text-right pl-3 shrink-0">
-                                            <p className="text-[13px] font-bold text-rose-600 tracking-tight">{formatCurrency(item.amount)}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-rose-100 dark:border-rose-900/30 bg-rose-50/60 dark:bg-rose-900/10">
+                                <h3 className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                    <ExclamationCircleIcon className="w-3.5 h-3.5" />
+                                    Cartera en Mora
+                                </h3>
+                                <span className="text-[10px] font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                                    {overdueStats.count}
+                                </span>
                             </div>
-                            {overdueStats.count > 4 && (
-                                <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-widest mt-4">
-                                    + {overdueStats.count - 4} registros adicionales
-                                </p>
-                            )}
+                            <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
+                                <table className="w-full border-collapse">
+                                    <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
+                                        <tr className="border-b border-gray-100 dark:border-slate-700">
+                                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Concepto</th>
+                                            <th className="text-center text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5 w-12">Días</th>
+                                            <th className="text-right text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {overdueStats.chartData.map((item, idx) => (
+                                            <tr key={`mora-${idx}`} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-rose-50/30 dark:hover:bg-rose-900/5 transition-colors">
+                                                <td className="px-3 py-1.5 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px]">{item.name}</td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                    <span className={`text-[10px] font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
+                                                        {item.days}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-1.5 text-right text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600">
+                                        <tr>
+                                            <td className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total</td>
+                                            <td className="px-2 py-2 text-center text-[10px] font-bold text-gray-400">{overdueStats.count}</td>
+                                            <td className="px-3 py-2 text-right text-[12px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                     )}
 
-                    {/* Upcoming List */}
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 tracking-tight">
-                            <CalendarDaysIcon className="w-4 h-4 text-primary" />
-                            Próximos Vencimientos
-                        </h3>
-                        <div className="space-y-4">
-                            {upcomingList.length === 0 ? (
-                                <div className="py-10 text-center border-2 border-dashed border-gray-100 dark:border-slate-700 rounded-xl">
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos</p>
-                                </div>
-                            ) : (
-                                upcomingList.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-xl transition-all cursor-pointer group border border-transparent hover:border-gray-100 dark:hover:border-slate-700">
-                                        <div className="flex items-center space-x-3 overflow-hidden">
-                                            <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs flex-col leading-none border border-indigo-100 dark:border-indigo-900/10">
-                                                <span>{format(parseISO(item.dueDate), 'd')}</span>
-                                                <span className="text-[8px] uppercase">{format(parseISO(item.dueDate), 'MMM', { locale: es })}</span>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary transition-colors tracking-tight">
-                                                    {item.title}
-                                                </p>
-                                                <p className="text-[11px] text-gray-400 font-medium truncate uppercase tracking-tighter">
-                                                    {getCategoryName(item.category || '')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <span className="text-[13px] font-bold text-gray-900 dark:text-white tabular-nums tracking-tight">
-                                            {formatCurrency(item.amount)}
-                                        </span>
-                                    </div>
-                                ))
-                            )}
+                    {/* ── Próximos Vencimientos ── */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-700/30">
+                            <h3 className="text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
+                                Próximos Vencimientos
+                            </h3>
+                            <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                                {upcomingList.length}
+                            </span>
                         </div>
+                        {upcomingList.length === 0 ? (
+                            <div className="py-8 text-center">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
+                            </div>
+                        ) : (
+                            <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
+                                <table className="w-full border-collapse">
+                                    <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
+                                        <tr className="border-b border-gray-100 dark:border-slate-700">
+                                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5 w-14">Fecha</th>
+                                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5">Concepto</th>
+                                            <th className="text-right text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {upcomingList.map((item) => (
+                                            <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/5 transition-colors cursor-pointer group">
+                                                <td className="px-3 py-1.5 text-[10px] font-bold text-indigo-500 tabular-nums whitespace-nowrap">
+                                                    {format(parseISO(item.dueDate), 'd MMM', { locale: es })}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px] group-hover:text-primary transition-colors">{item.title}</td>
+                                                <td className="px-3 py-1.5 text-right text-[11px] font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
 
                     {/* Diagnostic Tool */}
-                    <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-gray-200 dark:border-slate-700 border-dashed">
-                        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <span>🔍 HERRAMIENTA DE DIAGNÓSTICO</span>
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 border-dashed">
+                        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <span>🔍 Diagnóstico</span>
                         </h3>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
-                            Registro maestro de la base de datos (2024-2027) para conciliación manual.
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+                            Registro maestro (2024-2027) para conciliación.
                         </p>
                         <GhostBuster />
                     </div>

@@ -38,7 +38,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div className="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-lg max-w-md w-full mx-4 border border-gray-100 dark:border-slate-700">
                 <div className="text-center mb-6">
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-                        💰 FlowTrack
+                        💰 Data BI
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400">
                         Control de Flujo de Caja

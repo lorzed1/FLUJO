@@ -13,7 +13,11 @@ import { budgetService } from '../../../services/budget';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 
-export const BudgetHistory: React.FC = () => {
+interface BudgetHistoryProps {
+    hideHeader?: boolean;
+}
+
+export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false }) => {
     const [logs, setLogs] = useState<BudgetExecutionLog[]>([]);
     const [loading, setLoading] = useState(false);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -77,34 +81,36 @@ export const BudgetHistory: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full space-y-6">
-            <PageHeader
-                title="Historial de Ejecuciones"
-                breadcrumbs={[
-                    { label: 'Finanzas', path: '/budget' },
-                    { label: 'Historial' }
-                ]}
-                icon={<ClockIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="secondary"
-                            onClick={handleReconcileToday}
-                            className="bg-white border-gray-200 text-gray-600 hover:text-purple-600 hover:border-purple-200"
-                            title="Buscar pagos hechos hoy que no tengan log"
-                        >
-                            <ArrowTrendingDownIcon className="h-4 w-4 mr-2" />
-                            Sincronizar Hoy
-                        </Button>
-                        <Button
-                            onClick={loadLogs}
-                            variant="primary"
-                        >
-                            <ArrowPathIcon className="h-4 w-4 mr-2" />
-                            Actualizar
-                        </Button>
-                    </div>
-                }
-            />
+            {!hideHeader && (
+                <PageHeader
+                    title="Historial de Pagos"
+                    breadcrumbs={[
+                        { label: 'Egresos', path: '/budget' },
+                        { label: 'Historial' }
+                    ]}
+                    icon={<ClockIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                onClick={handleReconcileToday}
+                                className="bg-white border-gray-200 text-gray-600 hover:text-purple-600 hover:border-purple-200"
+                                title="Buscar pagos hechos hoy que no tengan log"
+                            >
+                                <ArrowTrendingDownIcon className="h-4 w-4 mr-2" />
+                                Sincronizar Hoy
+                            </Button>
+                            <Button
+                                onClick={loadLogs}
+                                variant="primary"
+                            >
+                                <ArrowPathIcon className="h-4 w-4 mr-2" />
+                                Actualizar
+                            </Button>
+                        </div>
+                    }
+                />
+            )}
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6 flex-1 relative">
                 {loading && (
