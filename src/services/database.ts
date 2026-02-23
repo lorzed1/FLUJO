@@ -250,6 +250,35 @@ export class DatabaseService {
         }
     }
 
+    // ============ MAPEOS DE CUENTAS ============
+
+    static async saveAccountMappings(mappings: any[]): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('settings')
+                .upsert({ key: 'accountMappings', data: mappings, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error guardando mapeos de cuentas:', error);
+            throw error;
+        }
+    }
+
+    static async getAccountMappings(): Promise<any[]> {
+        try {
+            const { data, error } = await supabase
+                .from('settings')
+                .select('data')
+                .eq('key', 'accountMappings')
+                .maybeSingle();
+            if (error) throw error;
+            return (data?.data as any[]) || [];
+        } catch (error) {
+            console.error('Error obteniendo mapeos de cuentas:', error);
+            throw error;
+        }
+    }
+
     // ============ EXTRACTOS Y CONCILIACIÓN ============
 
     static async saveBankTransactions(bankData: Record<string, Transaction[]>): Promise<void> {
@@ -581,6 +610,44 @@ export class DatabaseService {
             console.log('✅ SYSTEM FACTORY RESET COMPLETED');
         } catch (error) {
             console.error('❌ Error durante Factory Reset:', error);
+            throw error;
+        }
+    }
+
+    // ============ IMPORT / EXPORT DATA ============
+    static async exportAllData(): Promise<any> {
+        try {
+            const transactions = await this.getTransactions();
+            const categories = await this.getCategories();
+            const recurringExpenses = await this.getRecurringExpenses();
+            return {
+                transactions,
+                categories,
+                recurringExpenses,
+                meta: {
+                    exportDate: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error exportando todos los datos:', error);
+            throw error;
+        }
+    }
+
+    static async importAllData(data: any): Promise<void> {
+        try {
+            if (data.transactions && data.transactions.length > 0) {
+                await this.saveTransactions(data.transactions);
+            }
+            if (data.categories && data.categories.length > 0) {
+                await this.saveCategories(data.categories);
+            }
+            if (data.recurringExpenses && data.recurringExpenses.length > 0) {
+                await this.saveRecurringExpenses(data.recurringExpenses);
+            }
+            console.log('✅ Datos importados correctamente');
+        } catch (error) {
+            console.error('Error importando todos los datos:', error);
             throw error;
         }
     }

@@ -11,7 +11,7 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, actions, icon }) => {
     return (
-        <div className="mb-2 sm:mb-4">
+        <div className="mb-1 sm:mb-4">
             {/* Breadcrumbs */}
             <nav className="flex items-center text-[10px] sm:text-xs text-slate-400 mb-1 font-medium">
                 <Link to="/dashboard" className="hover:text-purple-600 transition-colors">Inicio</Link>
@@ -32,7 +32,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, acti
             </nav>
 
             {/* Title & Actions Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     {icon && (
                         <div className="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-md shadow-sm text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800/30">
@@ -45,7 +45,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, acti
                 </div>
 
                 {actions && (
-                    <div className="flex items-center gap-2 sm:self-end">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                         {actions}
                     </div>
                 )}
