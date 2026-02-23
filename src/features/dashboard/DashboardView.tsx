@@ -5,9 +5,10 @@ import { SalesView } from './views/SalesView';
 import { BudgetsView } from './views/BudgetsView';
 import { ProjectionsView } from './views/ProjectionsView';
 import { ExpensesView } from './views/ExpensesView';
+import { PurchasesView } from './views/PurchasesView';
 
 const DashboardView: React.FC = () => {
-  const [currentView, setCurrentView] = React.useState<'overview' | 'sales' | 'budget' | 'projections' | 'expenses'>('overview');
+  const [currentView, setCurrentView] = React.useState<'overview' | 'sales' | 'budget' | 'projections' | 'expenses' | 'purchases'>('overview');
   const [selectedDate, setSelectedDate] = React.useState(new Date());
 
   const renderContent = () => {
@@ -22,6 +23,8 @@ const DashboardView: React.FC = () => {
         return <ProjectionsView selectedDate={selectedDate} />;
       case 'expenses':
         return <ExpensesView selectedDate={selectedDate} />;
+      case 'purchases':
+        return <PurchasesView selectedDate={selectedDate} />;
       default:
         return <OverviewView selectedDate={selectedDate} />;
     }

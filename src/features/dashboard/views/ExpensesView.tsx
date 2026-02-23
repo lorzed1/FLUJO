@@ -71,7 +71,7 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                         .reduce((sum, c) => sum + c.amount, 0);
 
                     weeks.push({
-                        name: `Sem ${format(weekStart, 'w', { locale: es })}`,
+                        name: `Sem ${format(weekStart, 'I', { locale: es })}`,
                         fullLabel: `${format(weekStart, 'd MMM')} - ${format(weekEnd, 'd MMM')}`,
                         amount: weekTotal
                     });

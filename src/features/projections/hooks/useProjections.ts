@@ -25,12 +25,39 @@ export const useProjections = () => {
     });
 
     const [realSales, setRealSales] = useState<Record<string, number>>({});
+    // Cargar config persistente al montar
+    useEffect(() => {
+        const loadPersistedConfig = async () => {
+            const persisted = await projectionsService.getProjectionConfig();
+            if (persisted) {
+                setConfig(persisted);
+            }
+        };
+        loadPersistedConfig();
+    }, []);
+
+    // Normalizar arqueos: Restar ingresoCovers de ventaBruta para proyectar sobre el valor real de facturación
+    const normalizedArqueos = useMemo(() => {
+        if (!arqueos) return [];
+        return arqueos.map(r => {
+            const bruta = typeof r.ventaBruta === 'string'
+                ? parseFloat(r.ventaBruta.replace(/\./g, '').replace(',', '.'))
+                : (r.ventaBruta || 0);
+
+            const covers = typeof r.ingresoCovers === 'string'
+                ? parseFloat(r.ingresoCovers.replace(/\./g, '').replace(',', '.'))
+                : (r.ingresoCovers || 0);
+
+            return {
+                ...r,
+                ventaBruta: bruta - covers // Trabajamos sobre la "Venta Neta" definida por el usuario
+            };
+        });
+    }, [arqueos]);
 
     // Usar refs para evitar re-creación de loadMonthData
-    const arqueosRef = useRef(arqueos);
-    const configRef = useRef(config);
-    useEffect(() => { arqueosRef.current = arqueos; }, [arqueos]);
-    useEffect(() => { configRef.current = config; }, [config]);
+    const arqueosRef = useRef(normalizedArqueos);
+    useEffect(() => { arqueosRef.current = normalizedArqueos; }, [normalizedArqueos]);
 
     const loadMonthData = useCallback(async () => {
         setLoading(true);
@@ -60,7 +87,7 @@ export const useProjections = () => {
                     dateStr,
                     arqueosRef.current,
                     allEvents,
-                    configRef.current
+                    config  // Usar config directamente para que el useCallback se invalide al cambiar
                 );
                 results[dateStr] = calc;
                 day.setDate(day.getDate() + 1);
@@ -73,7 +100,7 @@ export const useProjections = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentDate]); // Solo depende de currentDate ahora
+    }, [currentDate, config, normalizedArqueos]); // Recalcula cuando cambia el mes O cuando cambia la configuración
 
     useEffect(() => {
         loadMonthData();
@@ -213,26 +240,19 @@ export const useProjections = () => {
     // Sync Real Sales for Display
     useEffect(() => {
         const salesMap: Record<string, number> = {};
-        if (arqueos) {
-            arqueos.forEach(r => {
-                if (!r.fecha) return;
-
-                const dateKey = r.fecha.substring(0, 10);
-                let val = 0;
-
-                // Prioridad: Usar siempre ventaBruta como fuente de verdad
-                const bruta = typeof r.ventaBruta === 'string'
-                    ? parseFloat(r.ventaBruta.replace(/\./g, '').replace(',', '.'))
-                    : (r.ventaBruta || 0);
-
-                val = bruta;
-
-                // Acumular si hay múltiples arqueos por día (turnos)
-                salesMap[dateKey] = (salesMap[dateKey] || 0) + val;
-            });
-        }
+        normalizedArqueos.forEach(r => {
+            if (!r.fecha) return;
+            const dateKey = r.fecha.substring(0, 10);
+            // Ya vienen normalizados (bruta - covers) desde el useMemo anterior
+            salesMap[dateKey] = (salesMap[dateKey] || 0) + r.ventaBruta;
+        });
         setRealSales(salesMap);
-    }, [arqueos]);
+    }, [normalizedArqueos]);
+
+    const updateConfig = async (newConfig: ProjectionOptions) => {
+        setConfig(newConfig);
+        await projectionsService.saveProjectionConfig(newConfig);
+    };
 
     return {
         currentDate,
@@ -243,7 +263,7 @@ export const useProjections = () => {
         realSales, // Actual History
         loading,
         config,
-        setConfig,
+        setConfig: updateConfig, // Reemplazamos el setter simple por la versión que guarda en DB
         addEvent,
         updateEvent,
         deleteEvent,

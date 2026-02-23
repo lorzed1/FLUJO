@@ -113,7 +113,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     if (!isOpen) return null;
 
     const FormLabel = ({ children }: { children: React.ReactNode }) => (
-        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[11px] font-medium text-slate-500 tracking-wide mb-1.5">
             {children}
         </label>
     );
@@ -124,22 +124,22 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                 className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header Block */}
-                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/80">
+                {/* Header Block – Aliaddo §4 style */}
+                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm">
-                            <BanknotesIcon className="w-5 h-5 text-primary" />
+                        <div className="p-2 bg-purple-50 dark:bg-slate-700 rounded-lg">
+                            <BanknotesIcon className="w-5 h-5 text-purple-600" />
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-gray-900 dark:text-white leading-tight">
-                                {initialCommitment ? 'Editar Registro' : 'Nuevo Gasto Presupuestal'}
+                            <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">
+                                {initialCommitment ? 'Editar registro' : 'Nuevo gasto presupuestal'}
                             </h2>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Módulo de Egresos</p>
+                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.15em] mt-0.5">Módulo de Egresos</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors bg-white dark:bg-slate-700 p-1.5 rounded-lg border border-gray-100 dark:border-slate-600 shadow-sm"
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg border border-slate-100 dark:border-slate-600 hover:bg-slate-50 transition-all"
                     >
                         <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -187,7 +187,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 <FormLabel>Estado del Pago</FormLabel>
                                 <Select
                                     value={formData.status}
-                                    className="!h-10 text-[13px] font-bold"
+                                    className="!h-10 text-[13px] font-semibold text-slate-600"
                                     onChange={e => {
                                         const newStatus = e.target.value;
                                         setFormData(prev => ({
@@ -197,9 +197,9 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                         }));
                                     }}
                                 >
-                                    <option value="pending">PENDIENTE</option>
-                                    <option value="paid">LIQUIDADO</option>
-                                    <option value="overdue">VENCIDO</option>
+                                    <option value="pending">Pendiente de pago</option>
+                                    <option value="paid">Liquidado / Pagado</option>
+                                    <option value="overdue">Vencido</option>
                                 </Select>
                             </div>
 
@@ -237,16 +237,16 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                             ) : (
                                                 <Select
                                                     value={formData.category}
-                                                    className="!h-10 text-[13px] font-medium"
+                                                    className="!h-10 text-[13px] font-medium text-slate-600"
                                                     onChange={e => handleChange('category', e.target.value)}
                                                     required
                                                 >
-                                                    <option value="">Seleccionar...</option>
+                                                    <option value="">Seleccionar categoría...</option>
                                                     {expenseCategories.map(cat => (
-                                                        <option key={cat.id} value={cat.name}>{cat.name.toUpperCase()}</option>
+                                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
                                                     ))}
                                                     {formData.category && !expenseCategories.some(c => c.name === formData.category) && (
-                                                        <option value={formData.category}>{formData.category.toUpperCase()}</option>
+                                                        <option value={formData.category}>{formData.category}</option>
                                                     )}
                                                 </Select>
                                             )}
@@ -293,16 +293,16 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 type="button"
                                 variant="secondary"
                                 onClick={onClose}
-                                className="!h-10 !px-6 font-bold text-[11px] uppercase tracking-wider"
+                                className="!h-10 !px-6 font-semibold text-[12px] tracking-wide"
                             >
                                 Cancelar
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="!h-10 !px-8 font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-indigo-100 dark:shadow-none"
+                                className="!h-10 !px-8 font-semibold text-[12px] tracking-wide shadow-md shadow-purple-500/10"
                             >
-                                {isLoading ? 'Cargando...' : (initialCommitment ? 'Actualizar Registro' : 'Confirmar Gasto')}
+                                {isLoading ? 'Procesando...' : (initialCommitment ? 'Actualizar registro' : 'Confirmar gasto')}
                             </Button>
                         </div>
                     </div>

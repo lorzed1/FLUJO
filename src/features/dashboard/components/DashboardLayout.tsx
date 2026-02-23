@@ -1,10 +1,10 @@
 
 import React, { ReactNode } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
-import { PresentationChartLineIcon, ChartBarIcon, WalletIcon, TrendingUpIcon, BanknotesIcon } from '../../../components/ui/Icons';
+import { PresentationChartLineIcon, ChartBarIcon, WalletIcon, TrendingUpIcon, BanknotesIcon, ShoppingCartIcon } from '../../../components/ui/Icons';
 import { DashboardControls } from './DashboardControls';
 
-type ViewMode = 'overview' | 'sales' | 'budget' | 'projections' | 'expenses';
+type ViewMode = 'overview' | 'sales' | 'budget' | 'projections' | 'expenses' | 'purchases';
 
 interface DashboardLayoutProps {
     children: ReactNode;
@@ -26,7 +26,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         { id: 'sales', label: 'Ventas', icon: ChartBarIcon },
         { id: 'budget', label: 'Presupuesto', icon: WalletIcon },
         { id: 'projections', label: 'Proyecciones', icon: TrendingUpIcon },
-        { id: 'expenses', label: 'Gastos', icon: BanknotesIcon },
+        { id: 'expenses', label: 'Egresos', icon: BanknotesIcon },
+        { id: 'purchases', label: 'Compras', icon: ShoppingCartIcon },
     ] as const;
 
     return (
@@ -53,25 +54,27 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </div>
                 </div>
 
-                {/* Bottom Row: View Switcher Tabs */}
+                {/* Bottom Row: View Switcher (Segmented Control Aliaddo) */}
                 <div className="overflow-x-auto pb-1">
-                    <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 w-fit min-w-full md:min-w-0">
-                        {views.map((view) => {
+                    <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden w-fit min-w-full md:min-w-0 h-10">
+                        {views.map((view, idx) => {
                             const Icon = view.icon;
                             const isActive = currentView === view.id;
+                            const isLast = idx === views.length - 1;
                             return (
                                 <button
                                     key={view.id}
                                     onClick={() => onViewChange(view.id as ViewMode)}
                                     className={`
-                                        flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
+                                        flex-1 flex items-center justify-center gap-2 px-4 h-full text-[13px] font-semibold transition-colors whitespace-nowrap
+                                        ${!isLast ? 'border-r border-slate-200 dark:border-slate-700' : ''}
                                         ${isActive
-                                            ? 'bg-purple-600 text-white shadow-md'
-                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                                            ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                            : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300'
                                         }
                                     `}
                                 >
-                                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`} />
+                                    <Icon className="w-4 h-4" />
                                     <span>{view.label}</span>
                                 </button>
                             );

@@ -325,20 +325,23 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
 
         if (weeksInMonth.size === 0) return [];
 
-        // Ahora, para cada semana identificada, buscar TODOS los registros de esa semana
-        // pero SOLO del mismo año
         const weekMap = new Map<number, { sales: number; visits: number; dates: string[]; records: any[] }>();
 
-        // Iterar sobre TODO el dataset (data), no solo currentData
+        // We should allow dates that belong to the SAME ISO year and ISO week.
+        // But simply checking if the record's ISO week touches the month is enough!
         data.forEach(record => {
-            const recordYear = new Date(record.fecha).getFullYear();
-
-            // ⚠️ CRÍTICO: Solo incluir registros del mismo año
-            if (recordYear !== selectedYear) return;
-
+            // Obtenemos a qué semana ISO corresponde este registro
             const weekNum = getWeekNumber(record.fecha);
 
-            // Solo incluir si es una semana que toca el mes actual
+            // Solo si la semana del registro es una de las que toca el mes actual, la incluímos.
+            // Para prevenir que traiga semanas "5" del año anterior, verificamos la distancia en tiempo:
+            // Si la fecha del registro está más lejos de ~1 mes de la fecha seleccionada, la ignoramos.
+            const recordDate = new Date(record.fecha + 'T12:00:00');
+            const diffMs = Math.abs(recordDate.getTime() - filters.selectedDate.getTime());
+            const daysDiff = diffMs / (1000 * 60 * 60 * 24);
+
+            if (daysDiff > 45) return; // Ignore if it's the right week number but different year (e.g. week 5 from 2025 vs 2026)
+
             if (!weeksInMonth.has(weekNum)) return;
 
             if (!weekMap.has(weekNum)) {
@@ -407,6 +410,13 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
         // Agrupar datos de TODO el dataset para las semanas identificadas
         data.forEach(record => {
             const weekNum = getWeekNumber(record.fecha);
+
+            // Prevenir semanas indexadas similarmente pero de otros años (límite de 45 días)
+            const recordDate = new Date(record.fecha + 'T12:00:00');
+            const diffMs = Math.abs(recordDate.getTime() - filters.selectedDate.getTime());
+            const daysDiff = diffMs / (1000 * 60 * 60 * 24);
+
+            if (daysDiff > 45) return;
 
             // Solo incluir si es una semana que toca el mes
             if (!weeksInMonth.has(weekNum)) return;

@@ -49,6 +49,8 @@ export interface WeeklyAvailability {
     ctaCorriente: number;
     ctaAhorrosJ: number;
     ctaAhorrosN: number;
+    ctaNequi: number;
+    otrosIngresos: number;
     efectivo: number;
     totalAvailable: number;
     createdAt: number;
@@ -63,6 +65,8 @@ export interface BudgetExecutionLog {
         ctaCorriente: number;
         ctaAhorrosJ: number;
         ctaAhorrosN: number;
+        ctaNequi: number;
+        otrosIngresos: number;
         efectivo: number;
         totalAvailable: number;
     };
@@ -70,3 +74,18 @@ export interface BudgetExecutionLog {
     finalBalance: number;
     itemsCount: number; // Cantidad de facturas pagadas
 }
+
+export interface Purchase {
+    id: string;
+    date: string; // YYYY-MM-DD
+    provider: string;
+    invoiceNumber?: string;
+    description: string;
+    category: string;
+    amount: number;
+    status: 'pending' | 'paid';
+    createdAt: number;
+    updatedAt: number;
+    [key: string]: any; // Allow for dynamic columns
+}
+

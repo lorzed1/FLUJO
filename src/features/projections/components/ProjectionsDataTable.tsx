@@ -125,7 +125,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             tooltip: 'Fecha del día proyectado. Los cálculos se basan en este día de la semana.',
             sortable: true,
             filterable: true,
-            width: 'w-[120px]',
+            width: 'w-24',
             render: (_: string, item: any) => (
                 <span className="font-medium text-slate-700 dark:text-slate-200">
                     {item.dateFormatted}
@@ -398,19 +398,21 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
     ], []);
 
     return (
-        <SmartDataTable
-            id="projections-data-table"
-            data={data}
-            columns={columns}
-            enableSearch={true}
-            enableColumnConfig={true}
-            enableExport={true}
-            enableSelection={false}
-            searchPlaceholder="Buscar por fecha..."
-            containerClassName={containerClassName}
-            exportDateField="dateStr"
-            sortConfig={sortConfig}
-            onSortChange={setSortConfig}
-        />
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+            <SmartDataTable
+                id="projections-data-table"
+                data={data}
+                columns={columns}
+                enableSearch={true}
+                enableColumnConfig={true}
+                enableExport={true}
+                enableSelection={true}
+                searchPlaceholder="Buscar por fecha..."
+                containerClassName="border-none shadow-none"
+                exportDateField="dateStr"
+                sortConfig={sortConfig}
+                onSortChange={setSortConfig}
+            />
+        </div>
     );
 };

@@ -109,14 +109,14 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
             label: 'Descripción',
             sortable: true,
             filterable: true,
-            render: (value: string) => <span className="font-medium text-[13px] text-gray-900 dark:text-gray-200">{value}</span>
+            render: (value: string) => <span>{value}</span>
         },
         {
             key: 'amount',
             label: 'Monto',
             sortable: true,
             align: 'text-right' as const,
-            render: (value: number) => <span className="font-medium text-[13px] text-gray-900 dark:text-white">${value.toLocaleString()}</span>
+            render: (value: number) => <span className="tabular-nums">${value.toLocaleString()}</span>
         },
         {
             key: 'category',
@@ -124,7 +124,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
             sortable: true,
             filterable: true,
             render: (value: string) => (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border border-gray-200 bg-gray-50 text-gray-600 uppercase tracking-wide">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-[10px] font-semibold text-gray-600 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400">
                     {value}
                 </span>
             )
@@ -145,7 +145,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                 } else {
                     text = 'Anual';
                 }
-                return <span className="text-[13px] text-gray-500 font-normal">{text}</span>;
+                return <span>{text}</span>;
             }
         },
         {
@@ -153,9 +153,9 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
             label: 'Estado',
             align: 'text-center' as const,
             render: (value: boolean) => (
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto ${value ? 'bg-white border-emerald-200' : 'bg-white border-gray-200'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${value ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                    <span className={`text-[11px] font-medium uppercase tracking-wide ${value ? 'text-emerald-700' : 'text-gray-500'}`}>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto ${value ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${value ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    <span className={`text-[10px] font-semibold uppercase tracking-widest ${value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
                         {value ? 'Activo' : 'Inactivo'}
                     </span>
                 </div>
@@ -166,6 +166,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
             label: '',
             width: 'w-24',
             align: 'text-right' as const,
+            filterable: false,
             render: (_: any, item: RecurrenceRule) => (
                 <div className="flex justify-end gap-1">
                     <button
@@ -249,7 +250,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
     };
 
     return (
-        <div className="space-y-6">
+        <div>
             <PageHeader
                 title="Gastos Recurrentes"
                 breadcrumbs={[
@@ -278,7 +279,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                 }
             />
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden mt-6">
                 <SmartDataTable
                     data={rules}
                     columns={columns}
@@ -296,9 +297,9 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                         <Button
                             size="sm"
                             onClick={() => handleBulkDelete(ids)}
-                            className="bg-rose-600 hover:bg-rose-700 text-white border-none h-7 gap-1.5"
+                            className="h-7 px-3 gap-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 dark:bg-transparent dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30 rounded-md text-xs font-semibold shadow-sm transition-colors"
                         >
-                            <TrashIcon className="h-3 w-3" /> Eliminar ({ids.size})
+                            <TrashIcon className="h-3.5 w-3.5" /> Eliminar
                         </Button>
                     )}
                 />
@@ -319,12 +320,12 @@ export const BudgetRecurring: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'recurrent' | 'categories'>('recurrent');
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex-1 overflow-hidden h-full">
+        <div className="flex flex-col">
+            <div className="flex-1">
                 {activeTab === 'recurrent' ? (
                     <BudgetRecurringContent onSwitchToCategories={() => setActiveTab('categories')} />
                 ) : (
-                    <div className="h-full overflow-hidden">
+                    <div>
                         <BudgetCategories hideHeader={false} onSwitchToRecurrentes={() => setActiveTab('recurrent')} />
                     </div>
                 )}

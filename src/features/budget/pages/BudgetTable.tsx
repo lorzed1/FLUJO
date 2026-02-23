@@ -180,11 +180,11 @@ export const BudgetTable: React.FC = () => {
             filterable: true,
             render: (value: string, item: BudgetCommitment) => (
                 <div>
-                    <span className="font-semibold text-[13px] text-gray-800 dark:text-gray-200 block">{value}</span>
+                    <span className="block">{value}</span>
                     {item.recurrenceRuleId && (
-                        <div className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-800 w-fit">
+                        <div className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-md border border-indigo-200 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-800 w-fit">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                            <span className="text-[10px] font-medium uppercase text-indigo-700 dark:text-indigo-300 tracking-wide">
+                            <span className="text-[9px] font-semibold uppercase text-indigo-700 dark:text-indigo-400 tracking-widest">
                                 {item.id.startsWith('projected-') ? 'Proyectado' : 'Recurrente'}
                             </span>
                         </div>
@@ -198,7 +198,7 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             align: 'text-right' as const,
             render: (value: number) => (
-                <span className="font-medium text-[13px] text-gray-900 dark:text-white">
+                <span className="tabular-nums">
                     ${value.toLocaleString()}
                 </span>
             )
@@ -208,9 +208,9 @@ export const BudgetTable: React.FC = () => {
             label: 'Vencimiento',
             sortable: true,
             filterable: true,
-            width: 'w-32',
+            width: 'w-24',
             render: (value: string) => (
-                <span className="text-gray-500 text-[13px] font-normal">
+                <span>
                     {value}
                 </span>
             )
@@ -220,16 +220,16 @@ export const BudgetTable: React.FC = () => {
             label: 'Fecha Pago',
             sortable: true,
             filterable: true,
-            width: 'w-32',
+            width: 'w-24',
             render: (value: string, item: BudgetCommitment) => (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         if (item.status === 'paid') handleQuickPay(item);
                     }}
-                    className={`text-[13px] font-medium transition-colors border-b border-transparent hover:border-current ${value
-                        ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer'
-                        : 'text-gray-300 dark:text-gray-600 cursor-default'
+                    className={`transition-colors border-b border-transparent hover:border-current ${value
+                        ? 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 cursor-pointer'
+                        : 'text-gray-400 dark:text-gray-500 cursor-default'
                         }`}
                     disabled={item.status !== 'paid'}
                     title={item.status === 'paid' ? "Cambiar fecha de pago" : ""}
@@ -244,7 +244,7 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             filterable: true,
             render: (value: string) => (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border border-gray-200 bg-gray-50 text-gray-600 uppercase tracking-wide">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-[10px] font-semibold text-gray-600 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400">
                     {value}
                 </span>
             )
@@ -256,30 +256,36 @@ export const BudgetTable: React.FC = () => {
             filterable: true,
             align: 'text-center' as const,
             render: (value: string) => {
-                let dotColor = 'bg-gray-400';
-                let textColor = 'text-gray-700';
-                let borderColor = 'border-gray-200';
+                let dotColor = 'bg-slate-400';
+                let textColor = 'text-slate-700 dark:text-slate-400';
+                let colors = 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700';
                 let label = '';
 
                 switch (value) {
                     case 'paid':
                         dotColor = 'bg-emerald-500';
+                        textColor = 'text-emerald-700 dark:text-emerald-400';
+                        colors = 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800';
                         label = 'Pagado';
                         break;
                     case 'pending':
-                        dotColor = 'bg-amber-400';
+                        dotColor = 'bg-amber-500';
+                        textColor = 'text-amber-700 dark:text-amber-400';
+                        colors = 'bg-amber-50 border-amber-200 dark:bg-amber-900/30 dark:border-amber-800';
                         label = 'Pendiente';
                         break;
                     case 'overdue':
                         dotColor = 'bg-rose-500';
+                        textColor = 'text-rose-700 dark:text-rose-400';
+                        colors = 'bg-rose-50 border-rose-200 dark:bg-rose-900/30 dark:border-rose-800';
                         label = 'Vencido';
                         break;
                 }
 
                 return (
-                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ${borderColor} bg-white dark:bg-slate-800 shadow-sm w-fit mx-auto`}>
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto ${colors}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                        <span className={`text-[11px] font-medium uppercase tracking-wide ${textColor} dark:text-gray-300`}>
+                        <span className={`text-[10px] font-semibold uppercase tracking-widest ${textColor}`}>
                             {label}
                         </span>
                     </div>
@@ -291,6 +297,7 @@ export const BudgetTable: React.FC = () => {
             label: '',
             width: 'w-24',
             align: 'text-right' as const,
+            filterable: false,
             render: (_: any, item: BudgetCommitment) => (
                 <div className="flex justify-end gap-1">
                     {item.status !== 'paid' && (
@@ -364,7 +371,7 @@ export const BudgetTable: React.FC = () => {
                 initialDate={paymentModal.item?.paidDate}
             />
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <SmartDataTable
                     data={commitments}
                     columns={columns}

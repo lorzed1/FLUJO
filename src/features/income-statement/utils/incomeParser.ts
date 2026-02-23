@@ -1,18 +1,20 @@
-
 import { parseSpanishDate, isValidDate } from '../../../utils/dateUtils';
 import { parseCOP } from '../../../components/ui/Input';
+import { detectHeaderRow, type ColumnType } from '../../../utils/importUtils';
 
 export interface IncomeData {
     date: string;
-    code?: string; // Accounting code (e.g., 510506)
+    code?: string;
     description: string;
     category: string;
-    amount: number; // Positive for income, negative for expense (or handled by type)
+    amount: number;
     type: 'income' | 'expense';
+    [key: string]: any; // Permitir columnas extra
 }
 
 export interface ParsedIncomeRow {
     data: IncomeData;
+    allData?: Record<string, any>; // Todas las columnas procesadas
     errors: string[];
     rowNumber: number;
     isValid: boolean;
@@ -40,11 +42,15 @@ export function cleanCurrencyValue(value: string): number {
     return parseCOP(String(value));
 }
 
-export function extractHeadersAndLines(text: string): { headers: string[], lines: string[] } {
-    const allLines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (allLines.length < 2) return { headers: [], lines: [] };
-    const headers = allLines[0].split('\t').map(h => h.trim());
-    return { headers, lines: allLines };
+export function extractHeadersAndLines(text: string): { headers: string[], lines: string[], headerIndex: number } {
+    const allLines = text.split('\n');
+    if (allLines.length === 0) return { headers: [], lines: [], headerIndex: 0 };
+
+    const rows = allLines.map(l => l.split('\t'));
+    const headerIndex = detectHeaderRow(rows, INCOME_SYSTEM_FIELDS);
+
+    const headers = rows[headerIndex].map(h => h.trim());
+    return { headers, lines: allLines, headerIndex };
 }
 
 export function autoMapColumns(headers: string[]): Record<string, string> {
@@ -68,131 +74,96 @@ export function autoMapColumns(headers: string[]): Record<string, string> {
     return mapping;
 }
 
-export function parseIncomeRows(lines: string[], mapping: Record<string, string>): { rows: ParsedIncomeRow[], validCount: number, errorCount: number } {
+export function parseIncomeRows(
+    lines: string[],
+    mapping: Record<string, string>,
+    types: Record<string, ColumnType>,
+    headerIndex: number = 0
+): { rows: ParsedIncomeRow[], validCount: number, errorCount: number } {
     const rows: ParsedIncomeRow[] = [];
     let validCount = 0;
     let errorCount = 0;
 
-    if (lines.length < 2) return { rows: [], validCount: 0, errorCount: 0 };
+    if (lines.length <= headerIndex) return { rows: [], validCount: 0, errorCount: 0 };
 
-    const headers = lines[0].split('\t').map(h => h.trim());
-    const columnIndices: Record<string, number> = {};
+    const headers = lines[headerIndex].split('\t').map(h => h.trim());
 
-    Object.entries(mapping).forEach(([key, headerName]) => {
-        if (headerName) {
-            const idx = headers.findIndex(h => h.trim() === headerName.trim());
-            if (idx !== -1) columnIndices[key] = idx;
-        }
+    // Invertimos el mapeo para saber que key del sistema corresponde a cada columna (si existe)
+    const reverseMapping: Record<string, string> = {};
+    Object.entries(mapping).forEach(([sysKey, header]) => {
+        if (header) reverseMapping[header] = sysKey;
     });
 
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = headerIndex + 1; i < lines.length; i++) {
         const line = lines[i];
+        if (!line.trim()) continue;
+
         const cells = line.split('\t');
         const rowNumber = i + 1;
         const rowErrors: string[] = [];
         const data: Partial<IncomeData> = {};
+        const allData: Record<string, any> = {};
 
-        // Date or Month
-        if (columnIndices.date !== undefined) {
-            const dateStr = cells[columnIndices.date]?.trim();
-            if (dateStr) {
-                // Try standard date parser first
-                let dateISO = parseSpanishDate(dateStr);
+        headers.forEach((header, idx) => {
+            const cellValue = (cells[idx] || '').trim();
+            const type = types[header] || 'text';
+            let processedValue: any = cellValue;
 
-                // If failed, try to parse as "Month Year" or just "Month"
-                if (!dateISO) {
-                    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-                    const lowerDate = dateStr.toLowerCase();
-                    const monthIdx = months.findIndex(m => lowerDate.includes(m));
+            if (type === 'currency' || type === 'number') {
+                processedValue = cleanCurrencyValue(cellValue);
+            } else if (type === 'date') {
+                processedValue = parseSpanishDate(cellValue) || cellValue;
+            }
 
-                    if (monthIdx !== -1) {
-                        // Default to current year if not found
-                        const currentYear = new Date().getFullYear();
-                        // Try to find year in string
-                        const yearMatch = dateStr.match(/\d{4}/);
-                        const year = yearMatch ? parseInt(yearMatch[0]) : currentYear;
+            allData[header] = processedValue;
 
-                        // Construct ISO date: YYYY-MM-01
-                        const monthNum = (monthIdx + 1).toString().padStart(2, '0');
-                        dateISO = `${year}-${monthNum}-01`;
-                    }
-                }
+            const sysKey = reverseMapping[header];
+            if (sysKey) {
+                (data as any)[sysKey] = processedValue;
+            }
+        });
 
-                if (dateISO) data.date = dateISO;
-                else rowErrors.push(`Fecha inválida: "${dateStr}"`);
+        // Validaciones específicas y pos-procesamiento para IncomeStatement
+        if (data.date && typeof data.date === 'string') {
+            const dateISO = parseSpanishDate(data.date);
+            if (dateISO) {
+                data.date = dateISO;
             } else {
-                rowErrors.push('Fecha faltante');
-            }
-        } else {
-            rowErrors.push('Columna Fecha no mapeada');
-        }
+                // Lógica de mes/año fallback (como antes)
+                const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                const lowerDate = data.date.toLowerCase();
+                const monthIdx = months.findIndex(m => lowerDate.includes(m));
 
-        // Description
-        if (columnIndices.description !== undefined) {
-            data.description = cells[columnIndices.description]?.trim() || '';
-            if (!data.description) rowErrors.push('Descripción vacía');
-        } else {
-            rowErrors.push('Columna Descripción no mapeada');
-        }
-
-        // Code (Account)
-        if (columnIndices.code !== undefined) {
-            data.code = cells[columnIndices.code]?.trim() || '';
-        }
-
-        // Category
-        if (columnIndices.category !== undefined) {
-            data.category = cells[columnIndices.category]?.trim() || 'Sin Categoría';
-        }
-
-        // Type Inference from Code
-        let inferredType: 'income' | 'expense' = 'expense';
-        let inferredFromCode = false;
-
-        if (data.code) {
-            const firstDigit = data.code.trim().charAt(0);
-            if (['4'].includes(firstDigit)) {
-                inferredType = 'income';
-                inferredFromCode = true;
-            } else if (['5', '6', '7'].includes(firstDigit)) {
-                inferredType = 'expense';
-                inferredFromCode = true;
-            }
-        }
-
-        // Amount & Type
-        if (columnIndices.amount !== undefined) {
-            const amountVal = cleanCurrencyValue(cells[columnIndices.amount]?.trim() || '0');
-            data.amount = Math.abs(amountVal); // Store absolute value
-
-            if (!inferredFromCode) {
-                // Fallback to name-based inference for headers
-                const name = (data.description || '').toUpperCase();
-                if (name.includes('INGRESOS') || name.includes('VENTAS') || name.includes('UTILIDAD')) {
-                    inferredType = 'income';
-                }
-
-                if (columnIndices.type !== undefined) {
-                    const typeStr = cells[columnIndices.type]?.trim().toLowerCase();
-                    if (typeStr) {
-                        if (typeStr.includes('ingreso') || typeStr.includes('income')) inferredType = 'income';
-                        else if (typeStr.includes('egreso') || typeStr.includes('gasto') || typeStr.includes('expense')) inferredType = 'expense';
-                    }
+                if (monthIdx !== -1) {
+                    const currentYear = new Date().getFullYear();
+                    const yearMatch = data.date.match(/\d{4}/);
+                    const year = yearMatch ? parseInt(yearMatch[0]) : currentYear;
+                    const monthNum = (monthIdx + 1).toString().padStart(2, '0');
+                    data.date = `${year}-${monthNum}-01`;
                 } else {
-                    if (amountVal < 0) inferredType = 'expense';
+                    rowErrors.push(`Fecha inválida: "${data.date}"`);
                 }
             }
-
-            data.type = inferredType;
-        } else {
-            rowErrors.push('Columna Monto no mapeada');
+        } else if (!data.date) {
+            rowErrors.push('Fecha faltante');
         }
+
+        if (!data.description) rowErrors.push('Descripción vacía o faltante');
+
+        // Inferencia de tipo egreso/ingreso
+        let inferredType: 'income' | 'expense' = 'expense';
+        if (data.code && String(data.code).startsWith('4')) inferredType = 'income';
+        else if (data.type && String(data.type).toLowerCase().includes('ingreso')) inferredType = 'income';
+
+        data.type = inferredType;
+        data.amount = Math.abs(cleanCurrencyValue(String((data as any).amount || '0')));
 
         const isValid = rowErrors.length === 0;
         if (isValid) validCount++; else errorCount++;
 
         rows.push({
             data: data as IncomeData,
+            allData,
             errors: rowErrors,
             rowNumber,
             isValid
@@ -201,3 +172,4 @@ export function parseIncomeRows(lines: string[], mapping: Record<string, string>
 
     return { rows, validCount, errorCount };
 }
+

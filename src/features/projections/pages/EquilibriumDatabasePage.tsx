@@ -1,188 +1,254 @@
 import React, { useMemo } from 'react';
-import { useExpenseProjections } from '../hooks/useExpenseProjections';
-import { format, getISOWeek } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { formatMoney } from '../../../utils/formatters';
 import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
+import { useExpenseProjections } from '../hooks/useExpenseProjections';
+import { format, eachDayOfInterval } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { formatMoney, formatPercent } from '../../../utils/formatters';
+import { cn } from '@/lib/utils';
+import { PageHeader } from '../../../components/layout/PageHeader';
+import { ChartBarIcon, QuestionMarkCircleIcon } from '../../../components/ui/Icons';
+import { DateNavigator } from '../../../components/ui/DateNavigator';
 
-// Definición de tipos para la fila de datatable
+// Definición de tipos para la fila de la tabla PE (Semanal)
 interface EquilibriumRow {
-    id: string; // date string yyyy-MM-dd
-    date: Date;
+    id: string; // ISO Week identifier (e.g. "2026-W08")
     weekNumber: number;
-    dayName: string;
-    monthlyGoal: number;
-    weeklyGoal: number; // Base de cálculo (Semana Siguiente)
-    dailyGoal: number; // Proyección Diaria
-    realSale: number;
-    difference: number;
-    status: 'cumplido' | 'pendiente' | 'no_cumplido';
+    dateRange: string; // "DD MMM - DD MMM"
+    currentWeekExpenses: number; // Gastos que ocurren esta semana
+    nextWeekGoal: number; // Gastos de la semana SIGUIENTE (lo que esta semana DEBE recaudar)
+    realSales: number; // Venta Bruta lograda esta semana
+    difference: number; // Brecha vs nextWeekGoal (Venta Real - Meta PE)
+    compliance: number; // % de cobertura de la meta PE
+    status: 'covered' | 'at_risk' | 'pending';
 }
 
 interface EquilibriumDatabasePageProps {
-    currentDate: Date; // Fecha seleccionada en el contexto global (mes)
-    realSales: Record<string, number>; // Ventas reales pasadas desde el padre o contexto
+    currentDate: Date;
+    setCurrentDate: (date: Date) => void;
+    setIsHelpOpen: (open: boolean) => void;
+    setIsConfigOpen: (open: boolean) => void;
+    realSales: Record<string, number>;
 }
 
 export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = ({
     currentDate,
+    setCurrentDate,
+    setIsHelpOpen,
+    setIsConfigOpen,
     realSales
 }) => {
+    // Extraemos los gastos proyectados del hook financiero
     const {
-        projections: expenseProjections, // Array diario plano
         weeks: expenseWeeks,
-        totalMonthlyExpenses
     } = useExpenseProjections(currentDate);
 
-    // 1. Transformar datos a estructura plana (Rows)
-    const rawRows = useMemo(() => {
-        const rows: EquilibriumRow[] = [];
+    // 1. Procesar datos para la tabla semanal
+    const data: EquilibriumRow[] = useMemo(() => {
+        if (!expenseWeeks || expenseWeeks.length === 0) return [];
 
-        // Mapear días a filas
-        expenseProjections.forEach(dayProj => {
-            const dateStr = format(dayProj.date, 'yyyy-MM-dd');
-            const real = realSales[dateStr] || 0;
-            const diff = real - dayProj.amount;
+        return expenseWeeks.map(week => {
+            const start = week.startDate;
+            const end = week.endDate;
+            const weekNum = week.weekNumber;
 
-            let status: EquilibriumRow['status'] = 'pendiente';
-            if (real > 0) {
-                status = real >= dayProj.amount ? 'cumplido' : 'no_cumplido';
-            } else if (dayProj.date < new Date() && !format(dayProj.date, 'yyyy-MM-dd').includes(format(new Date(), 'yyyy-MM-dd'))) {
-                status = 'no_cumplido';
+            // Sumar ventas reales dentro de esta semana
+            const daysInWeek = eachDayOfInterval({ start, end });
+            const weekRealSales = daysInWeek.reduce((sum, day) => {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                return sum + (realSales[dateKey] || 0);
+            }, 0);
+
+            // GASTOS DE ESTA SEMANA: Compromisos reales que vencen en este rango de fechas
+            const currentWeekExpenses = week.expensesToCover;
+
+            // META PE (GASTOS DE LA SEMANA SIGUIENTE): Lo que esta semana debe recaudar para la que viene
+            const nextWeekGoal = week.baseExpenses;
+
+            const diff = weekRealSales - nextWeekGoal;
+            const compliance = nextWeekGoal > 0 ? (weekRealSales / nextWeekGoal) * 100 : 0;
+
+            let status: EquilibriumRow['status'] = 'pending';
+            if (weekRealSales > 0) {
+                status = weekRealSales >= nextWeekGoal ? 'covered' : 'at_risk';
             }
 
-            const relatedWeek = expenseWeeks.find(w =>
-                dayProj.date >= w.startDate && dayProj.date <= w.endDate
-            );
-
-            rows.push({
-                id: dateStr,
-                date: dayProj.date,
-                weekNumber: getISOWeek(dayProj.date),
-                dayName: format(dayProj.date, 'EEEE', { locale: es }),
-                monthlyGoal: totalMonthlyExpenses,
-                weeklyGoal: relatedWeek?.baseExpenses || 0,
-                dailyGoal: dayProj.amount,
-                realSale: real,
+            return {
+                id: `${format(start, 'yyyy')}-W${weekNum}`,
+                weekNumber: weekNum,
+                dateRange: `${format(start, 'dd MMM', { locale: es })} - ${format(end, 'dd MMM', { locale: es })}`,
+                currentWeekExpenses,
+                nextWeekGoal,
+                realSales: weekRealSales,
                 difference: diff,
+                compliance,
                 status
-            });
+            };
         });
-
-        return rows;
-    }, [expenseProjections, expenseWeeks, totalMonthlyExpenses, realSales]);
+    }, [expenseWeeks, realSales]);
 
     // 2. Definir Columnas
     const columns: Column<EquilibriumRow>[] = useMemo(() => [
         {
-            key: 'date',
-            label: 'Fecha',
-            sortable: true,
-            filterable: true,
-            render: (value: Date) => (
-                <span className="font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                    {format(value, 'dd MMM yyyy', { locale: es })}
-                </span>
-            )
-        },
-        {
             key: 'weekNumber',
             label: 'Semana',
             sortable: true,
+            width: 'w-24',
             render: (value: number) => (
-                <span className="text-gray-600 dark:text-gray-400">
+                <span>
                     Semana {value}
                 </span>
             )
         },
         {
-            key: 'dayName',
-            label: 'Día',
-            sortable: true,
+            key: 'dateRange',
+            label: 'Periodo',
+            align: 'text-left',
             render: (value: string) => (
-                <span className="capitalize text-gray-600 dark:text-gray-400">
+                <span className="block">
                     {value}
                 </span>
             )
         },
         {
-            key: 'dailyGoal',
-            label: 'Proyección',
+            key: 'currentWeekExpenses',
+            label: 'Gastos esta Semana',
+            tooltip: 'Compromisos que deben pagarse en este rango de fechas',
             sortable: true,
             align: 'text-right',
             render: (value: number) => (
-                <span className="font-mono font-medium text-purple-600 dark:text-purple-400 tabular-nums">
+                <span className="tabular-nums">
                     {formatMoney(value)}
                 </span>
             )
         },
         {
-            key: 'realSale',
-            label: 'Real',
+            key: 'nextWeekGoal',
+            label: 'Meta PE (Gastos Sem+1)',
+            tooltip: 'Lo que se DEBE vender para cubrir los gastos de la próxima semana',
             sortable: true,
             align: 'text-right',
             render: (value: number) => (
-                <span className="font-mono font-bold text-gray-900 dark:text-white tabular-nums">
-                    {value > 0 ? formatMoney(value) : <span className="text-gray-300">-</span>}
+                <span className="tabular-nums text-purple-700 dark:text-purple-400">
+                    {formatMoney(value)}
+                </span>
+            )
+        },
+        {
+            key: 'realSales',
+            label: 'Ventas Logradas',
+            tooltip: 'Acumulado de venta bruta real (Historial de Arqueos)',
+            sortable: true,
+            align: 'text-right',
+            render: (value: number) => (
+                <span className="tabular-nums">
+                    {value > 0 ? formatMoney(value) : <span className="text-gray-400 dark:text-gray-500 font-normal">-</span>}
                 </span>
             )
         },
         {
             key: 'difference',
-            label: 'Diferencia',
+            label: 'Brecha Meta',
             sortable: true,
             align: 'text-right',
             render: (value: number) => (
-                <span className={`font-mono font-medium tabular-nums ${value > 0 ? 'text-emerald-600 dark:text-emerald-400' :
-                    value < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400'
-                    }`}>
-                    {value > 0 ? '+' : ''}{formatMoney(value)}
+                <span className={`tabular-nums ${value >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                    {value >= 0 ? '+' : ''}{formatMoney(value)}
                 </span>
+            )
+        },
+        {
+            key: 'compliance',
+            label: 'Cobertura',
+            sortable: true,
+            align: 'text-center',
+            render: (value: number) => (
+                <div className="flex flex-col gap-1 items-center min-w-[70px]">
+                    <span className={`font-semibold text-[11px] ${value >= 100 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                        {formatPercent(value)}
+                    </span>
+                    <div className="w-full h-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                            className={`h-full transition-all ${value >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                            style={{ width: `${Math.min(value, 100)}%` }}
+                        />
+                    </div>
+                </div>
             )
         },
         {
             key: 'status',
             label: 'Estado',
-            sortable: true,
             align: 'text-center',
             render: (value: string) => {
-                const config = {
-                    cumplido: { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-900/30', border: 'border-emerald-100 dark:border-emerald-800', dot: 'bg-emerald-500' },
-                    pendiente: { color: 'text-gray-600 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-slate-700', border: 'border-gray-200 dark:border-slate-600', dot: 'bg-gray-400' },
-                    no_cumplido: { color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-900/30', border: 'border-rose-100 dark:border-rose-800', dot: 'bg-rose-500' }
+                const config: Record<string, { label: string, dot: string, borderClass: string }> = {
+                    covered: { label: 'SALDADO', dot: 'bg-emerald-500', borderClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400' },
+                    at_risk: { label: 'PENDIENTE', dot: 'bg-amber-500', borderClass: 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400' },
+                    pending: { label: 'SIN VENTA', dot: 'bg-slate-400', borderClass: 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400' }
                 };
-                // @ts-ignore
-                const style = config[value] || config.pendiente;
-
+                const style = config[value] || config.pending;
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${style.bg} ${style.color} ${style.border}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`}></span>
-                        {value.replace('_', ' ')}
-                    </span>
+                    <div className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto",
+                        style.borderClass
+                    )}>
+                        <span className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
+                        <span className="text-[10px] font-semibold uppercase tracking-widest">
+                            {style.label}
+                        </span>
+                    </div>
                 );
             }
         }
     ], []);
 
     return (
-        <div className="flex flex-col w-full h-full overflow-hidden">
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {/* Main Card (Grows with content) */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col">
-                    <div className="p-4">
-                        <SmartDataTable
-                            id="equilibrium-table"
-                            data={rawRows}
-                            columns={columns}
-                            enableColumnConfig={true}
-                            enableExport={true}
-                            enableSelection={true}
-                            searchPlaceholder="Buscar por fecha, día, estado..."
-                            containerClassName=""
-                            exportDateField="date"
+        <div className="flex flex-col space-y-6">
+            <PageHeader
+                title="Punto de Equilibrio (PE)"
+                breadcrumbs={[
+                    { label: 'Proyeccion de ventas', path: '/projections' },
+                    { label: 'Análisis PE (Semanal)' }
+                ]}
+                icon={<ChartBarIcon className="h-6 w-6" />}
+                actions={
+                    <div className="flex flex-wrap items-center gap-2 h-10">
+                        {/* Selector de Mes – Aliaddo §4 Z2 */}
+                        <DateNavigator
+                            value={currentDate}
+                            onChange={setCurrentDate}
                         />
+
+                        {/* Help Button */}
+                        <button
+                            onClick={() => setIsHelpOpen(true)}
+                            className="h-full flex items-center justify-center p-2 bg-white dark:bg-slate-800 text-slate-500 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700 transition-all"
+                        >
+                            <QuestionMarkCircleIcon className="h-5 w-5" />
+                        </button>
+
+                        {/* Config Button */}
+                        <button
+                            onClick={() => setIsConfigOpen(true)}
+                            className="h-full flex items-center gap-2 px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                            Configurar
+                        </button>
                     </div>
-                </div>
+                }
+            />
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                <SmartDataTable
+                    id="equilibrium-table"
+                    data={data}
+                    columns={columns}
+                    enableColumnConfig={true}
+                    enableExport={true}
+                    enableSelection={true}
+                    searchPlaceholder="Buscar semana..."
+                    containerClassName="border-none shadow-none"
+                />
             </div>
         </div>
     );

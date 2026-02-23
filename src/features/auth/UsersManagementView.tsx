@@ -203,7 +203,7 @@ const UsersManagementView: React.FC = () => {
                         setFormData({ username: '', displayName: '', role: 'cajero', password: '' });
                         setShowCreateModal(true);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                    className="flex items-center gap-2 px-4 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-[13px] transition-all active:scale-95"
                 >
                     <PlusCircleIcon className="h-5 w-5" />
                     Crear Nuevo Usuario
@@ -245,6 +245,7 @@ const UsersManagementView: React.FC = () => {
                             label: 'Acciones',
                             width: 'w-1/6',
                             align: 'text-right',
+                            filterable: false,
                             render: (_: any, user: any) => (
                                 <div className="flex gap-2 justify-end">
                                     <button
@@ -331,14 +332,14 @@ const UsersManagementView: React.FC = () => {
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-[13px] active:scale-95"
                                 >
                                     Crear Usuario
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors font-medium"
+                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-[13px] active:scale-95"
                                 >
                                     Cancelar
                                 </button>
@@ -388,14 +389,14 @@ const UsersManagementView: React.FC = () => {
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-[13px] active:scale-95"
                                 >
                                     Guardar Cambios
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowEditModal(false)}
-                                    className="flex-1 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors font-medium"
+                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-[13px] active:scale-95"
                                 >
                                     Cancelar
                                 </button>
@@ -436,14 +437,14 @@ const UsersManagementView: React.FC = () => {
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-[13px] active:scale-95"
                                 >
                                     Cambiar Contraseña
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowPasswordModal(false)}
-                                    className="flex-1 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors font-medium"
+                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-[13px] active:scale-95"
                                 >
                                     Cancelar
                                 </button>

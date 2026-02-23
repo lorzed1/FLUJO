@@ -64,18 +64,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
                 </div>
 
                 {/* View Mode Switcher (Global Visual Preference) */}
-                <div className="flex bg-slate-200/50 dark:bg-slate-700/50 p-1 rounded-lg">
+                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-9">
                     {[
                         { id: 'all', label: 'Consolidado' },
                         { id: 'sales', label: 'Ventas' },
                         { id: 'visits', label: 'Visitas' }
-                    ].map(mode => (
+                    ].map((mode, idx, arr) => (
                         <button
                             key={mode.id}
                             onClick={() => setFilters(prev => ({ ...prev, viewMode: mode.id as ViewMode }))}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${filters.viewMode === mode.id
-                                    ? 'bg-white shadow text-indigo-600 dark:bg-slate-600 dark:text-white'
-                                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            className={`flex items-center justify-center px-3 h-full text-[13px] font-semibold transition-colors
+                                ${idx < arr.length - 1 ? 'border-r border-slate-200 dark:border-slate-700' : ''}
+                                ${filters.viewMode === mode.id
+                                    ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                    : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
                                 }`}
                         >
                             {mode.label}
@@ -91,7 +93,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
                 <div className="lg:col-span-5 flex flex-col gap-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Periodo Específico</label>
                     <div className="flex flex-wrap gap-2">
-                        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm">
                             <Button
                                 variant={filters.periodMode === 'year' ? 'white' : 'ghost'}
                                 size="sm"
@@ -181,7 +183,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
                                     className={`
                                          w-8 h-8 rounded-full text-[10px] font-bold uppercase transition-all flex items-center justify-center
                                          ${isSelected
-                                            ? 'bg-indigo-600 text-white shadow-md transform scale-105'
+                                            ? 'bg-purple-600 text-white shadow-md transform scale-105'
                                             : isAllSelected
                                                 ? 'bg-slate-50 text-slate-400 hover:bg-slate-100 border border-slate-100'
                                                 : 'bg-white text-slate-300 border border-slate-100 opacity-60'

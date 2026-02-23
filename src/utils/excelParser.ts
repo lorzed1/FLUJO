@@ -1,14 +1,12 @@
-/**
- * Utilidades para parsear datos de Excel/TSV para Arqueo de Caja
- */
-
 import { parseSpanishDate, isValidDate } from './dateUtils';
+import { detectHeaderRow, type ColumnType } from './importUtils';
+import { parseCOP } from '../components/ui/Input';
 
 export interface ArqueoData {
     fecha: string;
     ventaBruta: number;
     propina: number;
-    venta_sc?: number; // Venta neta (opcional en importación)
+    venta_sc?: number;
     efectivo: number;
     datafonoDavid: number;
     datafonoJulian: number;
@@ -18,6 +16,7 @@ export interface ArqueoData {
     ingresoCovers: number;
     cajero: string;
     visitas: number;
+    [key: string]: any; // Permitir columnas extra
 }
 
 export interface ParsedRow {
@@ -26,6 +25,7 @@ export interface ParsedRow {
     rowNumber: number;
     isValid: boolean;
     isDuplicate?: boolean;
+    allData?: Record<string, any>; // Todas las columnas procesadas
 }
 
 export interface ParseResult {
@@ -61,7 +61,6 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
     { key: 'visitas', label: 'Visitas', aliases: ['VISITAS', 'PAX', 'CLIENTES', 'PERSONAS'] },
 ];
 
-import { parseCOP } from '../components/ui/Input';
 
 /**
  * Limpia un valor monetario colombiano y lo convierte a número
@@ -122,13 +121,15 @@ function validateArqueoRow(data: Partial<ArqueoData>, rowNumber: number): string
 /**
  * Extrae encabezados y líneas del texto raw
  */
-export function extractHeadersAndLines(text: string): { headers: string[], lines: string[] } {
-    const allLines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (allLines.length < 2) return { headers: [], lines: [] };
+export function extractHeadersAndLines(text: string): { headers: string[], lines: string[], headerIndex: number } {
+    const allLines = text.split('\n');
+    if (allLines.length === 0) return { headers: [], lines: [], headerIndex: 0 };
 
-    // Asumimos que la primera línea son los encabezados
-    const headers = allLines[0].split('\t').map(h => h.trim());
-    return { headers, lines: allLines };
+    const rows = allLines.map(l => l.split('\t'));
+    const headerIndex = detectHeaderRow(rows, SYSTEM_FIELDS);
+
+    const headers = rows[headerIndex].map(h => h.trim());
+    return { headers, lines: allLines, headerIndex };
 }
 
 /**
@@ -170,106 +171,97 @@ export function autoMapColumns(headers: string[]): Record<string, string> {
 }
 
 /**
- * Parsea datos de Excel usando un mapeo específico
- * @param lines Todas las líneas incluyendo encabezados
- * @param mapping Objeto que mapea keyDelSistema -> nombreHeaderExcel
+ * Parsea datos de Excel usando un mapeo y tipos específicos
  */
-export function parseExcelRows(lines: string[], mapping: Record<string, string>): ParseResult {
+export function parseExcelRows(
+    lines: string[],
+    mapping: Record<string, string>,
+    types: Record<string, ColumnType>,
+    headerIndex: number = 0
+): ParseResult {
     const rows: ParsedRow[] = [];
     let validCount = 0;
     let errorCount = 0;
 
     try {
-        if (lines.length < 2) {
+        if (lines.length <= headerIndex) {
             return { rows: [], validCount: 0, errorCount: 0, hasErrors: true };
         }
 
-        const headers = lines[0].split('\t').map(h => h.trim());
+        const headers = lines[headerIndex].split('\t').map(h => h.trim());
 
-        // Convertir mapping (nombres) a índices
-        const columnIndices: Record<string, number> = {};
-        Object.entries(mapping).forEach(([key, headerName]) => {
-            if (headerName) {
-                const idx = headers.findIndex(h => h.trim() === headerName.trim());
-                if (idx !== -1) columnIndices[key] = idx;
-            }
+        // Invertir mapeo para saber que key del sistema corresponde a cada columna (si existe)
+        const reverseMapping: Record<string, string> = {};
+        Object.entries(mapping).forEach(([sysKey, header]) => {
+            if (header) reverseMapping[header] = sysKey;
         });
 
         // Procesar filas
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = headerIndex + 1; i < lines.length; i++) {
             const line = lines[i];
+            if (!line.trim()) continue;
+
             const cells = line.split('\t');
             const rowNumber = i + 1;
-            const rowErrors: string[] = [];
             const data: Partial<ArqueoData> = {};
+            const allData: Record<string, any> = {};
 
-            // FECHA
-            if (columnIndices.fecha !== undefined) {
-                const fechaStr = cells[columnIndices.fecha]?.trim();
-                if (fechaStr) {
-                    const fechaISO = parseSpanishDate(fechaStr);
-                    if (fechaISO) {
-                        data.fecha = fechaISO;
-                    } else {
-                        rowErrors.push(`Fecha inválida: "${fechaStr}"`);
-                        data.fecha = '';
-                    }
+            headers.forEach((header, idx) => {
+                const cellValue = (cells[idx] || '').trim();
+                const type = types[header] || 'text';
+                let processedValue: any = cellValue;
+
+                // Procesar por tipo
+                if (type === 'currency' || type === 'number') {
+                    processedValue = cleanCurrencyValue(cellValue);
+                } else if (type === 'date') {
+                    processedValue = parseSpanishDate(cellValue) || cellValue;
                 }
-            }
 
-            // CAMPOS MONETARIOS
-            const currencyFields: (keyof ArqueoData)[] = [
-                'ventaBruta', 'propina', 'venta_sc', 'efectivo',
-                'datafonoDavid', 'datafonoJulian', 'transfBancolombia',
-                'nequi', 'rappi', 'ingresoCovers'
+                // Guardar en allData (todas las columnas van aquí)
+                allData[header] = processedValue;
+
+                // Si está mapeado a un campo del sistema, guardarlo en data
+                const sysKey = reverseMapping[header];
+                if (sysKey) {
+                    (data as any)[sysKey] = processedValue;
+                }
+            });
+
+            // Asegurar que campos requeridos de ArqueoData tengan valor (default 0 para números)
+            const numericFields: (keyof ArqueoData)[] = [
+                'ventaBruta', 'propina', 'efectivo', 'datafonoDavid', 'datafonoJulian',
+                'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas'
             ];
+            numericFields.forEach(f => {
+                if ((data as any)[f] === undefined) (data as any)[f] = 0;
+            });
 
-            for (const field of currencyFields) {
-                if (columnIndices[field] !== undefined) {
-                    const cellValue = cells[columnIndices[field]]?.trim() || '';
-                    (data as any)[field] = cleanCurrencyValue(cellValue);
-                } else {
-                    (data as any)[field] = 0;
-                }
-            }
-
-            // CAJERO
-            if (columnIndices.cajero !== undefined) {
-                data.cajero = cells[columnIndices.cajero]?.trim() || '';
-            }
-
-            // VISITAS
-            if (columnIndices.visitas !== undefined) {
-                const visitasStr = cells[columnIndices.visitas]?.trim() || '0';
-                data.visitas = parseInt(visitasStr, 10) || 0;
-            }
-
-            // Validar
-            const validationErrors = validateArqueoRow(data, rowNumber);
-            rowErrors.push(...validationErrors);
-
+            const rowErrors = validateArqueoRow(data, rowNumber);
             const isValid = rowErrors.length === 0;
 
-            if (isValid) validCount++; else errorCount++;
+            if (isValid) validCount++;
+            else errorCount++;
 
             rows.push({
                 data: data as ArqueoData,
+                allData,
                 errors: rowErrors,
                 rowNumber,
                 isValid
             });
         }
 
+        return {
+            rows,
+            validCount,
+            errorCount,
+            hasErrors: errorCount > 0
+        };
     } catch (error) {
-        console.error('Error parsing Excel data:', error);
+        console.error("Error en parseExcelRows:", error);
+        return { rows: [], validCount: 0, errorCount: 0, hasErrors: true };
     }
-
-    return {
-        rows,
-        validCount,
-        errorCount,
-        hasErrors: errorCount > 0
-    };
 }
 
 /**
@@ -277,9 +269,12 @@ export function parseExcelRows(lines: string[], mapping: Record<string, string>)
  * Maintained for backward compatibility
  */
 export function parseExcelData(text: string): ParseResult {
-    const { headers, lines } = extractHeadersAndLines(text);
+    const { headers, lines, headerIndex } = extractHeadersAndLines(text);
     const mapping = autoMapColumns(headers);
-    return parseExcelRows(lines, mapping);
+    // Para simplificar la compatibilidad, inferimos tipos básicos
+    const types: Record<string, ColumnType> = {};
+    headers.forEach(h => types[h] = 'text');
+    return parseExcelRows(lines, mapping, types, headerIndex);
 }
 
 /**

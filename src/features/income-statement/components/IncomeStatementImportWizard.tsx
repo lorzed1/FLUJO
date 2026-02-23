@@ -6,10 +6,12 @@ import {
     ArrowPathIcon,
     ArrowUpTrayIcon,
     CalendarDaysIcon,
-    TableCellsIcon
+    TableCellsIcon,
+    ExclamationTriangleIcon
 } from '../../../components/ui/Icons';
 import { Button } from '../../../components/ui/Button';
 import { extractHeadersAndLines, autoMapColumns, parseIncomeRows, INCOME_SYSTEM_FIELDS, type ParsedIncomeRow } from '../utils/incomeParser';
+import { detectHeaderRow, inferColumnType, type ColumnType } from '../../../utils/importUtils';
 import { isFinancialMatrixFormat, parseFinancialMatrix } from '../utils/financialMatrixParser';
 import { formatCOP } from '../../../components/ui/Input';
 import { useUI } from '../../../context/UIContext';
@@ -29,8 +31,10 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
     const [step, setStep] = useState<'input' | 'config' | 'mapping' | 'preview'>('input');
     const [rawHeaders, setRawHeaders] = useState<string[]>([]);
     const [rawLines, setRawLines] = useState<string[]>([]); // For flat list
+    const [headerIndex, setHeaderIndex] = useState(0);
     const [rawMatrix, setRawMatrix] = useState<any[][]>([]); // For matrix
     const [mapping, setMapping] = useState<Record<string, string>>({});
+    const [columnConfigs, setColumnConfigs] = useState<Record<string, ColumnType>>({});
 
     // Config State for Matrix
     const [isMatrixMode, setIsMatrixMode] = useState(false);
@@ -46,10 +50,20 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
 
         // Simple paste logic only supports flat list
         if (text.trim().length > 0) {
-            const { headers, lines } = extractHeadersAndLines(text);
+            const { headers, lines, headerIndex: hIdx } = extractHeadersAndLines(text);
             setRawHeaders(headers);
             setRawLines(lines);
+            setHeaderIndex(hIdx);
             setMapping(autoMapColumns(headers));
+
+            // Detectar tipos
+            const configs: Record<string, ColumnType> = {};
+            headers.forEach((header, idx) => {
+                const values = lines.slice(hIdx + 1, hIdx + 11).map(l => l.split('\t')[idx]);
+                configs[header] = inferColumnType(values);
+            });
+            setColumnConfigs(configs);
+
             setIsMatrixMode(false);
             setStep('mapping');
         } else {
@@ -105,6 +119,10 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                         setStep('config');
                     } else {
                         // Regular list
+                        const hIdx = detectHeaderRow(rows, INCOME_SYSTEM_FIELDS);
+                        setHeaderIndex(hIdx);
+                        const headers = rows[hIdx].map(h => String(h || '').trim());
+
                         const tsvLines = rows.map(row =>
                             row.map(cell => {
                                 if (cell === null || cell === undefined) return '';
@@ -114,6 +132,15 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                         setRawHeaders(headers);
                         setRawLines(tsvLines);
                         setMapping(autoMapColumns(headers));
+
+                        // Detectar tipos
+                        const configs: Record<string, ColumnType> = {};
+                        headers.forEach((header, idx) => {
+                            const values = tsvLines.slice(hIdx + 1, hIdx + 11).map(l => l.split('\t')[idx]);
+                            configs[header] = inferColumnType(values);
+                        });
+                        setColumnConfigs(configs);
+
                         setIsMatrixMode(false);
                         setStep('mapping');
                     }
@@ -153,9 +180,13 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
     };
 
     const handleProceedToPreview = () => {
-        const result = parseIncomeRows(rawLines, mapping);
+        const result = parseIncomeRows(rawLines, mapping, columnConfigs, headerIndex);
         setParsedRows(result.rows);
         setStep('preview');
+    };
+
+    const handleTypeChange = (header: string, type: ColumnType) => {
+        setColumnConfigs(prev => ({ ...prev, [header]: type }));
     };
 
     const handleBackToConfig = () => {
@@ -327,41 +358,110 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
             )}
 
             {step === 'mapping' && !isMatrixMode && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm animate-in slide-in-from-right duration-300">
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                        <ArrowPathIcon className="h-5 w-5 text-primary dark:text-blue-400" />
-                        Verificación de Columnas
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Confirma que las columnas detectadas correspondan a los campos del sistema.</p>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-md animate-in slide-in-from-right duration-300">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h3 className="font-bold text-xl text-gray-800 dark:text-white flex items-center gap-2">
+                                <ArrowPathIcon className="h-6 w-6 text-primary" />
+                                Configuración de Columnas
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Revisa los tipos de datos detectados y mapea los campos importantes.</p>
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {INCOME_SYSTEM_FIELDS.map(field => {
-                            const selectedHeader = mapping[field.key] || '';
-                            const isMapped = !!selectedHeader;
+                        <div className="flex flex-wrap gap-2">
+                            {INCOME_SYSTEM_FIELDS.filter(f => f.required).map(field => {
+                                const currentHeader = mapping[field.key];
+                                const isMapped = currentHeader && rawHeaders.includes(currentHeader);
 
-                            return (
-                                <div key={field.key} className={`p-3 rounded-lg border ${isMapped ? 'border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/50' : 'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20'}`}>
-                                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1 uppercase tracking-wide">
-                                        {field.label} {field.required && <span className="text-red-500 dark:text-red-400">*</span>}
-                                    </label>
-                                    <select
-                                        value={selectedHeader}
-                                        onChange={(e) => handleMappingChange(field.key as string, e.target.value)}
-                                        className={`w-full p-2 text-sm border rounded-md focus:ring-2 focus:ring-primary focus:outline-none dark:bg-slate-800 dark:text-white ${!isMapped && field.required ? 'border-red-300 dark:border-red-800 ring-2 ring-red-100 dark:ring-red-900/30' : 'border-gray-300 dark:border-slate-600'}`}
+                                return (
+                                    <span
+                                        key={field.key}
+                                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
                                     >
-                                        <option value="">-- No mapeado --</option>
-                                        {rawHeaders.map((header, idx) => (
-                                            <option key={idx} value={header}>{header}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            );
-                        })}
+                                        {isMapped ? <CheckCircleIcon className="h-3 w-3" /> : <ExclamationTriangleIcon className="h-3 w-3" />}
+                                        {field.label}
+                                    </span>
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    <div className="flex gap-3 justify-end mt-8">
-                        <button onClick={handleClear} className="px-4 py-2 text-sm text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
-                        <Button onClick={handleProceedToPreview} variant="primary">Continuar al Preview</Button>
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700">
+                        <table className="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr className="bg-gray-100 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
+                                    <th className="px-5 py-4 font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider">Columna</th>
+                                    <th className="px-5 py-4 font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider">Tipo de Dato</th>
+                                    <th className="px-5 py-4 font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider">Mapear a</th>
+                                    <th className="px-5 py-4 font-bold text-gray-700 dark:text-gray-200 text-xs uppercase tracking-wider">Muestra</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                {rawHeaders.map((header, idx) => {
+                                    const sysKey = Object.keys(mapping).find(k => mapping[k] === header);
+                                    const sampleValue = rawLines[headerIndex + 1]?.split('\t')[idx] || '';
+                                    const currentType = columnConfigs[header] || 'text';
+
+                                    return (
+                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
+                                            <td className="px-5 py-4">
+                                                <div className="font-bold text-gray-900 dark:text-white mb-0.5">{header}</div>
+                                                <div className="text-[10px] text-gray-400 font-mono italic">Col {idx + 1}</div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <select
+                                                    value={currentType}
+                                                    onChange={(e) => handleTypeChange(header, e.target.value as ColumnType)}
+                                                    className="p-1 px-2 text-xs border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-white focus:ring-1 focus:ring-primary outline-none cursor-pointer"
+                                                >
+                                                    <option value="text">Texto</option>
+                                                    <option value="number">Número</option>
+                                                    <option value="currency">Moneda ($)</option>
+                                                    <option value="date">Fecha</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <select
+                                                    value={sysKey || ''}
+                                                    onChange={(e) => {
+                                                        const newKey = e.target.value;
+                                                        setMapping(prev => {
+                                                            const n = { ...prev };
+                                                            if (sysKey) n[sysKey] = '';
+                                                            if (newKey) n[newKey] = header;
+                                                            return n;
+                                                        });
+                                                    }}
+                                                    className={`w-full p-2 text-xs border rounded-lg bg-white dark:bg-slate-800 dark:text-white transition-all cursor-pointer ${sysKey ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20' : 'border-gray-300 dark:border-slate-600'}`}
+                                                >
+                                                    <option value="">-- No mapear --</option>
+                                                    {INCOME_SYSTEM_FIELDS.map(f => (
+                                                        <option key={f.key} value={f.key}>{f.label} {f.required ? '*' : ''}</option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 truncate max-w-[180px]">
+                                                    {sampleValue || <span className="italic text-gray-400">Sin datos</span>}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="flex gap-4 justify-end mt-8">
+                        <button onClick={handleClear} className="px-6 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">Cancelar</button>
+                        <Button
+                            onClick={handleProceedToPreview}
+                            variant="primary"
+                            className="px-8 py-2.5 flex items-center gap-2 shadow-lg"
+                        >
+                            Ver Preview de Datos
+                            <ArrowPathIcon className="h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
             )}

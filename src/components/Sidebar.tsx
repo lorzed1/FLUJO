@@ -115,13 +115,14 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
     },
     {
       id: 'projections',
-      label: 'Proyeccion de ventas',
+      label: 'Proyección de ventas',
       icon: <ChartBarIcon className="h-5 w-5" />,
       roles: ['admin'],
       path: '/projections',
       children: [
-        { id: 'projections-table', label: 'Proyeccion Estadistica', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/table' },
-        { id: 'projections-statistics', label: 'Proyeccion PE', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/statistics' },
+        { id: 'projections-calendar', label: 'Calendario de Metas', icon: <CalendarIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/calendar' },
+        { id: 'projections-table', label: 'Base de Datos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/table' },
+        { id: 'projections-statistics', label: 'Análisis PE (Semanal)', icon: <PresentationChartLineIcon className="h-4 w-4" />, roles: ['admin'], path: '/projections/statistics' },
       ]
     },
     {

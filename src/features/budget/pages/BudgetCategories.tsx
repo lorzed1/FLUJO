@@ -56,7 +56,7 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
                     <div className="w-7 h-7 rounded-full bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center text-primary border border-gray-100 dark:border-slate-700">
                         <TagIcon className="w-3.5 h-3.5" />
                     </div>
-                    <span className="font-medium text-[13px] text-gray-900 dark:text-gray-200 uppercase tracking-tight">{value}</span>
+                    <span className="uppercase tracking-wide">{value}</span>
                 </div>
             )
         },
@@ -67,9 +67,9 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
             render: (value: string) => {
                 const isExpense = value === TransactionType.EXPENSE;
                 return (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 shadow-sm">
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit ${isExpense ? 'bg-rose-50 border-rose-200 dark:bg-rose-900/30 dark:border-rose-800' : 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800'}`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${isExpense ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-tighter">
+                        <span className={`text-[10px] font-semibold uppercase tracking-widest ${isExpense ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
                             {isExpense ? 'Gasto' : 'Ingreso'}
                         </span>
                     </div>
@@ -81,6 +81,7 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
             label: '',
             width: 'w-16',
             align: 'text-right' as const,
+            filterable: false,
             render: (_: any, item: any) => (
                 <div className="flex justify-end gap-1">
                     <button
@@ -194,7 +195,7 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
 
                 {/* Tabla de resultados */}
                 <div className="lg:col-span-8">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[500px] flex flex-col p-4 sm:p-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[500px] flex flex-col">
                         <div className="flex-1">
                             <SmartDataTable
                                 data={categories}

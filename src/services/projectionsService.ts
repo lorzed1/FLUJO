@@ -132,4 +132,38 @@ export const projectionsService = {
             throw error;
         }
     },
+
+    // --- Global Config ---
+    async getProjectionConfig(): Promise<any> {
+        try {
+            const { data, error } = await supabase
+                .from('settings')
+                .select('data')
+                .eq('key', 'projections_config')
+                .maybeSingle();
+
+            if (error) throw error;
+            return data?.data || null;
+        } catch (error) {
+            console.error('Error getting projection config:', error);
+            return null;
+        }
+    },
+
+    async saveProjectionConfig(config: any): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('settings')
+                .upsert({
+                    key: 'projections_config',
+                    data: config,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error saving projection config:', error);
+            throw error;
+        }
+    }
 };

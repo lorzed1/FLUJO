@@ -14,7 +14,8 @@ import {
     ChevronDownIcon,
     TrashIcon,
     ChevronLeftIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    ArrowUpTrayIcon
 } from './Icons';
 import { cn } from '@/lib/utils';
 
@@ -30,30 +31,42 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
         enableSelection = true,
         enableExport = true,
         enableColumnConfig = true,
+        onImport,
         onBulkDelete,
         onRowClick,
         containerClassName = "",
         searchPlaceholder = "Buscar...",
         renderExtraFilters,
         renderSelectionActions,
+        loading = false,
     } = props;
 
     const table = useSmartDataTable(props);
 
     return (
-        <div className={`space-y-4 flex flex-col ${containerClassName}`}>
-            {/* --- TOOLBAR --- */}
+        <div className={`flex flex-col min-h-0 ${containerClassName} relative`}>
+            {loading && (
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[1px] animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cargando datos...</span>
+                    </div>
+                </div>
+            )}
+
+
+            {/* ─── ZONA FIJA: barra selección + toolbar (no scrollea) ─── */}
 
             {/* Barra de Selección Masiva */}
             {table.selectedIds.size > 0 && enableSelection && (
-                <div className="flex items-center justify-between bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 p-2.5 rounded-md shadow animate-in fade-in slide-in-from-top-1 text-sm">
+                <div className="flex flex-wrap gap-4 items-center justify-between px-6 py-2.5 bg-purple-50 border border-purple-100 dark:bg-purple-900/20 dark:border-purple-800/50 text-purple-900 dark:text-purple-100 shadow-sm animate-in fade-in slide-in-from-top-1 text-sm shrink-0 mb-0 mx-8 mt-6 rounded-lg">
                     <div className="flex items-center gap-3">
-                        <span className="font-semibold">{table.selectedIds.size} seleccionados</span>
+                        <span className="font-semibold text-purple-700 dark:text-purple-300">{table.selectedIds.size} seleccionados</span>
                         <Button
-                            variant="primary"
+                            variant="secondary"
                             size="sm"
                             onClick={() => table.setSelectedIds(new Set())}
-                            className="h-6 px-2 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+                            className="h-6 px-2.5 text-[11px] font-bold uppercase tracking-wider bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-transparent dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-md"
                         >
                             Desmarcar
                         </Button>
@@ -63,17 +76,17 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                             <Button
                                 size="sm"
                                 onClick={table.handleBulkDeleteAction}
-                                className="h-7 gap-1.5 bg-red-600 hover:bg-red-700 text-white border-none"
+                                className="h-7 px-3 gap-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 dark:bg-transparent dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30 rounded-md text-xs font-semibold shadow-sm transition-colors"
                             >
-                                <TrashIcon className="h-3 w-3" /> Eliminar
+                                <TrashIcon className="h-3.5 w-3.5" /> Eliminar
                             </Button>
                         )
                     )}
                 </div>
             )}
 
-            {/* Barra Principal */}
-            <div className="flex flex-wrap gap-2 items-center justify-between p-1">
+            {/* Barra Principal: Buscar + Columnas + Exportar — FIJA, no scrollea */}
+            <div className="flex flex-wrap gap-4 items-center justify-between px-4 py-3 shrink-0">
                 {enableSearch && (
                     <div className="relative w-full max-w-sm group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -91,7 +104,19 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                 <div className="flex items-center gap-2 ml-auto">
                     {renderExtraFilters?.()}
 
-                    {/* Selector de Columnas */}
+                    {/* Botón de Importar */}
+                    {onImport && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-8 gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm text-xs font-medium rounded-lg"
+                            onClick={onImport}
+                        >
+                            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                            Importar
+                        </Button>
+                    )}
+
                     {enableColumnConfig && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -100,20 +125,33 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                     Columnas
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-56" align="end">
-                                <DropdownMenuLabel>Columnas Visibles</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {initialColumns
-                                    .filter(col => !col.defaultHidden && col.key !== 'actions')
-                                    .map(col => (
-                                        <DropdownMenuCheckboxItem
-                                            key={col.key}
-                                            checked={table.visibleColumns[col.key]}
-                                            onCheckedChange={(checked) => table.setVisibleColumns({ ...table.visibleColumns, [col.key]: checked })}
-                                        >
-                                            {col.label}
-                                        </DropdownMenuCheckboxItem>
-                                    ))}
+                            <DropdownMenuContent
+                                className="w-56 p-0 overflow-hidden"
+                                align="end"
+                                avoidCollisions={true}
+                                collisionPadding={16}
+                            >
+                                {/* Header fijo — no scrollea */}
+                                <div className="px-2 py-2 border-b border-gray-100 bg-gray-50 sticky top-0">
+                                    <DropdownMenuLabel className="px-0 py-0 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        Columnas Visibles
+                                    </DropdownMenuLabel>
+                                </div>
+                                {/* Lista con scroll interno */}
+                                <div className="max-h-[280px] overflow-y-auto py-1">
+                                    {initialColumns
+                                        .filter(col => col.key !== 'actions')
+                                        .map(col => (
+                                            <DropdownMenuCheckboxItem
+                                                key={col.key}
+                                                checked={table.visibleColumns[col.key]}
+                                                onCheckedChange={(checked) => table.setVisibleColumns({ ...table.visibleColumns, [col.key]: checked })}
+                                                onSelect={(e) => e.preventDefault()}
+                                            >
+                                                {col.label}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                </div>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
@@ -139,215 +177,262 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                 </div>
             </div>
 
-            {/* --- TABLA --- */}
-            <div className="rounded-none bg-transparent flex-1 overflow-auto min-h-0 relative custom-scrollbar">
-                <Table className="w-full border-collapse">
-                    <TableHeader className="bg-white dark:bg-slate-800 sticky top-0 z-20 border-b border-gray-100 dark:border-slate-700 shadow-sm">
-                        <TableRow className="hover:bg-transparent border-none">
-                            {enableSelection && (
-                                <TableHead className="w-[40px] pl-4 py-3 bg-white dark:bg-slate-800 text-center custom-header-cell sticky top-0 z-20 shadow-sm">
-                                    <Checkbox
-                                        checked={table.selectedIds.size > 0 && table.selectedIds.size === table.processedData.length}
-                                        onCheckedChange={table.toggleSelectAll}
-                                        aria-label="Seleccionar todo"
-                                        className="h-3.5 w-3.5 border-gray-300 text-purple-600 focus:ring-purple-600 rounded"
-                                    />
-                                </TableHead>
-                            )}
-                            {initialColumns.filter(c => table.visibleColumns[c.key]).map((col) => {
-                                const isFiltered = table.activeFilters[col.key]?.length > 0;
-                                return (
-                                    <TableHead
-                                        key={col.key}
-                                        className={cn(
-                                            "text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-sm",
-                                            col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
-                                            col.width
+            {/* ─── ZONA SCROLL: contenedor con máscara visual estática (límites naranjas de ref) ─── */}
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden px-8">
+                <div className={cn("flex-1 overflow-auto min-h-0 custom-scrollbar border-y border-gray-100 dark:border-slate-700", props.scrollContainerClassName)}>
+                    <div className="min-w-max w-full pb-4 pt-1">
+                        {/* --- TABLA --- */}
+                        <div className="rounded-none bg-transparent relative">
+                            <Table className="w-full border-collapse relative">
+                                <TableHeader className="bg-white dark:bg-slate-800 sticky top-0 z-20 shadow-sm">
+                                    <TableRow className="hover:bg-transparent border-none">
+                                        {enableSelection && (
+                                            <TableHead className="w-[40px] pl-0 pr-4 py-2.5 bg-white dark:bg-slate-800 text-left custom-header-cell sticky top-0 z-20 shadow-none border-b border-gray-100 dark:border-slate-700">
+                                                <Checkbox
+                                                    checked={table.selectedIds.size > 0 && table.selectedIds.size === table.processedData.length}
+                                                    onCheckedChange={table.toggleSelectAll}
+                                                    aria-label="Seleccionar todo"
+                                                    className="h-3.5 w-3.5 border-gray-300 text-purple-600 focus:ring-purple-600 rounded"
+                                                />
+                                            </TableHead>
                                         )}
-                                        title={col.tooltip}
-                                    >
-                                        <div className={cn(
-                                            "flex items-center gap-1.5",
-                                            col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : 'justify-start'
-                                        )}>
-                                            <span
-                                                className={cn(
-                                                    "whitespace-nowrap select-none",
-                                                    col.sortable !== false ? "cursor-pointer hover:text-purple-600 transition-colors" : "",
-                                                    col.tooltip ? "border-b border-dotted border-gray-400 cursor-help" : ""
-                                                )}
-                                                onClick={() => col.sortable !== false && table.toggleSort(col.key)}
-                                            >
-                                                {col.label}
-                                            </span>
+                                        {initialColumns.filter(c => table.visibleColumns[c.key]).map((col, idx, arr) => {
+                                            const isFiltered = table.activeFilters[col.key]?.length > 0;
+                                            return (
+                                                <TableHead
+                                                    key={col.key}
+                                                    className={cn(
+                                                        "text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-2.5 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-sm",
+                                                        col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
+                                                        idx === 0 && !enableSelection ? "pl-0 pr-4" : "px-4",
+                                                        idx === arr.length - 1 ? "pr-0 pl-4" : "",
+                                                        col.width
+                                                    )}
+                                                    title={col.tooltip}
+                                                >
+                                                    <div className={cn(
+                                                        "flex items-center gap-1.5",
+                                                        col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : 'justify-start'
+                                                    )}>
+                                                        <span
+                                                            className={cn(
+                                                                "whitespace-nowrap select-none",
+                                                                col.sortable !== false ? "cursor-pointer hover:text-purple-600 transition-colors" : "",
+                                                                col.tooltip ? "border-b border-dotted border-gray-400 cursor-help" : ""
+                                                            )}
+                                                            onClick={() => col.sortable !== false && table.toggleSort(col.key)}
+                                                        >
+                                                            {col.label}
+                                                        </span>
 
-                                            <div className="flex items-center">
-                                                {/* Sort Icon */}
-                                                {table.sortConfig.key === col.key && (
-                                                    <span className="ml-0.5">
-                                                        {table.sortConfig.direction === 'asc'
-                                                            ? <ChevronUpIcon className="h-3 w-3 text-purple-600" />
-                                                            : <ChevronDownIcon className="h-3 w-3 text-purple-600" />
-                                                        }
-                                                    </span>
-                                                )}
+                                                        <div className="flex items-center">
+                                                            {/* Sort Icon */}
+                                                            {table.sortConfig.key === col.key && (
+                                                                <span className="ml-0.5">
+                                                                    {table.sortConfig.direction === 'asc'
+                                                                        ? <ChevronUpIcon className="h-3 w-3 text-purple-600" />
+                                                                        : <ChevronDownIcon className="h-3 w-3 text-purple-600" />
+                                                                    }
+                                                                </span>
+                                                            )}
 
-                                                {/* Filter Button */}
-                                                {col.filterable !== false && (
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <button
-                                                                className={cn("ml-1 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors", isFiltered ? "text-purple-600 bg-purple-50" : "text-gray-300 hover:text-gray-500")}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <FunnelIcon className="h-3 w-3" />
-                                                            </button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="start" className="w-56 p-0">
-                                                            <div className="p-2 border-b bg-gray-50 flex items-center justify-between">
-                                                                <span className="text-xs font-semibold uppercase text-gray-600">Filtros</span>
-                                                                {isFiltered && (
-                                                                    <button
-                                                                        onClick={() => table.clearColumnFilter(col.key)}
-                                                                        className="text-[10px] text-rose-600 cursor-pointer hover:underline font-bold"
-                                                                    >
-                                                                        BORRAR
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                            <div className="max-h-[200px] overflow-y-auto p-1">
-                                                                {table.getUniqueValues(col.key).map(val => (
-                                                                    <DropdownMenuCheckboxItem
-                                                                        key={val}
-                                                                        checked={table.activeFilters[col.key]?.includes(val) ?? false}
-                                                                        onCheckedChange={() => table.toggleFilter(col.key, val)}
-                                                                    >
-                                                                        {val}
-                                                                    </DropdownMenuCheckboxItem>
-                                                                ))}
-                                                                {table.getUniqueValues(col.key).length === 0 && <div className="p-4 text-center text-xs text-muted-foreground">Sin valores</div>}
-                                                            </div>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </TableHead>
-                                );
-                            })}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {table.paginatedData.length > 0 ? (
-                            table.paginatedData.map((item) => (
-                                <TableRow
-                                    key={item.id}
-                                    data-state={table.selectedIds.has(item.id) ? "selected" : undefined}
-                                    onClick={() => onRowClick && onRowClick(item)}
-                                    className={cn(
-                                        onRowClick && "cursor-pointer",
-                                        "group transition-colors border-b border-gray-50 dark:border-slate-800",
-                                        // Standard: Plain white, hover gray-50. No zebra striping by default unless requested.
-                                        table.selectedIds.has(item.id) ? "bg-purple-50 dark:bg-purple-900/20" : "bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700/30"
-                                    )}
-                                >
-                                    {enableSelection && (
-                                        <TableCell className="w-[40px] pl-4 py-3.5 text-center">
-                                            <Checkbox
-                                                checked={table.selectedIds.has(item.id)}
-                                                onCheckedChange={() => table.toggleSelectRow(item.id)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="h-3.5 w-3.5 border-gray-300 text-purple-600 focus:ring-purple-600 rounded"
-                                            />
-                                        </TableCell>
-                                    )}
-                                    {table.visibleColumns[initialColumns[0].key] && (
-                                        initialColumns.filter(c => table.visibleColumns[c.key]).map(col => (
-                                            <TableCell
-                                                key={col.key}
+                                                            {/* Filter Button */}
+                                                            {col.filterable !== false && (
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <button
+                                                                            className={cn("ml-1 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors", isFiltered ? "text-purple-600 bg-purple-50" : "text-gray-300 hover:text-gray-500")}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <FunnelIcon className="h-3 w-3" />
+                                                                        </button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="start" className="w-56 p-0">
+                                                                        <div className="p-2 border-b bg-gray-50 flex items-center justify-between">
+                                                                            <span className="text-xs font-semibold uppercase text-gray-600">Filtros</span>
+                                                                            {isFiltered && (
+                                                                                <button
+                                                                                    onClick={() => table.clearColumnFilter(col.key)}
+                                                                                    className="text-[10px] text-rose-600 cursor-pointer hover:underline font-bold"
+                                                                                >
+                                                                                    BORRAR
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="max-h-[200px] overflow-y-auto p-1">
+                                                                            {table.getUniqueValues(col.key).map(val => (
+                                                                                <DropdownMenuCheckboxItem
+                                                                                    key={val}
+                                                                                    checked={table.activeFilters[col.key]?.includes(val) ?? false}
+                                                                                    onCheckedChange={() => table.toggleFilter(col.key, val)}
+                                                                                >
+                                                                                    {val}
+                                                                                </DropdownMenuCheckboxItem>
+                                                                            ))}
+                                                                            {table.getUniqueValues(col.key).length === 0 && <div className="p-4 text-center text-xs text-muted-foreground">Sin valores</div>}
+                                                                        </div>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </TableHead>
+                                            );
+                                        })}
+                                        {(props.onDelete || props.onEdit || props.onView) && (
+                                            <TableHead className="w-[100px] text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-2.5 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-sm">
+                                                Acciones
+                                            </TableHead>
+                                        )}
+                                        {/* Columna espaciadora (Filler) para evitar que pocas columnas se estiren demasiado */}
+                                        <TableHead className="w-full min-w-0 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 sticky top-0 z-20 shadow-sm" />
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {table.paginatedData.length > 0 ? (
+                                        table.paginatedData.map((item, index) => (
+                                            <TableRow
+                                                key={item.id}
+                                                data-state={table.selectedIds.has(item.id) ? "selected" : undefined}
+                                                onClick={() => onRowClick && onRowClick(item)}
                                                 className={cn(
-                                                    col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
-                                                    "px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 align-middle font-normal whitespace-nowrap",
-                                                    col.className
+                                                    onRowClick && "cursor-pointer",
+                                                    "group transition-colors border-b border-gray-100 dark:border-slate-800",
+                                                    table.selectedIds.has(item.id)
+                                                        ? "bg-purple-50 dark:bg-purple-900/40"
+                                                        : index % 2 === 0
+                                                            ? "bg-white hover:bg-slate-50 dark:bg-[#0f172a] dark:hover:bg-slate-800/60"
+                                                            : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700"
                                                 )}
                                             >
-                                                {item ? (
-                                                    col.render ? col.render((item as any)[col.key], item) : table.getRenderedStringValue(item, col)
-                                                ) : null}
+                                                {enableSelection && (
+                                                    <TableCell className="w-[40px] pl-0 pr-4 py-2.5 text-left">
+                                                        <Checkbox
+                                                            checked={table.selectedIds.has(item.id)}
+                                                            onCheckedChange={() => table.toggleSelectRow(item.id)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="h-3.5 w-3.5 border-gray-300 text-purple-600 focus:ring-purple-600 rounded"
+                                                        />
+                                                    </TableCell>
+                                                )}
+                                                {/* Celdas de Datos */}
+                                                {true && (
+                                                    initialColumns.filter(c => table.visibleColumns[c.key]).map((col, idx, arr) => (
+                                                        <TableCell
+                                                            key={col.key}
+                                                            className={cn(
+                                                                col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
+                                                                "py-2.5 text-[12px] leading-[19.4px] text-[#363636] dark:text-gray-300 font-sans font-normal align-middle whitespace-nowrap",
+                                                                idx === 0 && !enableSelection ? "pl-0 pr-4" : idx === arr.length - 1 && !props.onDelete && !props.onEdit && !props.onView ? "pl-4 pr-0" : "px-4",
+                                                                col.className
+                                                            )}
+                                                        >
+                                                            {item ? (
+                                                                col.render ? col.render((item as any)[col.key], item) : table.getRenderedStringValue(item, col)
+                                                            ) : null}
+                                                        </TableCell>
+                                                    ))
+                                                )}
+                                                {(props.onDelete || props.onEdit || props.onView) && (
+                                                    <TableCell className="w-[80px] py-1.5 px-4 text-center align-middle">
+                                                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            {props.onView && (
+                                                                <button onClick={(e) => { e.stopPropagation(); props.onView?.(item); }} className="p-1 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Ver">
+                                                                    <EyeIcon className="h-4 w-4" />
+                                                                </button>
+                                                            )}
+                                                            {props.onEdit && (
+                                                                <button onClick={(e) => { e.stopPropagation(); props.onEdit?.(item); }} className="p-1 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Editar">
+                                                                    <ArrowUpTrayIcon className="h-4 w-4 rotate-90" />
+                                                                </button>
+                                                            )}
+                                                            {props.onDelete && (
+                                                                <button onClick={(e) => { e.stopPropagation(); props.onDelete?.(item); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar">
+                                                                    <TrashIcon className="h-4 w-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                )}
+                                                {/* Celda espaciadora (Filler) */}
+                                                <TableCell className="w-full min-w-0" />
+                                            </TableRow>))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0) + (props.onDelete || props.onEdit || props.onView ? 1 : 0) + 1} className="h-32 text-center text-muted-foreground bg-white dark:bg-slate-800">
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <MagnifyingGlassIcon className="h-8 w-8 text-gray-300 dark:text-slate-600" />
+                                                    <p className="text-sm font-medium text-gray-500">No se encontraron resultados.</p>
+                                                </div>
                                             </TableCell>
-                                        ))
+                                        </TableRow>
                                     )}
-                                </TableRow>))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0)} className="h-32 text-center text-muted-foreground bg-white dark:bg-slate-800">
-                                    <div className="flex flex-col items-center justify-center gap-2">
-                                        <MagnifyingGlassIcon className="h-8 w-8 text-gray-300 dark:text-slate-600" />
-                                        <p className="text-sm font-medium text-gray-500">No se encontraron resultados.</p>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- FOOTER DE PAGINACIÓN (Fijo al contenedor, sin scroll horizontal) --- */}
+                <div className="flex items-center justify-between px-8 py-2.5 bg-white dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700 z-10 shrink-0 mx-0 mt-0">
+                    <div className="flex-1 text-xs text-gray-500 font-medium">
+                        {table.processedData.length > 0 && (
+                            <>
+                                Mostrando <span className="font-bold text-gray-700 dark:text-gray-300">{table.startIndex + 1}-{Math.min(table.startIndex + table.pageSize, table.totalItems)}</span> de <span className="font-bold text-gray-700 dark:text-gray-300">{table.totalItems}</span>
+                                {table.processedData.length !== props.data.length && " (filtrados)"}
+                            </>
                         )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            {/* --- FOOTER DE PAGINACIÓN --- */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700">
-                <div className="flex-1 text-xs text-gray-500 font-medium">
-                    {table.processedData.length > 0 && (
-                        <>
-                            Mostrando <span className="font-bold text-gray-700 dark:text-gray-300">{table.startIndex + 1}-{Math.min(table.startIndex + table.pageSize, table.totalItems)}</span> de <span className="font-bold text-gray-700 dark:text-gray-300">{table.totalItems}</span>
-                            {table.processedData.length !== props.data.length && " (filtrados)"}
-                        </>
+                    </div>
+                    {props.footerMessage && (
+                        <div className="hidden md:block flex-1 text-center text-[11px] text-gray-400 font-normal truncate px-4">
+                            {props.footerMessage}
+                        </div>
                     )}
-                </div>
-                <div className="flex items-center gap-6 lg:gap-8">
-                    <div className="flex items-center gap-2">
-                        <p className="text-xs font-medium text-gray-500">Filas:</p>
-                        <select
-                            value={table.pageSize}
-                            onChange={(e) => { table.setPageSize(Number(e.target.value)); table.setCurrentPage(1); }}
-                            className="h-7 w-[60px] rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs focus:ring-purple-600 focus:border-purple-600 py-0 pl-2 cursor-pointer"
-                        >
-                            <option value={10}>10</option>
-                            <option value={15}>15</option>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-xs font-medium text-gray-500">
-                            Pág. {table.currentPage} de {Math.max(1, table.totalPages)}
+                    <div className="flex-1 flex items-center gap-6 lg:gap-8 justify-end">
+                        <div className="flex items-center gap-2">
+                            <p className="text-xs font-medium text-gray-500">Filas:</p>
+                            <select
+                                value={table.pageSize}
+                                onChange={(e) => { table.setPageSize(Number(e.target.value)); table.setCurrentPage(1); }}
+                                className="h-7 w-[60px] rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs focus:ring-purple-600 focus:border-purple-600 py-0 pl-2 cursor-pointer"
+                            >
+                                <option value={10}>10</option>
+                                <option value={15}>15</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
                         </div>
-                        <div className="flex items-center gap-1">
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                className="h-7 w-7 p-0 border-gray-200 hover:bg-white hover:text-purple-600 disabled:opacity-50"
-                                onClick={() => table.setCurrentPage((p: number) => Math.max(1, p - 1))}
-                                disabled={table.currentPage === 1}
-                            >
-                                <span className="sr-only">Anterior</span>
-                                <ChevronLeftIcon className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                className="h-7 w-7 p-0 border-gray-200 hover:bg-white hover:text-purple-600 disabled:opacity-50"
-                                onClick={() => table.setCurrentPage((p: number) => Math.min(table.totalPages, p + 1))}
-                                disabled={table.currentPage === table.totalPages || table.totalPages === 0}
-                            >
-                                <span className="sr-only">Siguiente</span>
-                                <ChevronRightIcon className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-center gap-4">
+                            <div className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                                Pág. {table.currentPage} de {Math.max(1, table.totalPages)}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    className="flex items-center justify-center h-8 w-8 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                                    onClick={() => table.setCurrentPage((p: number) => Math.max(1, p - 1))}
+                                    disabled={table.currentPage === 1}
+                                    title="Página Anterior"
+                                >
+                                    <span className="sr-only">Anterior</span>
+                                    <ChevronLeftIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                    className="flex items-center justify-center h-8 w-8 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-purple-600 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                                    onClick={() => table.setCurrentPage((p: number) => Math.min(table.totalPages, p + 1))}
+                                    disabled={table.currentPage === table.totalPages || table.totalPages === 0}
+                                    title="Página Siguiente"
+                                >
+                                    <span className="sr-only">Siguiente</span>
+                                    <ChevronRightIcon className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* --- EXPORT DATE RANGE MODAL --- */}
+            {/* --- EXPORT DATE RANGE MODAL --- fuera del scroll container --- */}
             {table.showExportModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-700 overflow-hidden scale-100 animate-in zoom-in-95 duration-200">

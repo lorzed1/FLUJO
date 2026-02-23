@@ -129,11 +129,11 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
         {
             key: 'fecha',
             label: 'Fecha',
-            width: 'w-40',
+            width: 'w-24',
             filterable: true,
             sortable: true,
             render: (_, item) => (
-                <div className="flex flex-col gap-1.5 items-start">
+                <div className="flex items-center h-full">
                     <EditableCell
                         value={item.fecha}
                         type="date"
@@ -142,31 +142,11 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                         onSave={(val) => { onUpdate(item.id, 'fecha', val); setEditingCell(null); }}
                         onCancel={() => setEditingCell(null)}
                         displayValue={
-                            <span className="text-slate-700 dark:text-slate-300 font-medium text-[13px] whitespace-nowrap pl-1">
+                            <span className="whitespace-nowrap">
                                 {formatDateToDisplay(item.fecha)}
                             </span>
                         }
                     />
-                    <div className="flex gap-2">
-                        {item.baseDetail && (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleViewDetail(item, 'base'); }}
-                                className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 group"
-                                title="Ver detalle de base de caja"
-                            >
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-purple-500"></span> Base
-                            </button>
-                        )}
-                        {item.cuadreDetail && (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleViewDetail(item, 'cuadre'); }}
-                                className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1 group"
-                                title="Ver detalle de cuadre de venta"
-                            >
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-purple-500"></span> Cuadre
-                            </button>
-                        )}
-                    </div>
                 </div>
             )
         },
@@ -185,7 +165,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'ingresoCovers' })}
                     onSave={(val) => { onUpdate(item.id, 'ingresoCovers', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.ingresoCovers)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.ingresoCovers)}</span>}
                 />
             )
         },
@@ -203,7 +183,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'ventaBruta' })}
                     onSave={(val) => { onUpdate(item.id, 'ventaBruta', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.ventaBruta)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.ventaBruta)}</span>}
                 />
             )
         },
@@ -215,7 +195,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
-                <span className="text-blue-700 dark:text-blue-400 font-medium tabular-nums text-[13px]">
+                <span className="tabular-nums text-blue-700 dark:text-blue-400">
                     {formatCompact(item.ventaBrutaCalc || 0)}
                 </span>
             )
@@ -227,7 +207,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
-                <span className="text-violet-700 dark:text-violet-400 font-medium tabular-nums text-[13px]">
+                <span className="tabular-nums text-violet-700 dark:text-violet-400">
                     {formatCompact(Math.round(item.ventaBase || 0))}
                 </span>
             )
@@ -239,7 +219,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
-                <span className="text-amber-700 dark:text-amber-400 font-medium tabular-nums text-[13px]">
+                <span className="tabular-nums text-amber-700 dark:text-amber-400">
                     {formatCompact(Math.round(item.inc || 0))}
                 </span>
             )
@@ -258,7 +238,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'propina' })}
                     onSave={(val) => { onUpdate(item.id, 'propina', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.propina)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.propina)}</span>}
                 />
             )
         },
@@ -269,7 +249,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             width: 'w-32',
             align: 'text-right',
             render: (_, item) => (
-                <span className="text-emerald-700 dark:text-emerald-400 font-medium tabular-nums text-[13px]">
+                <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
                     {formatCompact(item.totalIngresos || 0)}
                 </span>
             )
@@ -289,7 +269,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'efectivo' })}
                     onSave={(val) => { onUpdate(item.id, 'efectivo', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.efectivo)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.efectivo)}</span>}
                 />
             )
         },
@@ -307,7 +287,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'datafonoDavid' })}
                     onSave={(val) => { onUpdate(item.id, 'datafonoDavid', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.datafonoDavid)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.datafonoDavid)}</span>}
                 />
             )
         },
@@ -325,7 +305,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'datafonoJulian' })}
                     onSave={(val) => { onUpdate(item.id, 'datafonoJulian', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.datafonoJulian)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.datafonoJulian)}</span>}
                 />
             )
         },
@@ -343,7 +323,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'transfBancolombia' })}
                     onSave={(val) => { onUpdate(item.id, 'transfBancolombia', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.transfBancolombia)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.transfBancolombia)}</span>}
                 />
             )
         },
@@ -361,7 +341,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'nequi' })}
                     onSave={(val) => { onUpdate(item.id, 'nequi', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.nequi)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.nequi)}</span>}
                 />
             )
         },
@@ -379,7 +359,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'rappi' })}
                     onSave={(val) => { onUpdate(item.id, 'rappi', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-300 font-normal tabular-nums text-[13px]">{formatCompact(item.rappi)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.rappi)}</span>}
                 />
             )
         },
@@ -390,7 +370,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
-                <span className="text-slate-800 dark:text-white font-medium tabular-nums text-[13px]">
+                <span className="tabular-nums font-bold text-slate-800 dark:text-white">
                     {formatCompact(item.totalRecaudado)}
                 </span>
             )
@@ -402,18 +382,17 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             align: 'text-right',
             sortable: true,
             render: (_, item) => {
-                // Estilo sólido "Pill" similar a referencia
                 const isPositive = item.descuadre > 0;
                 const isZero = item.descuadre === 0;
                 const isNegative = item.descuadre < 0;
 
                 let styles = "bg-gray-50 text-gray-600 border-gray-200";
-                if (isPositive) styles = "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30";
-                if (isNegative) styles = "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30";
+                if (isPositive) styles = "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800";
+                if (isNegative) styles = "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800";
 
                 return (
                     <span className={cn(
-                        "tabular-nums px-2 py-0.5 rounded text-[11px] font-bold inline-block min-w-[60px] text-center border",
+                        "tabular-nums px-2.5 py-1 rounded-md text-[11px] font-black inline-block min-w-[70px] text-center border shadow-sm",
                         styles
                     )}>
                         {formatCompact(item.descuadre)}
@@ -436,7 +415,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'cajero' })}
                     onSave={(val) => { onUpdate(item.id, 'cajero', val); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-[13px] text-slate-700 dark:text-gray-300 font-normal capitalize tracking-normal">{item.cajero}</span>}
+                    displayValue={<span className="capitalize truncate block max-w-[80px]">{item.cajero}</span>}
                 />
             )
         },
@@ -454,17 +433,36 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     onStartEdit={() => setEditingCell({ id: item.id, field: 'visitas' })}
                     onSave={(val) => { onUpdate(item.id, 'visitas', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="text-slate-700 dark:text-gray-400 font-normal tabular-nums text-[13px]">{item.visitas}</span>}
+                    displayValue={<span className="tabular-nums">{item.visitas}</span>}
                 />
             )
         },
         {
             key: 'actions',
             label: '',
-            width: 'w-16',
+            width: 'w-32',
             align: 'text-right',
+            filterable: false,
             render: (_, item) => (
                 <div className="flex items-center gap-1 justify-end">
+                    {item.baseDetail && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(item, 'base'); }}
+                            className="mr-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-purple-900/40 dark:hover:text-purple-300 transition-colors"
+                            title="Ver detalle de base"
+                        >
+                            BASE
+                        </button>
+                    )}
+                    {item.cuadreDetail && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(item, 'cuadre'); }}
+                            className="mr-2 px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-purple-900/40 dark:hover:text-purple-300 transition-colors"
+                            title="Ver detalle de cuadre"
+                        >
+                            CUADRE
+                        </button>
+                    )}
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -472,7 +470,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                                 isOpen: true,
                                 type: 'info',
                                 title: 'Editar Arqueo',
-                                message: 'Para editar un valor, haz doble clic directamente sobre la celda que deseas modificar. Puedes editar cualquier campo numérico (Covers, Venta POS, Propina, medios de pago, Cajero, Visitas) haciendo doble clic en la celda correspondiente.',
+                                message: 'Para editar, haz doble clic directamente sobre la celda.',
                                 confirmText: 'Entendido',
                                 showCancel: false,
                             });
@@ -489,12 +487,12 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                                 isOpen: true,
                                 type: 'warning',
                                 title: 'Eliminar Arqueo',
-                                message: '¿Estás seguro que deseas eliminar este arqueo?',
-                                confirmText: 'Sí, Eliminar',
+                                message: '¿Eliminar este arqueo?',
+                                confirmText: 'Eliminar',
                                 showCancel: true,
                                 onConfirm: () => {
                                     onDelete(item.id);
-                                    setAlertModal({ isOpen: false, message: '' }); // Or success
+                                    setAlertModal({ isOpen: false, message: '' });
                                 }
                             });
                         }}
@@ -535,6 +533,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     id="arqueos_history"
                     data={dataWithTotals}
                     columns={columns}
+                    containerClassName="border-none shadow-none"
                     enableSearch={true}
                     enableSelection={true}
                     selectedIds={selectedIds}
@@ -565,11 +564,8 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     }}
                     searchPlaceholder="Buscar arqueos..."
                     renderExtraFilters={() => extraActions}
+                    footerMessage="Doble clic en las celdas para editar valores"
                 />
-
-                <div className="mt-2 text-[11px] text-center text-gray-400 font-normal">
-                    Doble clic en las celdas para editar valores
-                </div>
             </div>
 
             {/* Local AlertModal removed in favor of UIContext */}

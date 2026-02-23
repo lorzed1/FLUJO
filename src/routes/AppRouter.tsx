@@ -11,6 +11,7 @@ const UsersManagementView = lazy(() => import('../features/auth/UsersManagementV
 const Login = lazy(() => import('../features/auth/Login'));
 const ArqueoView = lazy(() => import('../features/cash-flow/ArqueoPreview'));
 const RescueData = lazy(() => import('../pages/RescueData'));
+const ButtonDesignPlayground = lazy(() => import('../pages/ButtonDesignPlayground'));
 
 // Budget Module
 const BudgetLayout = lazy(() => import('../features/budget/layouts/BudgetLayout').then(m => ({ default: m.BudgetLayout })));
@@ -133,6 +134,7 @@ const AppRouter: React.FC = () => {
                 </Route>
 
                 <Route path="/rescate" element={<RescueData />} />
+                <Route path="/design-playground" element={userRole === 'admin' ? <ButtonDesignPlayground /> : <Navigate to="/arqueo" replace />} />
 
                 {/* Default Route */}
                 <Route path="/" element={<Navigate to={userRole === 'cajero' ? "/arqueo" : "/dashboard"} replace />} />

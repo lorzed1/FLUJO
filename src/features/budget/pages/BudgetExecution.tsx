@@ -26,6 +26,7 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { BudgetHistory } from './BudgetHistory';
+import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 
 /* ──────────────────────────────────────────────────────────
    BudgetExecutionContent – Vista principal de pagos semanales
@@ -43,9 +44,22 @@ const BudgetExecutionContent: React.FC = () => {
     const [ctaCorriente, setCtaCorriente] = useState<string>('');
     const [ctaAhorrosJ, setCtaAhorrosJ] = useState<string>('');
     const [ctaAhorrosN, setCtaAhorrosN] = useState<string>('');
+    const [ctaNequi, setCtaNequi] = useState<string>('');
+    const [otrosIngresos, setOtrosIngresos] = useState<string>('');
     const [efectivo, setEfectivo] = useState<string>('');
     const [isSaving, setIsSaving] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+        try {
+            const initialStartDate = startOfWeek(new Date(), { weekStartsOn: 1 });
+            const key = `budget_selection_${format(initialStartDate, 'yyyy-MM-dd')}`;
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                const ids = JSON.parse(saved);
+                return Array.isArray(ids) ? new Set(ids) : new Set();
+            }
+        } catch (e) { }
+        return new Set();
+    });
 
     const startDate = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
     const endDate = useMemo(() => endOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
@@ -75,10 +89,12 @@ const BudgetExecutionContent: React.FC = () => {
                     setCtaCorriente(availability.ctaCorriente.toString());
                     setCtaAhorrosJ(availability.ctaAhorrosJ.toString());
                     setCtaAhorrosN(availability.ctaAhorrosN.toString());
+                    setCtaNequi(availability.ctaNequi?.toString() || '0');
+                    setOtrosIngresos(availability.otrosIngresos?.toString() || '0');
                     setEfectivo(availability.efectivo.toString());
                 } else {
                     setCtaCorriente(''); setCtaAhorrosJ('');
-                    setCtaAhorrosN(''); setEfectivo('');
+                    setCtaAhorrosN(''); setCtaNequi(''); setOtrosIngresos(''); setEfectivo('');
                 }
             } catch (err) { console.error("Error loading data:", err); }
             finally { setLoading(false); }
@@ -87,24 +103,35 @@ const BudgetExecutionContent: React.FC = () => {
     }, [currentDate, refreshTrigger]);
 
     /* ── Persistent Selection ── */
+    const firstRender = React.useRef(true);
     useEffect(() => {
+        if (firstRender.current) {
+            firstRender.current = false;
+            return;
+        }
         try {
             const key = `budget_selection_${format(startDate, 'yyyy-MM-dd')}`;
             const saved = localStorage.getItem(key);
             if (saved) {
                 const ids = JSON.parse(saved);
-                if (Array.isArray(ids)) setSelectedIds(new Set(ids));
-            } else { setSelectedIds(new Set()); }
+                setSelectedIds(Array.isArray(ids) ? new Set(ids) : new Set());
+            } else {
+                setSelectedIds(new Set());
+            }
         } catch (e) { console.error("Error loading saved selection:", e); }
     }, [startDate]);
 
+    const savingEnabled = React.useRef(false);
     useEffect(() => {
-        try {
-            localStorage.setItem(
-                `budget_selection_${format(startDate, 'yyyy-MM-dd')}`,
-                JSON.stringify(Array.from(selectedIds))
-            );
-        } catch (e) { console.error("Error saving selection:", e); }
+        if (savingEnabled.current || !firstRender.current) {
+            try {
+                localStorage.setItem(
+                    `budget_selection_${format(startDate, 'yyyy-MM-dd')}`,
+                    JSON.stringify(Array.from(selectedIds))
+                );
+            } catch (e) { console.error("Error saving selection:", e); }
+        }
+        savingEnabled.current = true;
     }, [selectedIds, startDate]);
 
     /* ── Calculations ── */
@@ -112,8 +139,10 @@ const BudgetExecutionContent: React.FC = () => {
         return (parseFloat(ctaCorriente) || 0) +
             (parseFloat(ctaAhorrosJ) || 0) +
             (parseFloat(ctaAhorrosN) || 0) +
+            (parseFloat(ctaNequi) || 0) +
+            (parseFloat(otrosIngresos) || 0) +
             (parseFloat(efectivo) || 0);
-    }, [ctaCorriente, ctaAhorrosJ, ctaAhorrosN, efectivo]);
+    }, [ctaCorriente, ctaAhorrosJ, ctaAhorrosN, ctaNequi, otrosIngresos, efectivo]);
 
     const handleSaveAvailability = async () => {
         setIsSaving(true);
@@ -123,6 +152,8 @@ const BudgetExecutionContent: React.FC = () => {
                 ctaCorriente: parseFloat(ctaCorriente) || 0,
                 ctaAhorrosJ: parseFloat(ctaAhorrosJ) || 0,
                 ctaAhorrosN: parseFloat(ctaAhorrosN) || 0,
+                ctaNequi: parseFloat(ctaNequi) || 0,
+                otrosIngresos: parseFloat(otrosIngresos) || 0,
                 efectivo: parseFloat(efectivo) || 0,
                 totalAvailable
             });
@@ -186,6 +217,8 @@ const BudgetExecutionContent: React.FC = () => {
                             ctaCorriente: parseFloat(ctaCorriente) || 0,
                             ctaAhorrosJ: parseFloat(ctaAhorrosJ) || 0,
                             ctaAhorrosN: parseFloat(ctaAhorrosN) || 0,
+                            ctaNequi: parseFloat(ctaNequi) || 0,
+                            otrosIngresos: parseFloat(otrosIngresos) || 0,
                             efectivo: parseFloat(efectivo) || 0,
                             totalAvailable
                         },
@@ -197,6 +230,14 @@ const BudgetExecutionContent: React.FC = () => {
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Pagos registrados y snapshot guardado.' });
                     localStorage.removeItem(`budget_selection_${startStr}`);
                     setSelectedIds(new Set());
+
+                    // Resetear los datos
+                    setCtaCorriente('');
+                    setCtaAhorrosJ('');
+                    setCtaAhorrosN('');
+                    setCtaNequi('');
+                    setOtrosIngresos('');
+                    setEfectivo('');
 
                     const endStr = format(endDate, 'yyyy-MM-dd');
                     const [w, o] = await Promise.all([
@@ -229,26 +270,26 @@ const BudgetExecutionContent: React.FC = () => {
        ════════════════════════════════════════════════════════ */
     return (
         <div className="flex flex-col h-full space-y-4">
-            {/* ── Week Navigator (inline, sin PageHeader propio) ── */}
+            {/* ── Week Navigator (Zona A-inline para sub-contenido) ── */}
             <div className="flex items-center justify-end">
-                <div className="flex items-center bg-white dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm h-10">
                     <button
                         onClick={() => setCurrentDate(subWeeks(currentDate, 1))}
-                        className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 transition-colors"
+                        className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-purple-600 transition-colors"
                     >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                     <div className="px-3 text-center min-w-[140px]">
-                        <span className="block text-[10px] text-gray-400 uppercase font-semibold tracking-wider leading-tight">Semana</span>
-                        <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
+                        <span className="block text-[10px] text-purple-500 uppercase font-bold tracking-widest leading-tight">Semana</span>
+                        <span className="text-[13px] font-bold text-slate-800 dark:text-white">
                             {format(startDate, 'd MMM', { locale: es })} — {format(endDate, 'd MMM', { locale: es })}
                         </span>
                     </div>
                     <button
                         onClick={() => setCurrentDate(addWeeks(currentDate, 1))}
-                        className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 transition-colors"
+                        className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-purple-600 transition-colors"
                     >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -259,22 +300,30 @@ const BudgetExecutionContent: React.FC = () => {
 
             {/* ── Disponibilidad (Tank) ─ Card Aliaddo ── */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-end">
                     <div>
                         <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Corriente</label>
-                        <Input type="number" value={ctaCorriente} onChange={e => setCtaCorriente(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                        <CurrencyInput value={ctaCorriente} onChange={val => setCtaCorriente(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
                     </div>
                     <div>
                         <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Ahorros J</label>
-                        <Input type="number" value={ctaAhorrosJ} onChange={e => setCtaAhorrosJ(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                        <CurrencyInput value={ctaAhorrosJ} onChange={val => setCtaAhorrosJ(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
                     </div>
                     <div>
                         <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Ahorros N</label>
-                        <Input type="number" value={ctaAhorrosN} onChange={e => setCtaAhorrosN(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                        <CurrencyInput value={ctaAhorrosN} onChange={val => setCtaAhorrosN(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Nequi</label>
+                        <CurrencyInput value={ctaNequi} onChange={val => setCtaNequi(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Otros Ingresos</label>
+                        <CurrencyInput value={otrosIngresos} onChange={val => setOtrosIngresos(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
                     </div>
                     <div>
                         <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Efectivo</label>
-                        <Input type="number" value={efectivo} onChange={e => setEfectivo(e.target.value)} onBlur={handleSaveAvailability} placeholder="0" />
+                        <CurrencyInput value={efectivo} onChange={val => setEfectivo(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
                     </div>
                     {/* Total disponible - inline summary */}
                     <div className="flex items-center justify-center md:justify-end gap-2 py-1">
@@ -477,16 +526,12 @@ const BudgetExecutionContent: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Primary Action – Aliaddo purple-600 */}
+                        {/* Primary Action – Aliaddo §5 Zona C */}
                         <Button
                             variant="primary"
                             onClick={handleExecute}
                             disabled={selectedIds.size === 0 || isDeficit}
-                            className={`w-full !py-3 !rounded-lg shadow-md font-medium text-sm transition-all
-                                ${selectedIds.size === 0 || isDeficit
-                                    ? '!bg-gray-200 !text-gray-400 !shadow-none cursor-not-allowed'
-                                    : '!bg-purple-600 hover:!bg-purple-700 !text-white'
-                                }`}
+                            className="w-full"
                         >
                             {selectedIds.size === 0
                                 ? 'Seleccionar para pagar'
@@ -513,7 +558,7 @@ export const BudgetExecution: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full space-y-4">
-            {/* PageHeader con Segmented Control en Actions (§5) */}
+            {/* PageHeader con ZONA A: Segmented Control + Week Nav (§5) */}
             <PageHeader
                 title="Ejecución Presupuestal"
                 breadcrumbs={[
@@ -522,31 +567,34 @@ export const BudgetExecution: React.FC = () => {
                 ]}
                 icon={<BanknotesIcon className="h-6 w-6" />}
                 actions={
-                    <div className="flex p-1 space-x-1 bg-gray-100 dark:bg-slate-700/50 rounded-lg">
-                        <button
-                            onClick={() => setActiveTab('execution')}
-                            className={`
-                                px-4 py-1.5 text-xs font-semibold rounded-md transition-all
-                                ${activeTab === 'execution'
-                                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
-                                }
-                            `}
-                        >
-                            Pagos Semanal
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('history')}
-                            className={`
-                                px-4 py-1.5 text-xs font-semibold rounded-md transition-all
-                                ${activeTab === 'history'
-                                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
-                                }
-                            `}
-                        >
-                            Historial de Pagos
-                        </button>
+                    <div className="flex items-center gap-2 h-10">
+                        {/* Segmented Control – Aliaddo §4 */}
+                        <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-full">
+                            <button
+                                onClick={() => setActiveTab('execution')}
+                                className={`
+                                    flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors border-r border-slate-200 dark:border-slate-700
+                                    ${activeTab === 'execution'
+                                        ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                        : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
+                                    }
+                                `}
+                            >
+                                Pagos Semanal
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`
+                                    flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors
+                                    ${activeTab === 'history'
+                                        ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                        : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
+                                    }
+                                `}
+                            >
+                                Historial de Pagos
+                            </button>
+                        </div>
                     </div>
                 }
             />

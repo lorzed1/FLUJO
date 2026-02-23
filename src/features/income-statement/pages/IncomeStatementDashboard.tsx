@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import {
     PresentationChartLineIcon,
@@ -8,8 +8,10 @@ import {
     ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { Button } from '../../../components/ui/Button';
+import { DateNavigator } from '../../../components/ui/DateNavigator';
 
 export const IncomeStatementDashboard: React.FC = () => {
+    const [selectedMonth, setSelectedMonth] = useState(new Date());
     return (
         <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pr-2 pb-10">
             <PageHeader
@@ -21,12 +23,10 @@ export const IncomeStatementDashboard: React.FC = () => {
                 icon={<PresentationChartLineIcon className="h-6 w-6" />}
                 actions={
                     <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <input
-                                type="month"
-                                className="h-9 px-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-bold text-gray-700 dark:text-gray-200 shadow-sm focus:ring-1 focus:ring-primary outline-none uppercase tracking-wider"
-                            />
-                        </div>
+                        <DateNavigator
+                            value={selectedMonth}
+                            onChange={(newDate) => setSelectedMonth(newDate)}
+                        />
                         <Button
                             variant="primary"
                             className="!h-9 !px-4 !text-[11px] font-bold uppercase tracking-wider shadow-sm"

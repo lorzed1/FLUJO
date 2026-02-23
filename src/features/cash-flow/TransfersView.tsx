@@ -5,6 +5,7 @@ import { ArrowPathIcon, BanknotesIcon, TrashIcon } from '../../components/ui/Ico
 import { SmartDataTable, Column } from '../../components/ui/SmartDataTable';
 import { formatCOP } from '../../components/ui/Input';
 import { useUI } from '../../context/UIContext';
+import { formatDateToDisplay } from '../../utils/dateUtils';
 import { Button } from '@/components/ui/Button';
 
 const TransfersView: React.FC = () => {
@@ -96,7 +97,7 @@ const TransfersView: React.FC = () => {
             label: 'Fecha',
             sortable: true,
             filterable: true,
-            render: (val) => <span className="font-semibold text-[13px] text-gray-700 dark:text-gray-300">{val || ''}</span>
+            render: (val) => <span>{val ? formatDateToDisplay(val) : ''}</span>
         },
         {
             key: 'type',
@@ -106,20 +107,10 @@ const TransfersView: React.FC = () => {
             render: (val) => {
                 const type = (val || 'unknown').toLowerCase();
 
-                // Color dot indicator instead of full badge background
-                const dotColor =
-                    type === 'nequi' ? 'bg-pink-500' :
-                        type === 'bancolombia' ? 'bg-yellow-400' :
-                            type === 'davivienda' ? 'bg-red-500' :
-                                'bg-gray-400';
-
                 return (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-gray-200 bg-white dark:bg-slate-700 dark:border-slate-600 shadow-sm">
-                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                        <span className="text-[11px] font-medium uppercase text-gray-700 dark:text-gray-200 tracking-wide">
-                            {type}
-                        </span>
-                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-[10px] font-semibold text-gray-600 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400">
+                        {type}
+                    </span>
                 );
             }
         },
@@ -130,7 +121,7 @@ const TransfersView: React.FC = () => {
             filterable: true,
             render: (val, item) => (
                 <div className="flex flex-col">
-                    <span className="font-medium text-[13px] text-gray-800 dark:text-gray-200">
+                    <span className="block">
                         {val || 'Sin referencia'}
                     </span>
                     {item?.arqueoId && (
@@ -146,14 +137,14 @@ const TransfersView: React.FC = () => {
             label: 'Descripción',
             sortable: true,
             filterable: true,
-            render: (val) => <span className="text-[13px] text-gray-600 dark:text-gray-400">{val || ''}</span>
+            render: (val) => <span>{val || ''}</span>
         },
         {
             key: 'amount',
             label: 'Monto',
             sortable: true,
             render: (val) => (
-                <span className="font-medium text-gray-900 dark:text-white font-mono text-[13px]">
+                <span className="tabular-nums">
                     {val ? formatCOP(Number(val)) : '$ 0'}
                 </span>
             )
@@ -161,10 +152,9 @@ const TransfersView: React.FC = () => {
     ], []);
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden p-4 sm:p-6">
-            {/* ERROR ALERT */}
+        <div className="flex-1 min-h-0">
             {error && (
-                <div className="mx-5 mt-5 p-3 bg-red-50 text-red-700 rounded-md text-xs font-medium border border-red-100 flex items-center gap-2">
+                <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-xs font-medium border border-red-100 flex items-center gap-2">
                     <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {error}
                 </div>

@@ -40,11 +40,11 @@ export const WeeklySalesVsGoalChart: React.FC<WeeklySalesVsGoalProps> = ({
         days.forEach(day => {
             const weekStart = startOfWeek(day, { weekStartsOn: 1 });
             const weekEnd = endOfWeek(day, { weekStartsOn: 1 });
-            const weekKey = format(weekStart, 'yyyy-w'); // Unique Week ID
+            const weekKey = format(weekStart, 'RRRR-II'); // ISO Year and ISO Week
 
             if (!weeks[weekKey]) {
                 weeks[weekKey] = {
-                    weekLabel: `Sem ${format(weekStart, 'w')} (${format(weekStart, 'd')})`,
+                    weekLabel: `Sem ${format(weekStart, 'I')} (${format(weekStart, 'd')})`,
                     startDate: weekStart,
                     endDate: weekEnd,
                     meta: 0,
@@ -78,22 +78,22 @@ export const WeeklySalesVsGoalChart: React.FC<WeeklySalesVsGoalProps> = ({
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             return (
-                <div className="bg-white dark:bg-slate-800 p-3 border border-gray-100 dark:border-slate-700 shadow-xl rounded-lg text-xs w-48">
-                    <p className="font-bold text-gray-700 dark:text-gray-200 mb-2 capitalize">{data.weekLabel}</p>
-                    <div className="space-y-2">
+                <div className="bg-white dark:bg-slate-800 p-3.5 border border-slate-100 dark:border-slate-700 shadow-xl rounded-xl text-[11px] w-52">
+                    <p className="font-bold text-slate-700 dark:text-slate-200 mb-3 capitalize text-xs tracking-tight">{data.weekLabel}</p>
+                    <div className="space-y-2.5">
                         <div className="flex justify-between items-center text-slate-500">
-                            <span>Meta:</span>
-                            <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{formatMoney(data.meta)}</span>
+                            <span className="font-medium">Meta:</span>
+                            <span className="font-bold text-slate-600 dark:text-slate-400 tabular-nums">{formatMoney(data.meta)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Real:</span>
-                            <span className={`font-mono font-bold ${data.percent >= 100 ? 'text-green-600' : 'text-blue-600'}`}>
+                            <span className="text-slate-500 font-medium">Real:</span>
+                            <span className={`font-bold tabular-nums ${data.percent >= 100 ? 'text-emerald-500' : 'text-indigo-500'}`}>
                                 {formatMoney(data.real)}
                             </span>
                         </div>
-                        <div className="border-t border-slate-100 dark:border-slate-700 pt-2 flex justify-between items-center">
-                            <span className="text-slate-500 text-[10px]">Cumplimiento</span>
-                            <span className={`font-bold ${data.percent >= 100 ? 'text-green-600' : 'text-amber-500'}`}>
+                        <div className="border-t border-slate-100 dark:border-slate-700 pt-2.5 flex justify-between items-center">
+                            <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Cumplimiento</span>
+                            <span className={`font-bold ${data.percent >= 100 ? 'text-emerald-500' : 'text-amber-500'} text-xs`}>
                                 {data.percent.toFixed(1)}%
                             </span>
                         </div>
@@ -105,11 +105,13 @@ export const WeeklySalesVsGoalChart: React.FC<WeeklySalesVsGoalProps> = ({
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 h-full flex flex-col">
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
-                <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
-                Cumplimiento Semanal
-            </h3>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 h-full flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+                <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
+                <h3 className="text-[13px] font-bold text-slate-700 dark:text-white uppercase tracking-wider">
+                    Cumplimiento Semanal
+                </h3>
+            </div>
 
             <div className="flex-1 min-h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">

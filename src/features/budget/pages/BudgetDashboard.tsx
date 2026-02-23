@@ -15,6 +15,7 @@ import { useData } from '../../../context/DataContext';
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PresentationChartLineIcon, PlusIcon } from '../../../components/ui/Icons';
+import { DateNavigator } from '../../../components/ui/DateNavigator';
 import { GhostBuster } from '../components/GhostBuster';
 import { Button } from '../../../components/ui/Button';
 
@@ -81,7 +82,7 @@ export const BudgetDashboard: React.FC = () => {
                         .reduce((sum, c) => sum + c.amount, 0);
 
                     weeks.push({
-                        name: `Sem ${format(weekStart, 'w', { locale: es })}`,
+                        name: `Sem ${format(weekStart, 'I', { locale: es })}`,
                         fullLabel: `${format(weekStart, 'd MMM')} - ${format(weekEnd, 'd MMM')}`,
                         amount: weekTotal
                     });
@@ -215,23 +216,14 @@ export const BudgetDashboard: React.FC = () => {
                 ]}
                 icon={<PresentationChartLineIcon className="h-6 w-6" />}
                 actions={
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <input
-                                type="month"
-                                value={format(selectedMonth, 'yyyy-MM')}
-                                onChange={(e) => {
-                                    if (e.target.value) {
-                                        const [y, m] = e.target.value.split('-');
-                                        setSelectedMonth(new Date(parseInt(y), parseInt(m) - 1, 1));
-                                    }
-                                }}
-                                className="h-9 px-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-bold text-gray-700 dark:text-gray-200 shadow-sm focus:ring-1 focus:ring-primary outline-none uppercase tracking-wider"
-                            />
-                        </div>
+                    <div className="flex items-center gap-2 h-10">
+                        <DateNavigator
+                            value={selectedMonth}
+                            onChange={(newDate) => setSelectedMonth(newDate)}
+                        />
                         <Button
                             onClick={() => openForm()}
-                            className="!h-9 !px-4 !text-[11px] font-bold uppercase tracking-wider shadow-sm"
+                            size="md"
                         >
                             <PlusIcon className="w-4 h-4 mr-1.5" />
                             Nuevo Registro

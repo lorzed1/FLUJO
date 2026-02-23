@@ -204,24 +204,24 @@ export const ProjectionsDashboardPage: React.FC<ProjectionsDashboardProps> = ({
         <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 pb-20 w-full h-full relative p-4">
 
             {/* Toolbar: Toggle Mode + Lock Layout */}
-            <div className="flex justify-between items-center sticky top-0 z-20 py-2 bg-gray-50/95 dark:bg-slate-900/95 backdrop-blur-sm transition-all -mx-4 px-4 shadow-sm border-b border-gray-200 dark:border-slate-800">
+            <div className="flex justify-between items-center sticky top-0 z-20 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md transition-all -mx-4 px-6 shadow-sm border-b border-slate-100 dark:border-slate-800">
 
                 {/* Center: Mode Switch */}
-                <div className="flex bg-gray-200 dark:bg-slate-700 p-1 rounded-full shadow-inner mx-auto">
+                <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1.5 rounded-xl shadow-inner mx-auto border border-slate-200 dark:border-slate-700">
                     <button
                         onClick={() => setDashboardMode('statistical')}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${dashboardMode === 'statistical'
-                            ? 'bg-white dark:bg-slate-600 text-primary shadow-md transform scale-105'
-                            : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                        className={`px-6 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${dashboardMode === 'statistical'
+                            ? 'bg-white dark:bg-slate-700 text-purple-600 shadow-sm transform scale-[1.02]'
+                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
                     >
                         📊 Estadística
                     </button>
                     <button
                         onClick={() => setDashboardMode('financial')}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${dashboardMode === 'financial'
-                            ? 'bg-emerald-500 text-white shadow-md transform scale-105'
-                            : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                        className={`px-6 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${dashboardMode === 'financial'
+                            ? 'bg-emerald-500 text-white shadow-sm transform scale-[1.02]'
+                            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
                     >
                         💰 Punto de Equilibrio
@@ -229,13 +229,13 @@ export const ProjectionsDashboardPage: React.FC<ProjectionsDashboardProps> = ({
                 </div>
 
                 {/* Right: Layout Lock */}
-                <div className="absolute right-4 top-2">
+                <div className="absolute right-4 top-3">
                     <button
                         onClick={() => setIsEditingLayout(!isEditingLayout)}
                         title={isEditingLayout ? "Bloquear Diseño" : "Editar Diseño"}
-                        className={`p-2 rounded-lg transition-all border ${isEditingLayout
-                                ? 'bg-indigo-100 text-indigo-700 border-indigo-200 shadow-inner'
-                                : 'bg-white dark:bg-slate-800 text-gray-400 border-gray-200 dark:border-slate-700 hover:text-gray-600 dark:hover:text-gray-200 shadow-sm hover:shadow'
+                        className={`p-2.5 rounded-lg transition-all border ${isEditingLayout
+                            ? 'bg-purple-100 text-purple-700 border-purple-200 shadow-inner'
+                            : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-purple-600 dark:hover:text-purple-400 shadow-sm hover:shadow active:scale-95'
                             }`}
                     >
                         {isEditingLayout ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}

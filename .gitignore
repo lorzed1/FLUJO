@@ -67,3 +67,10 @@ MIGRATION_COMPLETE.md
 
 # Examples
 Ejemplos/
+
+# Archivos pesados y datos temporales (Ignorados para ahorrar tokens de IA)
+*.xlsx
+*.csv
+*data.json
+*data_array.json
+pyg_data*.json

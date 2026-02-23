@@ -76,6 +76,8 @@ export async function getWeeklyAvailability(weekStartDate: string): Promise<Week
             ctaCorriente: Number(data.cta_corriente),
             ctaAhorrosJ: Number(data.cta_ahorros_j),
             ctaAhorrosN: Number(data.cta_ahorros_n),
+            ctaNequi: Number(data.cta_nequi),
+            otrosIngresos: Number(data.otros_ingresos),
             efectivo: Number(data.efectivo),
             totalAvailable: Number(data.total_available),
             createdAt: data.created_at,
@@ -100,6 +102,8 @@ export async function saveWeeklyAvailability(data: Omit<WeeklyAvailability, 'id'
                     cta_corriente: data.ctaCorriente,
                     cta_ahorros_j: data.ctaAhorrosJ,
                     cta_ahorros_n: data.ctaAhorrosN,
+                    cta_nequi: data.ctaNequi,
+                    otros_ingresos: data.otrosIngresos,
                     efectivo: data.efectivo,
                     total_available: data.totalAvailable,
                     updated_at: now,
@@ -114,6 +118,8 @@ export async function saveWeeklyAvailability(data: Omit<WeeklyAvailability, 'id'
                     cta_corriente: data.ctaCorriente,
                     cta_ahorros_j: data.ctaAhorrosJ,
                     cta_ahorros_n: data.ctaAhorrosN,
+                    cta_nequi: data.ctaNequi,
+                    otros_ingresos: data.otrosIngresos,
                     efectivo: data.efectivo,
                     total_available: data.totalAvailable,
                     created_at: now,
@@ -179,9 +185,11 @@ export async function reconcileTodayLog(): Promise<string | null> {
         const currentCtaCorriente = availability?.ctaCorriente || 0;
         const currentCtaAhorrosJ = availability?.ctaAhorrosJ || 0;
         const currentCtaAhorrosN = availability?.ctaAhorrosN || 0;
+        const currentCtaNequi = availability?.ctaNequi || 0;
+        const currentOtrosIngresos = availability?.otrosIngresos || 0;
         const currentEfectivo = availability?.efectivo || 0;
 
-        const currentTotal = availability?.totalAvailable || (currentCtaCorriente + currentCtaAhorrosJ + currentCtaAhorrosN + currentEfectivo);
+        const currentTotal = availability?.totalAvailable || (currentCtaCorriente + currentCtaAhorrosJ + currentCtaAhorrosN + currentCtaNequi + currentOtrosIngresos + currentEfectivo);
         const reconstructedInitialTotal = currentTotal + totalPaid;
 
         const log: Omit<BudgetExecutionLog, 'id'> = {
@@ -191,6 +199,8 @@ export async function reconcileTodayLog(): Promise<string | null> {
                 ctaCorriente: currentCtaCorriente,
                 ctaAhorrosJ: currentCtaAhorrosJ,
                 ctaAhorrosN: currentCtaAhorrosN,
+                ctaNequi: currentCtaNequi,
+                otrosIngresos: currentOtrosIngresos,
                 efectivo: currentEfectivo,
                 totalAvailable: reconstructedInitialTotal
             },

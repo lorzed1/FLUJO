@@ -29,9 +29,14 @@ export interface SmartDataTableProps<T extends { id: string }> {
     enableSelection?: boolean;
     enableExport?: boolean;
     enableColumnConfig?: boolean;
+    onImport?: () => void;
     onBulkDelete?: (ids: Set<string>) => void;
+    onDelete?: (item: T) => void;
+    onEdit?: (item: T) => void;
+    onView?: (item: T) => void;
     onRowClick?: (item: T) => void;
     containerClassName?: string;
+    scrollContainerClassName?: string;
     searchPlaceholder?: string;
     selectedIds?: Set<string>;
     onSelectionChange?: (ids: Set<string>) => void;
@@ -44,6 +49,8 @@ export interface SmartDataTableProps<T extends { id: string }> {
     renderExtraFilters?: () => React.ReactNode;
     renderSelectionActions?: (selectedIds: Set<string>) => React.ReactNode;
     exportDateField?: string;
+    footerMessage?: React.ReactNode;
+    loading?: boolean;
 }
 
 // ============================================

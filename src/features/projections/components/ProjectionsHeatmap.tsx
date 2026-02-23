@@ -78,10 +78,10 @@ export const ProjectionsHeatmap: React.FC<ProjectionsHeatmapProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-sm font-bold text-slate-700 dark:text-white flex items-center gap-2">
+                    <h3 className="text-[13px] font-bold text-slate-700 dark:text-white uppercase tracking-wider">
                         Mapa de Intensidad
                     </h3>
-                    <p className="text-[10px] text-slate-400">Distribución de ventas por día</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Distribución de metas</p>
                 </div>
             </div>
 
@@ -89,7 +89,7 @@ export const ProjectionsHeatmap: React.FC<ProjectionsHeatmapProps> = ({
             <div className="grid grid-cols-7 gap-1.5">
                 {/* Headers */}
                 {weekDays.map((d, index) => (
-                    <div key={`${d}-${index}`} className="text-center text-[10px] font-bold text-slate-400 py-1">
+                    <div key={`${d}-${index}`} className="text-center text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase py-1">
                         {d}
                     </div>
                 ))}

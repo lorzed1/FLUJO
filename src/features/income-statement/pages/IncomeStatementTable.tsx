@@ -205,9 +205,9 @@ export const IncomeStatementTable: React.FC = () => {
                         <div className="flex items-center gap-3">
                             {data.length > 0 && (
                                 <>
-                                    <Button variant="secondary" onClick={() => setIsConfigModalOpen(true)} className="!h-10 !px-4 !rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+                                    <Button variant="secondary" onClick={() => setIsConfigModalOpen(true)}>
                                         <AdjustmentsHorizontalIcon className="w-5 h-5 mr-2" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">Configuración</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Configuración</span>
                                     </Button>
 
                                     <div className="relative">
@@ -217,7 +217,7 @@ export const IncomeStatementTable: React.FC = () => {
                                                 e.stopPropagation();
                                                 setShowDeleteMonth(!showDeleteMonth);
                                             }}
-                                            className="!h-10 !px-4 !rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-rose-500 hover:bg-rose-50 transition-all font-black uppercase tracking-widest text-[10px]"
+                                            className="text-rose-500 hover:bg-rose-50 transition-all font-black uppercase tracking-widest text-[10px]"
                                         >
                                             <CalendarDaysIcon className="w-5 h-5 mr-2" />
                                             Borrar Mes
@@ -258,7 +258,7 @@ export const IncomeStatementTable: React.FC = () => {
                                 </>
                             )}
                             <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
-                            <Button variant="primary" onClick={() => setIsImportModalOpen(true)} className="!h-10 !px-6 !rounded-xl shadow-lg shadow-primary/20">
+                            <Button variant="primary" onClick={() => setIsImportModalOpen(true)}>
                                 <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">Cargar P&G Excel</span>
                             </Button>
@@ -271,7 +271,7 @@ export const IncomeStatementTable: React.FC = () => {
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2 whitespace-nowrap">Filtrar Períodos:</span>
                         <button
                             onClick={() => setSelectedMonthsFilter([])}
-                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${selectedMonthsFilter.length === 0 ? 'bg-primary text-white border-primary shadow-md shadow-primary/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'}`}
+                            className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${selectedMonthsFilter.length === 0 ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-purple-400/50'}`}
                         >
                             Todos
                         </button>
@@ -286,7 +286,7 @@ export const IncomeStatementTable: React.FC = () => {
                                         if (isActive) setSelectedMonthsFilter(prev => prev.filter(x => x !== m));
                                         else setSelectedMonthsFilter(prev => [...prev, m]);
                                     }}
-                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${isActive ? 'bg-primary text-white border-primary shadow-md shadow-primary/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'}`}
+                                    className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${isActive ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-purple-400/50'}`}
                                 >
                                     {label}
                                 </button>
@@ -308,7 +308,7 @@ export const IncomeStatementTable: React.FC = () => {
                         </div>
                         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 uppercase tracking-widest">No hay datos procesados</h3>
                         <p className="text-slate-400 text-[11px] max-w-sm text-center font-medium mb-8 uppercase tracking-wider">Importa tu reporte de ingresos y egresos para ver la estructura contable comparativa.</p>
-                        <Button onClick={() => setIsImportModalOpen(true)} variant="primary" className="!px-10 !py-3 shadow-xl !rounded-xl font-black uppercase tracking-widest text-[10px]">Comenzar ahora</Button>
+                        <Button onClick={() => setIsImportModalOpen(true)} variant="primary">Comenzar ahora</Button>
                     </div>
                 )}
             </main>
