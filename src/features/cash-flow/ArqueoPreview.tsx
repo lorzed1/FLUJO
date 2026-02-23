@@ -231,7 +231,7 @@ const ArqueoPreview: React.FC = () => {
 
     return (
         <div className={form.isDarkMode ? 'dark' : ''}>
-            <div className="w-full h-full flex flex-col overflow-x-hidden space-y-6">
+            <div className="w-full h-full flex flex-col overflow-x-hidden space-y-6 bg-gray-50 dark:bg-slate-900 min-h-full">
 
                 {/* Modals */}
                 <PaymentDetailModal
@@ -435,150 +435,157 @@ const ArqueoPreview: React.FC = () => {
 
                 {/* Tab: Arqueo Form */}
                 {activeTab === 'arqueo' && (
-                    <div className="max-w-xl mx-auto w-full pb-20">
-                        <form onSubmit={form.handleSubmit} className="space-y-6">
+                    <div className="mx-auto w-full lg:max-w-6xl pb-24 px-0 sm:px-0">
+                        <form onSubmit={form.handleSubmit} className="space-y-4 sm:space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
-                            {/* Calculadora Button / Wrapper */}
-                            <div className="rounded-2xl overflow-hidden shadow-sm">
-                                <CashCalculator
-                                    isExpanded={form.isCalculatorExpanded}
-                                    onToggleExpanded={() => form.setIsCalculatorExpanded(!form.isCalculatorExpanded)}
-                                    baseCaja={form.baseCaja}
-                                    cuadreVenta={form.cuadreVenta}
-                                    consumoPersonal={form.consumoPersonal}
-                                    facturas={form.facturas}
-                                    totalBaseCaja={form.totalBaseCaja}
-                                    totalCuadreVenta={form.totalCuadreVenta}
-                                    totalFinalCuadre={form.totalFinalCuadre}
-                                    onUpdateDenomination={form.updateDenomination}
-                                    onSetBaseCaja={form.setBaseCaja}
-                                    onSetCuadreVenta={form.setCuadreVenta}
-                                    onSetConsumoPersonal={form.setConsumoPersonal}
-                                    onSetFacturas={form.setFacturas}
-                                    onSendToArqueo={form.handleSendToArqueo}
-                                />
+                            {/* LEFT COLUMN */}
+                            <div className="space-y-6">
+                                {/* Info General Card */}
+                                <Card className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800">
+                                    <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 flex items-center gap-2">
+                                        <span className="w-1.5 h-6 bg-purple-500 rounded-full"></span>
+                                        Información General
+                                    </h3>
+
+                                    <div className="space-y-3 sm:space-y-5">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Fecha del Arqueo</label>
+                                            <input type="date" name="fecha" value={form.formData.fecha}
+                                                readOnly
+                                                className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                                required />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Cajero Responsable</label>
+                                            <input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange}
+                                                placeholder="Nombre..."
+                                                className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                                required />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Total Visitas</label>
+                                            <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
+                                                className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                                placeholder="0" />
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* Ventas y Esperado Card */}
+                                <Card className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800">
+                                    <div className="flex justify-between items-end mb-4 sm:mb-6">
+                                        <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
+                                            Ventas
+                                        </h3>
+                                        <div className="text-right">
+                                            <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Total Esperado</div>
+                                            <div className="text-xl font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg">
+                                                {formatCurrencyValue(form.ventaTotalEsperada)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3 sm:space-y-4">
+                                        <CurrencyInput label="Covers (Ingreso)" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al total esperado" useMonoFont={useMonoFont} />
+                                        <CurrencyInput label="Venta POS (Bruta)" name="ventaBruta" value={form.formData.ventaBruta} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
+                                        <CurrencyInput label="Propina Recaudada" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                    </div>
+                                </Card>
                             </div>
 
-                            {/* Info General Card */}
-                            <Card className="p-6 rounded-3xl shadow-lg border-0 dark:bg-slate-800">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                    <span className="w-1.5 h-6 bg-purple-500 rounded-full"></span>
-                                    Información General
-                                </h3>
-
-                                <div className="space-y-5">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Fecha del Arqueo</label>
-                                        <input type="date" name="fecha" value={form.formData.fecha}
-                                            readOnly
-                                            className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                            required />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Cajero Responsable</label>
-                                        <input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange}
-                                            placeholder="Nombre..."
-                                            className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                            required />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Total Visitas</label>
-                                        <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
-                                            className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                            placeholder="0" />
-                                    </div>
+                            {/* RIGHT COLUMN */}
+                            <div className="space-y-4 sm:space-y-6">
+                                {/* Calculadora Button / Wrapper */}
+                                <div className="rounded-2xl overflow-hidden shadow-sm">
+                                    <CashCalculator
+                                        isExpanded={form.isCalculatorExpanded}
+                                        onToggleExpanded={() => form.setIsCalculatorExpanded(!form.isCalculatorExpanded)}
+                                        baseCaja={form.baseCaja}
+                                        cuadreVenta={form.cuadreVenta}
+                                        consumoPersonal={form.consumoPersonal}
+                                        facturas={form.facturas}
+                                        totalBaseCaja={form.totalBaseCaja}
+                                        totalCuadreVenta={form.totalCuadreVenta}
+                                        totalFinalCuadre={form.totalFinalCuadre}
+                                        onUpdateDenomination={form.updateDenomination}
+                                        onSetBaseCaja={form.setBaseCaja}
+                                        onSetCuadreVenta={form.setCuadreVenta}
+                                        onSetConsumoPersonal={form.setConsumoPersonal}
+                                        onSetFacturas={form.setFacturas}
+                                        onSendToArqueo={form.handleSendToArqueo}
+                                    />
                                 </div>
-                            </Card>
 
-                            {/* Ventas y Esperado Card */}
-                            <Card className="p-6 rounded-3xl shadow-lg border-0 dark:bg-slate-800">
-                                <div className="flex justify-between items-end mb-6">
-                                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                        <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
-                                        Ventas
+
+                                {/* Medios de Pago Card */}
+                                <Card className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
+                                    <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 flex items-center gap-2">
+                                        <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                                        Recaudo y Medios
                                     </h3>
-                                    <div className="text-right">
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Total Esperado</div>
-                                        <div className="text-xl font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg">
-                                            {formatCurrencyValue(form.ventaTotalEsperada)}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="space-y-4">
-                                    <CurrencyInput label="Covers (Ingreso)" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al total esperado" useMonoFont={useMonoFont} />
-                                    <CurrencyInput label="Venta POS (Bruta)" name="ventaBruta" value={form.formData.ventaBruta} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
-                                    <CurrencyInput label="Propina Recaudada" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                </div>
-                            </Card>
-
-                            {/* Medios de Pago Card */}
-                            <Card className="p-6 rounded-3xl shadow-lg border-0 dark:bg-slate-800 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                    <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
-                                    Recaudo y Medios
-                                </h3>
-
-                                <div className="space-y-6">
-                                    {/* Primary */}
-                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
-                                        <CurrencyInput
-                                            label="Efectivo en Caja"
-                                            name="efectivo"
-                                            value={form.formData.efectivo}
-                                            onChange={form.handleCurrencyChange}
-                                            readOnly={true}
-                                            onDetailClick={() => form.setIsCalculatorExpanded(true)}
-                                            sublabel="Sincronizado desde Calculadora"
-                                            useMonoFont={useMonoFont}
-                                        />
-                                    </div>
-
-                                    {/* Datafonos */}
-                                    <div className="space-y-4">
-                                        <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                        <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                    </div>
-
-                                    {/* Digital */}
-                                    <div className="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700 space-y-4">
-                                        <CurrencyInput label="Rappi" name="rappi" value={form.formData.rappi} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-
-                                        <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-6">
+                                        {/* Primary */}
+                                        <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
                                             <CurrencyInput
-                                                label="Transf. Bancolombia"
-                                                name="transfBancolombia"
-                                                value={form.formData.transfBancolombia}
+                                                label="Efectivo en Caja"
+                                                name="efectivo"
+                                                value={form.formData.efectivo}
                                                 onChange={form.handleCurrencyChange}
-                                                onDetailClick={() => form.openDetailModal('transfBancolombia', 'Transf. Bancolombia')}
                                                 readOnly={true}
-                                                useMonoFont={useMonoFont}
-                                            />
-                                            <CurrencyInput
-                                                label="Nequi"
-                                                name="nequi"
-                                                value={form.formData.nequi}
-                                                onChange={form.handleCurrencyChange}
-                                                onDetailClick={() => form.openDetailModal('nequi', 'Nequi')}
-                                                readOnly={true}
+                                                onDetailClick={() => form.setIsCalculatorExpanded(true)}
+                                                sublabel="Sincronizado desde Calculadora"
                                                 useMonoFont={useMonoFont}
                                             />
                                         </div>
+
+                                        {/* Datafonos */}
+                                        <div className="space-y-4">
+                                            <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                        </div>
+
+                                        {/* Digital */}
+                                        <div className="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700 space-y-4">
+                                            <CurrencyInput label="Rappi" name="rappi" value={form.formData.rappi} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
+                                                <CurrencyInput
+                                                    label="Bancolombia"
+                                                    name="transfBancolombia"
+                                                    value={form.formData.transfBancolombia}
+                                                    onChange={form.handleCurrencyChange}
+                                                    onDetailClick={() => form.openDetailModal('transfBancolombia', 'Transf. Bancolombia')}
+                                                    readOnly={true}
+                                                    useMonoFont={useMonoFont}
+                                                />
+                                                <CurrencyInput
+                                                    label="Nequi"
+                                                    name="nequi"
+                                                    value={form.formData.nequi}
+                                                    onChange={form.handleCurrencyChange}
+                                                    onDetailClick={() => form.openDetailModal('nequi', 'Nequi')}
+                                                    readOnly={true}
+                                                    useMonoFont={useMonoFont}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="mt-8 pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                    <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Total Recaudado</span>
-                                    <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrencyValue(form.totalRecaudado)}</span>
-                                </div>
-                            </Card>
+                                    <div className="mt-8 pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center">
+                                        <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Total Recaudado</span>
+                                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrencyValue(form.totalRecaudado)}</span>
+                                    </div>
+                                </Card>
+                            </div>
 
-                            {/* Sticky Action Button */}
-                            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 z-50 flex justify-center">
-                                <div className="max-w-xl w-full">
+                            {/* Action Button: sticky on mobile, inline on desktop */}
+                            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 z-50 flex justify-center shadow-2xl lg:static lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:border-0 lg:shadow-none lg:p-0 lg:mt-8 col-span-1 lg:col-span-2">
+                                <div className="max-w-xl lg:max-w-none w-full">
                                     <button type="submit"
                                         className="w-full py-4 bg-gray-900 dark:bg-blue-600 active:bg-black dark:active:bg-blue-700 text-white text-lg font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all transform active:scale-[0.98] flex justify-center items-center gap-3"
                                     >
@@ -588,8 +595,8 @@ const ArqueoPreview: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Spacer for sticky button */}
-                            <div className="h-24"></div>
+                            {/* Spacer for sticky button on mobile only */}
+                            <div className="h-24 lg:h-0"></div>
                         </form>
                     </div>
                 )}

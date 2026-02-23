@@ -68,7 +68,7 @@ export const CashCalculator: React.FC<CashCalculatorProps> = ({
 
             {isExpanded && (
                 <div className="p-4 sm:p-6 border-t border-indigo-100 dark:border-slate-700 animate-fadeIn">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-6">
                         {/* Base de Caja */}
                         <DenominationTable
                             title="Base de Caja"
@@ -91,22 +91,24 @@ export const CashCalculator: React.FC<CashCalculatorProps> = ({
                             {/* Extras inline */}
                             <div className="p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl space-y-2 border border-indigo-100/50 dark:border-slate-700">
                                 <div className="flex items-center gap-2">
-                                    <label className="flex-1 text-[10px] font-bold text-gray-500 uppercase">Consumo Pers.</label>
+                                    <label className="flex-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Consumo Pers.</label>
                                     <input
                                         type="number"
                                         value={consumoPersonal || ''}
                                         onChange={(e) => onSetConsumoPersonal(parseInt(e.target.value) || 0)}
-                                        className="w-24 text-right py-1 px-2 border border-gray-200 dark:border-slate-700 rounded-md text-xs font-bold"
+                                        onWheel={(e) => (e.target as HTMLElement).blur()}
+                                        className="w-24 text-right py-1 px-2 border border-gray-200 dark:border-slate-700 rounded-md text-xs font-bold bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                         placeholder="0"
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <label className="flex-1 text-[10px] font-bold text-gray-500 uppercase">Facturas/Gastos</label>
+                                    <label className="flex-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Facturas/Gastos</label>
                                     <input
                                         type="number"
                                         value={facturas || ''}
                                         onChange={(e) => onSetFacturas(parseInt(e.target.value) || 0)}
-                                        className="w-24 text-right py-1 px-2 border border-gray-200 dark:border-slate-700 rounded-md text-xs font-bold"
+                                        onWheel={(e) => (e.target as HTMLElement).blur()}
+                                        className="w-24 text-right py-1 px-2 border border-gray-200 dark:border-slate-700 rounded-md text-xs font-bold bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                         placeholder="0"
                                     />
                                 </div>
@@ -152,28 +154,25 @@ const DenominationTable: React.FC<DenominationTableProps> = ({
             <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h4>
             <span className="text-lg font-bold text-gray-700 dark:text-gray-200">{formatCurrencyValue(total)}</span>
         </div>
-        <div className="bg-gray-50/50 dark:bg-slate-900/30 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
-            <table className="w-full text-base">
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                    {Object.keys(denominations).map((denom) => (
-                        <tr key={`${keyPrefix}-${denom}`}>
-                            <td className="py-3 px-4 font-bold text-gray-500">{formatCurrencyValue(parseInt(denom))}</td>
-                            <td className="py-2 px-2">
-                                <input
-                                    type="number"
-                                    value={denominations[denom] || ''}
-                                    onChange={(e) => onUpdate(denom, e.target.value)}
-                                    className="w-full text-center py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg font-bold"
-                                    placeholder="0"
-                                />
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold text-gray-700 dark:text-gray-300">
-                                {formatCurrencyValue(parseInt(denom) * (denominations[denom] || 0))}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+        <div className="bg-gray-50/50 dark:bg-slate-900/30 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden divide-y divide-gray-100 dark:divide-slate-800">
+            {Object.keys(denominations).map((denom) => (
+                <div key={`${keyPrefix}-${denom}`} className="flex items-center gap-2 px-3 py-2">
+                    <span className="w-16 shrink-0 font-bold text-gray-500 text-xs sm:text-sm whitespace-nowrap">
+                        {formatCurrencyValue(parseInt(denom))}
+                    </span>
+                    <input
+                        type="number"
+                        value={denominations[denom] || ''}
+                        onChange={(e) => onUpdate(denom, e.target.value)}
+                        onWheel={(e) => (e.target as HTMLElement).blur()}
+                        className="w-20 shrink-0 text-center py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base font-bold"
+                        placeholder="0"
+                    />
+                    <span className="flex-1 text-right font-bold text-gray-700 dark:text-gray-300 text-sm sm:text-base whitespace-nowrap">
+                        {formatCurrencyValue(parseInt(denom) * (denominations[denom] || 0))}
+                    </span>
+                </div>
+            ))}
         </div>
     </div>
 );

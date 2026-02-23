@@ -1,0 +1,6 @@
+src/services/storage.ts(213,56): error TS2339: Property 'getAccountMappings' does not exist on type 'typeof DatabaseService'.
+src/services/storage.ts(227,39): error TS2339: Property 'saveAccountMappings' does not exist on type 'typeof DatabaseService'.
+src/services/storage.ts(402,46): error TS2339: Property 'exportAllData' does not exist on type 'typeof DatabaseService'.
+src/services/storage.ts(457,39): error TS2339: Property 'importAllData' does not exist on type 'typeof DatabaseService'.
+src/services/tempFirebase.ts(5,31): error TS2307: Cannot find module 'firebase/app' or its corresponding type declarations.
+src/services/tempFirebase.ts(6,64): error TS2307: Cannot find module 'firebase/firestore' or its corresponding type declarations.

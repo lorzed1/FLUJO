@@ -172,6 +172,15 @@ export function useArqueoForm() {
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.FACTURAS, JSON.stringify(facturas)); }, [facturas]);
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(isDarkMode)); }, [isDarkMode]);
 
+    // Apply dark mode class to the root HTML element so it affects the entire page
+    useEffect(() => {
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [isDarkMode]);
+
     // Sync payment detail sums into formData
     useEffect(() => {
         setFormData(prev => ({
