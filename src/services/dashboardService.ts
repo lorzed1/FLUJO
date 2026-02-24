@@ -84,7 +84,7 @@ export const dashboardService = {
         const prevEndDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${prevLastDay}`;
 
         const queryCols = `
-            venta_bruta,
+            venta_pos,
             visitas,
             ingreso_covers
         `;
@@ -109,19 +109,19 @@ export const dashboardService = {
         if (prevRes.error) throw prevRes.error;
 
         // Note on Logic (User Clarity):
-        // "Venta POS" (System Raw) = item.venta_bruta (approx $27m)
-        // "Venta Bruta" (Real Revenue) = item.venta_bruta - item.ingreso_covers (approx $26m)
+        // "Venta POS" (System Raw) = item.venta_pos (approx $27m)
+        // "Venta Bruta" (Real Revenue) = item.venta_pos - item.ingreso_covers (approx $26m)
         // We display "Venta Bruta" as the main KPI.
 
         // Current Metrics
         const currData = currRes.data || [];
-        const currSales = currData.reduce((sum, item) => sum + (Number(item.venta_bruta) || 0) - (Number(item.ingreso_covers) || 0), 0);
+        const currSales = currData.reduce((sum, item) => sum + (Number(item.venta_pos) || 0) - (Number(item.ingreso_covers) || 0), 0);
         const currVisits = currData.reduce((sum, item) => sum + (Number(item.visitas) || 0), 0);
         const currTicket = currVisits > 0 ? currSales / currVisits : 0;
 
         // Previous Metrics
         const prevData = prevRes.data || [];
-        const prevSales = prevData.reduce((sum, item) => sum + (Number(item.venta_bruta) || 0) - (Number(item.ingreso_covers) || 0), 0);
+        const prevSales = prevData.reduce((sum, item) => sum + (Number(item.venta_pos) || 0) - (Number(item.ingreso_covers) || 0), 0);
         const prevVisits = prevData.reduce((sum, item) => sum + (Number(item.visitas) || 0), 0);
         const prevTicket = prevVisits > 0 ? prevSales / prevVisits : 0;
 
@@ -151,7 +151,7 @@ export const dashboardService = {
 
         const { data, error } = await supabase
             .from('arqueos')
-            .select('parsed_date, venta_bruta, visitas')
+            .select('parsed_date, venta_pos, visitas')
             .gte('parsed_date', startDate)
             .lte('parsed_date', endDate)
             .is('deleted_at', null)
@@ -168,7 +168,7 @@ export const dashboardService = {
             if (item.parsed_date) {
                 const day = new Date(item.parsed_date + 'T00:00:00').getDate().toString();
                 dailyDataMap.set(day, {
-                    sales: Number(item.venta_bruta) || 0,
+                    sales: Number(item.venta_pos) || 0,
                     visits: Number(item.visitas) || 0
                 });
             }
@@ -249,7 +249,7 @@ export const dashboardService = {
     /**
      * Obtiene el resumen de ventas semanal para un mes específico.
      * La semana se considera de Lunes a Domingo.
-     * Utiliza venta_bruta - ingreso_covers.
+     * Utiliza venta_pos - ingreso_covers.
      */
     async getWeeklySalesSummary(year: number, month: number) {
         // First day of the selected month
@@ -281,7 +281,7 @@ export const dashboardService = {
 
         const { data, error } = await supabase
             .from('arqueos')
-            .select('parsed_date, venta_bruta, ingreso_covers, visitas')
+            .select('parsed_date, venta_pos, ingreso_covers, visitas')
             .gte('parsed_date', startDateStr)
             .lte('parsed_date', endDateStr)
             .is('deleted_at', null)
@@ -307,7 +307,7 @@ export const dashboardService = {
         (data || []).forEach(item => {
             if (item.parsed_date) {
                 const weekNum = getISOWeekNumber(item.parsed_date);
-                const netSale = (Number(item.venta_bruta) || 0) - (Number(item.ingreso_covers) || 0);
+                const netSale = (Number(item.venta_pos) || 0) - (Number(item.ingreso_covers) || 0);
                 const visitCount = Number(item.visitas) || 0;
 
                 if (!weeklyData[weekNum]) {
@@ -383,7 +383,7 @@ export const dashboardService = {
                 .order('fecha', { ascending: true }),
             supabase
                 .from('arqueos')
-                .select('parsed_date, venta_bruta, ingreso_covers')
+                .select('parsed_date, venta_pos, ingreso_covers')
                 .gte('parsed_date', prevStartDateStr)
                 .lte('parsed_date', endDateStr)
                 .is('deleted_at', null)
@@ -422,8 +422,8 @@ export const dashboardService = {
         (salesData || []).forEach(item => {
             if (item.parsed_date) {
                 const weekNum = getISOWeekNumber(item.parsed_date);
-                // La venta real (neta de covers) corresponde a venta_bruta - ingreso_covers
-                const grossSale = Number(item.venta_bruta) || 0;
+                // La venta real (neta de covers) corresponde a venta_pos - ingreso_covers
+                const grossSale = Number(item.venta_pos) || 0;
                 const covers = Number(item.ingreso_covers) || 0;
                 const netAmount = Math.max(0, grossSale - covers);
 
@@ -510,6 +510,76 @@ export const dashboardService = {
             prevTotal: prevTotal,
             change: change,
             isUp: change >= 0
+        };
+    },
+
+    /**
+     * Obtiene el KPI de porcentaje de compras respecto a ventas brutas (sin covers).
+     */
+    async getMonthlyPurchasesPercentageKPI(year: number, month: number) {
+        const getStartAndEndOfMonth = (y: number, m: number) => {
+            const start = new Date(y, m - 1, 1);
+            const end = new Date(y, m, 0);
+            const z = (n: number) => ('0' + n).slice(-2);
+            return {
+                start: `${start.getFullYear()}-${z(start.getMonth() + 1)}-${z(start.getDate())}`,
+                end: `${end.getFullYear()}-${z(end.getMonth() + 1)}-${z(end.getDate())}`
+            };
+        };
+
+        const currentMonthRange = getStartAndEndOfMonth(year, month);
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear--;
+        }
+        const prevMonthRange = getStartAndEndOfMonth(prevYear, prevMonth);
+
+        const fetchPurchases = async (start: string, end: string) => {
+            const { data, error } = await supabase
+                .from('budget_purchases')
+                .select('debito')
+                .gte('fecha', start)
+                .lte('fecha', end);
+            if (error) return 0;
+            return (data || []).reduce((sum, item) => sum + (Number(item.debito) || 0), 0);
+        };
+
+        const fetchSales = async (start: string, end: string) => {
+            const { data, error } = await supabase
+                .from('arqueos')
+                .select('venta_pos, ingreso_covers')
+                .gte('parsed_date', start)
+                .lte('parsed_date', end)
+                .is('deleted_at', null);
+            if (error) return 0;
+            return (data || []).reduce((sum, item) => {
+                const grossSale = Number(item.venta_pos) || 0;
+                const covers = Number(item.ingreso_covers) || 0;
+                return sum + Math.max(0, grossSale - covers);
+            }, 0);
+        };
+
+        const [currPurchases, currSales, prevPurchases, prevSales] = await Promise.all([
+            fetchPurchases(currentMonthRange.start, currentMonthRange.end),
+            fetchSales(currentMonthRange.start, currentMonthRange.end),
+            fetchPurchases(prevMonthRange.start, prevMonthRange.end),
+            fetchSales(prevMonthRange.start, prevMonthRange.end)
+        ]);
+
+        const currentPercentage = currSales > 0 ? (currPurchases / currSales) * 100 : 0;
+        const prevPercentage = prevSales > 0 ? (prevPurchases / prevSales) * 100 : 0;
+
+        let change = 0;
+        if (prevPercentage > 0) {
+            change = currentPercentage - prevPercentage; // Puntos porcentuales
+        }
+
+        return {
+            percentage: currentPercentage,
+            change: change,
+            isUp: change > 0 // Si el % de compras sube, es un incremento en el gasto
         };
     }
 };

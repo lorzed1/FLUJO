@@ -10,14 +10,6 @@ export const MOCK_OVERVIEW_DATA = {
     budgetDistribution: []
 };
 
-export const MOCK_BUDGET_DATA = {
-    kpis: [
-        { title: "Presupuesto Asignado", value: "---", change: "0%", trend: "neutral", period: "Anual" },
-        { title: "Ejecutado", value: "---", change: "0%", trend: "neutral", period: "% del total" },
-        { title: "Disponible", value: "---", change: "0%", trend: "neutral", period: "% restante" },
-    ],
-    executionByArea: []
-};
 
 export const MOCK_PROJECTIONS_DATA = {
     forecast: []

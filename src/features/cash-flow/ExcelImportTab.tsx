@@ -321,7 +321,7 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                                         <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Estado</th>
                                         <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Fecha</th>
                                         <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Cajero</th>
-                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Venta Bruta</th>
+                                        <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Venta POS</th>
                                         <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Total Recaudado</th>
                                         <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Descuadre</th>
                                         <th className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">Errores</th>
@@ -343,7 +343,7 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                                                 </td>
                                                 <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{row.data.fecha || '-'}</td>
                                                 <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white">{row.data.cajero || '-'}</td>
-                                                <td className="px-3 py-2 text-right font-mono dark:text-gray-300">${formatCOP(row.data.ventaBruta || 0)}</td>
+                                                <td className="px-3 py-2 text-right font-mono dark:text-gray-300">${formatCOP(row.data.ventaPos || 0)}</td>
                                                 <td className="px-3 py-2 text-right font-mono font-semibold dark:text-white">${formatCOP(totalRecaudado)}</td>
                                                 <td className={`px-3 py-2 text-right font-mono font-bold ${descuadre === 0 ? 'text-green-600 dark:text-green-400' : descuadre > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                                                     ${formatCOP(Math.abs(descuadre))}

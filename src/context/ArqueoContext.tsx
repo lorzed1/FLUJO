@@ -74,7 +74,7 @@ export const ArqueoProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const handleSaveArqueo = async (data: any, total: number): Promise<string | boolean> => {
         try {
-            const totalIngresos = (Number(data.ventaBruta) || 0) + (Number(data.propina) || 0);
+            const totalIngresos = (Number(data.ventaPos) || 0) + (Number(data.propina) || 0);
             const totalRecaudadoCalc = calculateTotalRecaudado(data);
             const descuadreCalculado = calculateDescuadre(data);
             const newId = await DatabaseService.saveArqueo({
@@ -100,7 +100,7 @@ export const ArqueoProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 const updatedArqueos = prev.map(a => {
                     if (a.id === id) {
                         const updated = { ...a, [field]: value };
-                        const totalIngresos = (Number(updated.ventaBruta) || 0) + (Number(updated.propina) || 0);
+                        const totalIngresos = (Number(updated.ventaPos) || 0) + (Number(updated.propina) || 0);
                         const totalEgresos = calculateTotalRecaudado(updated);
                         const desc = calculateDescuadre(updated);
                         const final = { ...updated, totalIngresos, totalRecaudado: totalEgresos, descuadre: desc };
@@ -132,7 +132,7 @@ export const ArqueoProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setAlertModal({ isOpen: true, message: 'Recalculando arqueos...', type: 'info', title: 'Migración' });
             const loadedArqueos = await DatabaseService.getArqueos();
             const migrated = loadedArqueos.map(a => {
-                const totalIngresos = (Number(a.ventaBruta) || 0) + (Number(a.propina) || 0);
+                const totalIngresos = (Number(a.ventaPos) || 0) + (Number(a.propina) || 0);
                 const totalEgresos = calculateTotalRecaudado(a);
                 const descuadre = calculateDescuadre(a);
                 return { ...a, totalIngresos, totalRecaudado: totalEgresos, descuadre };

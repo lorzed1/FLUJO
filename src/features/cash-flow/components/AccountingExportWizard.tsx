@@ -137,7 +137,7 @@ export const AccountingExportWizard: React.FC<AccountingExportWizardProps> = ({ 
 
             // REGLA DE NEGOCIO: Rèplica exacta de la lógica de ArqueosTable.tsx
             // Descuadre = Total Recaudado - (Venta Bruta + Propina) (Nota: Covers ya incluidos en Venta Bruta)
-            const totalIngresos = (rawArqueo.ventaBruta || 0) + (rawArqueo.propina || 0);
+            const totalIngresos = (rawArqueo.ventaPos || 0) + (rawArqueo.propina || 0);
             const computedDescuadre = rawArqueo.totalRecaudado - totalIngresos;
 
             // Usamos un objeto extendido con el descuadre recalculado
@@ -152,12 +152,12 @@ export const AccountingExportWizard: React.FC<AccountingExportWizardProps> = ({ 
                 } else if (map.sourceField === 'faltante') {
                     if (arqueo.descuadre < 0) amount = Math.abs(arqueo.descuadre);
                 } else if (map.sourceField === 'ventaSC') {
-                    amount = (arqueo.ventaBruta || 0) - (arqueo.ingresoCovers || 0);
+                    amount = (arqueo.ventaPos || 0) - (arqueo.ingresoCovers || 0);
                 } else if (map.sourceField === 'baseImpuesto') {
-                    const ventaSC = (arqueo.ventaBruta || 0) - (arqueo.ingresoCovers || 0);
+                    const ventaSC = (arqueo.ventaPos || 0) - (arqueo.ingresoCovers || 0);
                     amount = Math.round(ventaSC / 1.08);
                 } else if (map.sourceField === 'impuestoConsumo') {
-                    const ventaSC = (arqueo.ventaBruta || 0) - (arqueo.ingresoCovers || 0);
+                    const ventaSC = (arqueo.ventaPos || 0) - (arqueo.ingresoCovers || 0);
                     const base = ventaSC / 1.08;
                     amount = Math.round(base * 0.08);
                 } else {

@@ -58,6 +58,7 @@ const GaugeRing = ({ label, percentage }: { label: string, percentage: number })
 export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) => {
     const [weeklyPurchases, setWeeklyPurchases] = useState<any[]>([]);
     const [monthlyKPI, setMonthlyKPI] = useState({ total: 0, change: 0, isUp: true });
+    const [percentageKPI, setPercentageKPI] = useState({ percentage: 0, change: 0, isUp: true });
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -69,13 +70,15 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                 const year = selectedDate.getFullYear();
                 const month = selectedDate.getMonth() + 1;
 
-                const [weeklyData, kpiData] = await Promise.all([
+                const [weeklyData, kpiData, kpiPercentage] = await Promise.all([
                     dashboardService.getWeeklyPurchasesSummary(year, month),
-                    dashboardService.getMonthlyPurchasesKPI(year, month)
+                    dashboardService.getMonthlyPurchasesKPI(year, month),
+                    dashboardService.getMonthlyPurchasesPercentageKPI(year, month)
                 ]);
 
                 setWeeklyPurchases(weeklyData);
                 setMonthlyKPI(kpiData);
+                setPercentageKPI(kpiPercentage);
 
             } catch (error) {
                 console.error('Error fetching purchases data:', error);
@@ -96,8 +99,17 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
             isUp: monthlyKPI.isUp,
             icon: <CurrencyDollarIcon className="w-5 h-5 text-purple-600" />
         },
-        { title: 'Órdenes Emitidas', value: '0', change: '0.0%', isUp: true, icon: <ShoppingCartIcon className="w-5 h-5 text-indigo-500" /> },
-        { title: 'Ticket Promedio', value: '$ 0', change: '0.0%', isUp: false, icon: <ChartBarIcon className="w-5 h-5 text-emerald-500" /> },
+        {
+            title: '% Compras vs Ventas',
+            // Invertimos isUp visualmente para este KPI:
+            // Si sube el %, gastamos más proporción de lo que vendimos, que suele ser negativo.
+            // Si consideramos que bajarlo es bueno: isUp = false para rojo. El backend devuelve isUp=true si el porcentaje subió.
+            value: `${Math.max(0, percentageKPI.percentage).toFixed(1)}%`,
+            change: `${Math.abs(percentageKPI.change).toFixed(2)} pp`,
+            isUp: !percentageKPI.isUp, // verde si baja
+            icon: <ChartBarIcon className="w-5 h-5 text-indigo-500" />
+        },
+        { title: 'Ticket Promedio (Draft)', value: '$ 0', change: '0.0%', isUp: false, icon: <ShoppingCartIcon className="w-5 h-5 text-emerald-500" /> },
         { title: 'Proveedores Activos', value: '0', change: '0.0%', isUp: true, icon: <UsersIcon className="w-5 h-5 text-amber-500" /> },
     ];
 

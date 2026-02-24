@@ -414,7 +414,7 @@ const ArqueoPreview: React.FC = () => {
 
                                         <div className="space-y-3 sm:space-y-4">
                                             <CurrencyInput label="Covers (Ingreso)" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al total esperado" useMonoFont={useMonoFont} />
-                                            <CurrencyInput label="Venta POS (Bruta)" name="ventaBruta" value={form.formData.ventaBruta} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
+                                            <CurrencyInput label="Venta POS" name="ventaPos" value={form.formData.ventaPos} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
                                             <CurrencyInput label="Propina Recaudada" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
                                         </div>
                                     </Card>

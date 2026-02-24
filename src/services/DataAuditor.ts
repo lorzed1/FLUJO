@@ -51,7 +51,7 @@ export class DataAuditorService {
             }
 
             // 3. Principio de Descuadre
-            const expectedIncome = (record.ventaBruta || 0) + (record.propina || 0);
+            const expectedIncome = (record.ventaPos || 0) + (record.propina || 0);
             const calculatedDescuadre = record.totalRecaudado - expectedIncome;
 
             if (Math.abs(calculatedDescuadre - record.descuadre) > 50) {

@@ -134,7 +134,7 @@ export const calculateDailyProjection = (
     // Pre-cálculo para Detección de Anomalías (Outlier Detection)
     // Calculamos un promedio "sucio" inicial para detectar valores absurdamente bajos (ej: < 20% del promedio)
     // Esto filtra días donde abriste pero pasó algo catastrófico (o error de digitación)
-    const dirtySumAll = allHistory.reduce((sum, r) => sum + r.ventaBruta, 0);
+    const dirtySumAll = allHistory.reduce((sum, r) => sum + r.ventaPos, 0);
     const dirtyAvgAll = allHistory.length > 0 ? dirtySumAll / allHistory.length : 0;
 
     // Usar el umbral configurado o el 20% por defecto
@@ -143,7 +143,7 @@ export const calculateDailyProjection = (
 
     const filterAnomalies = (record: ArqueoRecord): boolean => {
         // Ignorar días que vendieron menos del X% del promedio histórico
-        return !(allHistory.length >= 4 && record.ventaBruta < anomalyThreshold);
+        return !(allHistory.length >= 4 && record.ventaPos < anomalyThreshold);
     };
 
     const targetMonth = parseISO(targetDateStr).getMonth();
@@ -184,7 +184,7 @@ export const calculateDailyProjection = (
     let weightTotal = 0;
 
     // Arrays para Stats estándar (sin peso) para desviación estándar
-    const values = usedHistory.map(r => r.ventaBruta);
+    const values = usedHistory.map(r => r.ventaPos);
 
     if (usedHistory.length > 0) {
         usedHistory.forEach((record, index) => {
@@ -200,7 +200,7 @@ export const calculateDailyProjection = (
                 weight = 1; // 'equal'
             }
 
-            weightedSum += record.ventaBruta * weight;
+            weightedSum += record.ventaPos * weight;
             weightedTickets += (record.visitas || record.numeroTransacciones || 0) * weight;
             weightTotal += weight;
         });
@@ -210,7 +210,7 @@ export const calculateDailyProjection = (
     let sumSales = 0;
     let sumTickets = 0;
     if (usedHistory.length > 0) {
-        sumSales = usedHistory.reduce((acc, curr) => acc + curr.ventaBruta, 0);
+        sumSales = usedHistory.reduce((acc, curr) => acc + curr.ventaPos, 0);
         sumTickets = usedHistory.reduce((acc, curr) => acc + (curr.visitas || curr.numeroTransacciones || 0), 0);
     }
     const rawAverage = usedHistory.length > 0 ? sumSales / usedHistory.length : 0;
@@ -227,7 +227,7 @@ export const calculateDailyProjection = (
     // 4. Intervalos de Confianza (Confidence Intervals) - MONETARIO
     let stdDev = 0;
     if (usedHistory.length > 1) {
-        const variance = usedHistory.reduce((acc, r) => acc + Math.pow(r.ventaBruta - rawAverage, 2), 0) / (usedHistory.length - 1);
+        const variance = usedHistory.reduce((acc, r) => acc + Math.pow(r.ventaPos - rawAverage, 2), 0) / (usedHistory.length - 1);
         stdDev = Math.sqrt(variance);
     }
     const zScore = 1.28; // 80% Confidence
@@ -303,7 +303,7 @@ export const calculateDailyProjection = (
 
     // % de crecimiento YoY
     const yoyGrowthPercent = yoySameDayRecord
-        ? ((baseMetric - yoySameDayRecord.ventaBruta) / yoySameDayRecord.ventaBruta) * 100
+        ? ((baseMetric - yoySameDayRecord.ventaPos) / yoySameDayRecord.ventaPos) * 100
         : undefined;
 
     // 2. Promedios Móviles (4 y 8 semanas)
@@ -321,7 +321,7 @@ export const calculateDailyProjection = (
     });
 
     const avg4WeeksSale = last4WeeksRecords.length > 0
-        ? last4WeeksRecords.reduce((sum, r) => sum + r.ventaBruta, 0) / last4WeeksRecords.length
+        ? last4WeeksRecords.reduce((sum, r) => sum + r.ventaPos, 0) / last4WeeksRecords.length
         : 0;
 
     const avg4WeeksVisits = last4WeeksRecords.length > 0
@@ -329,7 +329,7 @@ export const calculateDailyProjection = (
         : 0;
 
     const avg8WeeksSale = last8WeeksRecords.length > 0
-        ? last8WeeksRecords.reduce((sum, r) => sum + r.ventaBruta, 0) / last8WeeksRecords.length
+        ? last8WeeksRecords.reduce((sum, r) => sum + r.ventaPos, 0) / last8WeeksRecords.length
         : 0;
 
     const avg8WeeksVisits = last8WeeksRecords.length > 0
@@ -345,7 +345,7 @@ export const calculateDailyProjection = (
     });
 
     const historicalMonthAvgSale = historicalMonthRecords.length > 0
-        ? historicalMonthRecords.reduce((sum, r) => sum + r.ventaBruta, 0) / historicalMonthRecords.length
+        ? historicalMonthRecords.reduce((sum, r) => sum + r.ventaPos, 0) / historicalMonthRecords.length
         : undefined;
 
     const historicalMonthAvgVisits = historicalMonthRecords.length > 0
@@ -394,9 +394,9 @@ export const calculateDailyProjection = (
     return {
         // Comparativos Históricos
         historicalComparisons: {
-            yoySameDaySale: yoySameDayRecord?.ventaBruta,
+            yoySameDaySale: yoySameDayRecord?.ventaPos,
             yoySameDayVisits: yoySameDayRecord?.visitas,
-            yoyEquivalentDaySale: yoyEquivalentRecord?.ventaBruta,
+            yoyEquivalentDaySale: yoyEquivalentRecord?.ventaPos,
             yoyEquivalentDayVisits: yoyEquivalentRecord?.visitas,
             yoyGrowthPercent,
             avg4WeeksSale,

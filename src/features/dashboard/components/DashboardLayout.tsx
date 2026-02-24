@@ -1,10 +1,10 @@
-
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
-import { PresentationChartLineIcon, ChartBarIcon, WalletIcon, TrendingUpIcon, BanknotesIcon, ShoppingCartIcon } from '../../../components/ui/Icons';
+import { PresentationChartLineIcon, ChartBarIcon, WalletIcon, TrendingUpIcon, BanknotesIcon, ShoppingCartIcon, InformationCircleIcon } from '../../../components/ui/Icons';
 import { DashboardControls } from './DashboardControls';
+import { DashboardInfoModal } from './DashboardInfoModal';
 
-type ViewMode = 'overview' | 'sales' | 'budget' | 'projections' | 'expenses' | 'purchases';
+type ViewMode = 'overview' | 'sales' | 'projections' | 'expenses' | 'purchases';
 
 interface DashboardLayoutProps {
     children: ReactNode;
@@ -21,10 +21,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     selectedDate,
     onDateChange
 }) => {
+    const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+
     const views = [
         { id: 'overview', label: 'General', icon: PresentationChartLineIcon },
         { id: 'sales', label: 'Ventas', icon: ChartBarIcon },
-        { id: 'budget', label: 'Presupuesto', icon: WalletIcon },
         { id: 'projections', label: 'Proyecciones', icon: TrendingUpIcon },
         { id: 'expenses', label: 'Egresos', icon: BanknotesIcon },
         { id: 'purchases', label: 'Compras', icon: ShoppingCartIcon },
@@ -45,8 +46,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         icon={<PresentationChartLineIcon className="h-6 w-6" />}
                     />
 
-                    {/* Date Filter Control */}
-                    <div className="w-full lg:w-auto">
+                    {/* Date Filter Control & Info */}
+                    <div className="w-full lg:w-auto flex items-center justify-end gap-2">
+                        <button
+                            onClick={() => setIsInfoModalOpen(true)}
+                            className="p-1.5 lg:p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-md border border-indigo-200 transition-colors"
+                            title="Información y Fórmulas"
+                        >
+                            <InformationCircleIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                        </button>
                         <DashboardControls
                             selectedDate={selectedDate}
                             onDateChange={onDateChange}
@@ -90,6 +98,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {children}
                 </div>
             </div>
+
+            <DashboardInfoModal
+                isOpen={isInfoModalOpen}
+                onClose={() => setIsInfoModalOpen(false)}
+            />
         </div>
     );
 };

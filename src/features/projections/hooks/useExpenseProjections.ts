@@ -89,7 +89,7 @@ export const useExpenseProjections = (currentDate: Date) => {
         };
 
         arqueos.forEach((arqueo: ArqueoRecord) => {
-            const amount = Number(arqueo.ventaBruta) || 0;
+            const amount = Number(arqueo.ventaPos) || 0;
             if (!arqueo.fecha || amount <= 0) return;
             const dateParts = arqueo.fecha.split('-');
             const date = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]));

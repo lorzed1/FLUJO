@@ -2,7 +2,7 @@
 export type AccountingNature = 'Debit' | 'Credit';
 
 export interface AccountMapping {
-    sourceField: string;      // ID field in Arqueo (e.g., 'ventaBruta', 'efectivo')
+    sourceField: string;      // ID field in Arqueo (e.g., 'ventaPos', 'efectivo')
     label: string;            // Human readable label (e.g., 'Venta Bruta', 'Efectivo')
     accountCode: string;      // PUC Code (e.g., '41402001')
     thirdPartyId: string;     // NIT / CC
@@ -17,7 +17,7 @@ export interface AccountingConfig {
 }
 
 export const AVAILABLE_SOURCE_FIELDS = [
-    { id: 'ventaBruta', label: 'VENTA POS' },
+    { id: 'ventaPos', label: 'VENTA POS' },
     { id: 'propina', label: 'PROPINA' },
     { id: 'ingresoCovers', label: 'COVERS' },
     // Calculated Fields

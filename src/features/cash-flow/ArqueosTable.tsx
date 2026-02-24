@@ -82,21 +82,21 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
 
     const dataWithTotals = useMemo(() => {
         return arqueos.map(item => {
-            const totalIngresosCalculado = (item.ventaBruta || 0) + (item.propina || 0);
+            const totalIngresosCalculado = (item.ventaPos || 0) + (item.propina || 0);
 
             // User Rule: Descuadre = Total Egresos - Total Ingresos
             const descuadreCalculado = item.totalRecaudado - totalIngresosCalculado;
 
             // Columnas calculadas contables
-            const ventaBrutaCalc = (item.ventaBruta || 0) - (item.ingresoCovers || 0);
-            const ventaBase = ventaBrutaCalc / 1.108;
-            const inc = ventaBrutaCalc - ventaBase; // Para que Venta Base + INC = Venta Bruta
+            const ventaBruta = (item.ventaPos || 0) - (item.ingresoCovers || 0);
+            const ventaBase = ventaBruta / 1.108;
+            const inc = ventaBruta - ventaBase; // Para que Venta Base + INC = Venta Bruta
 
             return {
                 ...item,
                 totalIngresos: totalIngresosCalculado,
                 descuadre: descuadreCalculado,
-                ventaBrutaCalc,
+                ventaBruta,
                 ventaBase,
                 inc
             };
@@ -170,33 +170,33 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             )
         },
         {
-            key: 'ventaBruta',
+            key: 'ventaPos',
             label: 'VENTA POS',
             width: 'w-28',
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
                 <EditableCell
-                    value={item.ventaBruta}
+                    value={item.ventaPos}
                     type="number"
-                    isEditing={editingCell?.id === item.id && editingCell?.field === 'ventaBruta'}
-                    onStartEdit={() => setEditingCell({ id: item.id, field: 'ventaBruta' })}
-                    onSave={(val) => { onUpdate(item.id, 'ventaBruta', parseFloat(val) || 0); setEditingCell(null); }}
+                    isEditing={editingCell?.id === item.id && editingCell?.field === 'ventaPos'}
+                    onStartEdit={() => setEditingCell({ id: item.id, field: 'ventaPos' })}
+                    onSave={(val) => { onUpdate(item.id, 'ventaPos', parseFloat(val) || 0); setEditingCell(null); }}
                     onCancel={() => setEditingCell(null)}
-                    displayValue={<span className="tabular-nums">{formatCompact(item.ventaBruta)}</span>}
+                    displayValue={<span className="tabular-nums">{formatCompact(item.ventaPos)}</span>}
                 />
             )
         },
         // Columnas Calculadas Contables
         {
-            key: 'ventaBrutaCalc',
+            key: 'ventaBruta',
             label: 'VENTA BRUTA',
             width: 'w-28',
             align: 'text-right',
             sortable: true,
             render: (_, item) => (
                 <span className="tabular-nums text-blue-700 dark:text-blue-400">
-                    {formatCompact(item.ventaBrutaCalc || 0)}
+                    {formatCompact(item.ventaBruta || 0)}
                 </span>
             )
         },

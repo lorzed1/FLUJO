@@ -28,12 +28,12 @@ export class DatabaseService {
             const existingIds = new Set((existingRows || []).map((r: any) => r.id));
             const newIds = new Set(transactions.map(t => t.id));
 
-            // 2. Eliminar los que ya no están (Soft Delete)
+            // 2. Eliminar los que ya no están (Hard Delete)
             const toDelete = Array.from(existingIds).filter(id => !newIds.has(id));
             if (toDelete.length > 0) {
                 const { error: delError } = await supabase
                     .from('transactions')
-                    .update({ deleted_at: new Date().toISOString() })
+                    .delete()
                     .in('id', toDelete);
                 if (delError) throw delError;
             }
@@ -345,7 +345,7 @@ export class DatabaseService {
                 fecha: arqueo.fecha,
                 parsed_date: arqueo.fecha, // REQUIRED: Fill parsed_date
                 cajero: arqueo.cajero || '',
-                venta_bruta: arqueo.ventaBruta || 0,
+                venta_pos: arqueo.ventaPos || 0,
                 venta_sc: arqueo.venta_sc ?? null,
                 propina: arqueo.propina || 0,
                 efectivo: arqueo.efectivo || 0,
@@ -401,7 +401,7 @@ export class DatabaseService {
                 fecha: row.fecha, // Keeping original text date
                 parsedDate: row.parsed_date, // Exposing new date
                 cajero: row.cajero,
-                ventaBruta: Number(row.venta_bruta),
+                ventaPos: Number(row.venta_pos),
                 venta_sc: row.venta_sc != null ? Number(row.venta_sc) : undefined,
                 propina: Number(row.propina),
                 efectivo: Number(row.efectivo),
@@ -434,7 +434,7 @@ export class DatabaseService {
                 mapped.parsed_date = updates.fecha; // Sync parsed_date
             }
             if (updates.cajero !== undefined) mapped.cajero = updates.cajero;
-            if (updates.ventaBruta !== undefined) mapped.venta_bruta = updates.ventaBruta;
+            if (updates.ventaPos !== undefined) mapped.venta_pos = updates.ventaPos;
             if (updates.venta_sc !== undefined) mapped.venta_sc = updates.venta_sc;
             if (updates.propina !== undefined) mapped.propina = updates.propina;
             if (updates.efectivo !== undefined) mapped.efectivo = updates.efectivo;
@@ -466,10 +466,10 @@ export class DatabaseService {
 
     static async deleteArqueo(id: string): Promise<void> {
         try {
-            // Utilizando Soft Delete
+            // Utilizando Hard Delete (Borrado permanente)
             const { error } = await supabase
                 .from('arqueos')
-                .update({ deleted_at: new Date().toISOString() })
+                .delete()
                 .eq('id', id);
 
             if (error) throw error;
@@ -569,7 +569,7 @@ export class DatabaseService {
         try {
             const { error } = await supabase
                 .from('transactions')
-                .update({ deleted_at: new Date().toISOString() })
+                .delete()
                 .eq('id', id);
             if (error) throw error;
         } catch (error) {

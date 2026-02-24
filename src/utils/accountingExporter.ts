@@ -79,7 +79,7 @@ export const generateAccountingRows = (
         const ventaMap = getMap('venta');
         const incMap = getMap('inc');
 
-        const ventaTotal = record.ventaBruta || 0;
+        const ventaTotal = record.ventaPos || 0;
         let baseVenta = ventaTotal;
         let incValue = 0;
 

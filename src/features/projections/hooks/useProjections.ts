@@ -36,13 +36,13 @@ export const useProjections = () => {
         loadPersistedConfig();
     }, []);
 
-    // Normalizar arqueos: Restar ingresoCovers de ventaBruta para proyectar sobre el valor real de facturación
+    // Normalizar arqueos: Restar ingresoCovers de ventaPos para proyectar sobre el valor real de facturación
     const normalizedArqueos = useMemo(() => {
         if (!arqueos) return [];
         return arqueos.map(r => {
-            const bruta = typeof r.ventaBruta === 'string'
-                ? parseFloat(r.ventaBruta.replace(/\./g, '').replace(',', '.'))
-                : (r.ventaBruta || 0);
+            const bruta = typeof r.ventaPos === 'string'
+                ? parseFloat(r.ventaPos.replace(/\./g, '').replace(',', '.'))
+                : (r.ventaPos || 0);
 
             const covers = typeof r.ingresoCovers === 'string'
                 ? parseFloat(r.ingresoCovers.replace(/\./g, '').replace(',', '.'))
@@ -50,7 +50,7 @@ export const useProjections = () => {
 
             return {
                 ...r,
-                ventaBruta: bruta - covers // Trabajamos sobre la "Venta Neta" definida por el usuario
+                ventaPos: bruta - covers // Trabajamos sobre la "Venta Neta" definida por el usuario
             };
         });
     }, [arqueos]);
@@ -244,7 +244,7 @@ export const useProjections = () => {
             if (!r.fecha) return;
             const dateKey = r.fecha.substring(0, 10);
             // Ya vienen normalizados (bruta - covers) desde el useMemo anterior
-            salesMap[dateKey] = (salesMap[dateKey] || 0) + r.ventaBruta;
+            salesMap[dateKey] = (salesMap[dateKey] || 0) + r.ventaPos;
         });
         setRealSales(salesMap);
     }, [normalizedArqueos]);

@@ -2,13 +2,12 @@ import React from 'react';
 import { DashboardLayout } from './components/DashboardLayout';
 import { OverviewView } from './views/OverviewView';
 import { SalesView } from './views/SalesView';
-import { BudgetsView } from './views/BudgetsView';
 import { ProjectionsView } from './views/ProjectionsView';
 import { ExpensesView } from './views/ExpensesView';
 import { PurchasesView } from './views/PurchasesView';
 
 const DashboardView: React.FC = () => {
-  const [currentView, setCurrentView] = React.useState<'overview' | 'sales' | 'budget' | 'projections' | 'expenses' | 'purchases'>('overview');
+  const [currentView, setCurrentView] = React.useState<'overview' | 'sales' | 'projections' | 'expenses' | 'purchases'>('overview');
   const [selectedDate, setSelectedDate] = React.useState(new Date());
 
   const renderContent = () => {
@@ -17,8 +16,6 @@ const DashboardView: React.FC = () => {
         return <OverviewView selectedDate={selectedDate} />;
       case 'sales':
         return <SalesView selectedDate={selectedDate} />;
-      case 'budget':
-        return <BudgetsView selectedDate={selectedDate} />;
       case 'projections':
         return <ProjectionsView selectedDate={selectedDate} />;
       case 'expenses':

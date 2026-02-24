@@ -4,7 +4,7 @@ import { parseCOP } from '../components/ui/Input';
 
 export interface ArqueoData {
     fecha: string;
-    ventaBruta: number;
+    ventaPos: number;
     propina: number;
     venta_sc?: number;
     efectivo: number;
@@ -47,7 +47,7 @@ export const SYSTEM_FIELDS: SystemFieldDef[] = [
     { key: 'fecha', label: 'Fecha', aliases: ['FECHA', 'DATE', 'DIA'], required: true },
     { key: 'cajero', label: 'Cajero', aliases: ['CAJERO', 'RESPONSABLE', 'ENCARGADO'], required: true },
     // Excluimos 'BRUTA' para evitar que mapee a 'VENTA BRUTA' (Base) cuando buscamos el Total
-    { key: 'ventaBruta', label: 'Venta POS (Total)', aliases: ['VENTA', 'VENTA TOTAL', 'TOTAL VENTA', 'VENTA POS', 'POS', 'TOTAL'], required: true, exclude: ['BRUTA', 'BASE', 'NETA'] },
+    { key: 'ventaPos', label: 'Venta POS (Total)', aliases: ['VENTA', 'VENTA TOTAL', 'TOTAL VENTA', 'VENTA POS', 'POS', 'TOTAL'], required: true, exclude: ['BRUTA', 'BASE', 'NETA'] },
     // Venta Sin Cover (Neta) opcional
     { key: 'venta_sc', label: 'Venta Net (S/Cover)', aliases: ['VENTA SC', 'VENTA SIN COVER', 'NETO', 'SUBTOTAL', 'VENTA NETA'] },
     { key: 'propina', label: 'Propina', aliases: ['PROPINA', 'TIPS'] },
@@ -88,7 +88,7 @@ function validateArqueoRow(data: Partial<ArqueoData>, rowNumber: number): string
     }
 
     // Validar venta bruta
-    if (data.ventaBruta === undefined || data.ventaBruta < 0) {
+    if (data.ventaPos === undefined || data.ventaPos < 0) {
         errors.push('Venta Bruta inválida');
     }
 
@@ -230,7 +230,7 @@ export function parseExcelRows(
 
             // Asegurar que campos requeridos de ArqueoData tengan valor (default 0 para números)
             const numericFields: (keyof ArqueoData)[] = [
-                'ventaBruta', 'propina', 'efectivo', 'datafonoDavid', 'datafonoJulian',
+                'ventaPos', 'propina', 'efectivo', 'datafonoDavid', 'datafonoJulian',
                 'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas'
             ];
             numericFields.forEach(f => {
@@ -295,7 +295,7 @@ export function calculateTotalRecaudado(data: Partial<ArqueoData>): number {
  * Calcula el descuadre para un registro de Arqueo
  */
 export function calculateDescuadre(data: Partial<ArqueoData>): number {
-    const totalIngresos = (Number(data.ventaBruta) || 0) + (Number(data.propina) || 0);
+    const totalIngresos = (Number(data.ventaPos) || 0) + (Number(data.propina) || 0);
     const totalEgresos = calculateTotalRecaudado(data);
     return totalEgresos - totalIngresos;
 }

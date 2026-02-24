@@ -105,7 +105,7 @@ const RescueData: React.FC = () => {
                                 id: arqueo.id, // Importante: usar ID del JSON
                                 fecha: arqueo.fecha,
                                 cajero: arqueo.cajero || '',
-                                venta_bruta: arqueo.ventaBruta || 0,
+                                venta_pos: arqueo.ventaPos || 0,
                                 venta_sc: arqueo.venta_sc ?? null,
                                 propina: arqueo.propina || 0,
                                 efectivo: arqueo.efectivo || 0,

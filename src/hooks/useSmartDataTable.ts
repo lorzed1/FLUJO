@@ -269,7 +269,26 @@ export function useSmartDataTable<T extends { id: string }>({
         const rows = dataToExport.map(item => {
             const row: Record<string, any> = {};
             initialColumns.filter(c => visibleColumns[c.key]).forEach(col => {
-                row[col.label] = getRenderedStringValue(item, col);
+                if (format === 'excel') {
+                    const rawValue = getCellValue(item, col);
+                    // Preserve numbers for excel so users can correctly apply currency/formats
+                    // Rounding them to 2 decimal places fixes the "montón de números" (excessive decimals) complaint.
+                    if (typeof rawValue === 'number') {
+                        row[col.label] = Number(rawValue.toFixed(2));
+                    } else if (typeof rawValue === 'string' && /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(rawValue) && !isNaN(Date.parse(rawValue))) {
+                        // Detect dates and convert to Date objects for Excel to natively recognize
+                        if (rawValue.length === 10) { // Format YYYY-MM-DD
+                            const [year, month, day] = rawValue.split('-');
+                            row[col.label] = new Date(Number(year), Number(month) - 1, Number(day));
+                        } else {
+                            row[col.label] = new Date(rawValue);
+                        }
+                    } else {
+                        row[col.label] = getRenderedStringValue(item, col);
+                    }
+                } else {
+                    row[col.label] = getRenderedStringValue(item, col);
+                }
             });
             return row;
         });
@@ -277,7 +296,7 @@ export function useSmartDataTable<T extends { id: string }>({
         const dateStr = new Date().toISOString().split('T')[0];
 
         if (format === 'excel') {
-            const ws = XLSX.utils.json_to_sheet(rows);
+            const ws = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: 'yyyy-mm-dd' });
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Datos");
             XLSX.writeFile(wb, `export_${dateStr}.xlsx`);

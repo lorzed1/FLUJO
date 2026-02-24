@@ -8,7 +8,7 @@ import { calculateTotalRecaudado, calculateDescuadre, type ParsedRow } from '../
 
 export interface ArqueoData {
     fecha: string;
-    ventaBruta: number;
+    ventaPos: number;
     propina: number;
     efectivo: number;
     datafonoDavid: number;
@@ -57,7 +57,7 @@ const INITIAL_DENOMINATIONS: Record<string, number> = {
 
 const INITIAL_FORM_DATA = (today: string): ArqueoData => ({
     fecha: today,
-    ventaBruta: 0,
+    ventaPos: 0,
     propina: 0,
     efectivo: 0,
     datafonoDavid: 0,
@@ -192,7 +192,7 @@ export function useArqueoForm() {
 
     // Calculate overall totals
     useEffect(() => {
-        const expected = formData.ventaBruta + formData.propina;
+        const expected = formData.ventaPos + formData.propina;
         setVentaTotalEsperada(expected);
 
         const collected =
@@ -276,7 +276,7 @@ export function useArqueoForm() {
     const handleFillMockData = () => {
         const mockDate = getLocalDateISO();
         setFormData({
-            fecha: mockDate, ventaBruta: 1500000, propina: 120000,
+            fecha: mockDate, ventaPos: 1500000, propina: 120000,
             efectivo: 850000, datafonoDavid: 300000, datafonoJulian: 200000,
             transfBancolombia: 150000, nequi: 100000, rappi: 20000,
             ingresoCovers: 50000, cajero: 'Simulador Test', visitas: 45

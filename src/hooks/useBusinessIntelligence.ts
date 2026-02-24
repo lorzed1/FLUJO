@@ -179,8 +179,8 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
     };
 
     const getSaleValue = (record: ArqueoRecord) => {
-        // Usar ventaBruta como única fuente de verdad
-        return record.ventaBruta || 0;
+        // Usar ventaPos como única fuente de verdad
+        return record.ventaPos || 0;
     };
     const getTicket = (record: ArqueoRecord) => {
         const sales = getSaleValue(record);
@@ -354,10 +354,10 @@ export const useBusinessIntelligence = (data: ArqueoRecord[]) => {
             week.dates.push(record.fecha);
             week.records.push({
                 fecha: record.fecha,
-                ventaBruta: record.ventaBruta || 0,
+                ventaPos: record.ventaPos || 0,
                 ingresoCovers: record.ingresoCovers || 0,
-                venta_sc_db: record.venta_sc, // Valor de la BD
-                ventaSC: ventaSC, // Valor usado (BD o calculado)
+                venta_sc_db: undefined, // Obsoleto
+                ventaSC: ventaSC, // Valor del calculo neto
                 visitas: record.visitas || 0
             });
         });
