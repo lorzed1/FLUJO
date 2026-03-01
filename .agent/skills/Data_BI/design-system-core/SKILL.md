@@ -46,6 +46,20 @@ Cuando crees una "Vista de datos", lista o página de administración conectada 
   - Cebra de filas (Zebra-striping): Filas impares `bg-white`; filas pares `bg-slate-100` (En oscuro: `bg-slate-800`).
   - Columnas Numéricas: Siempre con clase `tabular-nums` y alineadas a la derecha (`align: 'text-right'`).
 
+### ⛔ Reglas Anti-Duplicación (SmartDataPage)
+Cuando uses `<SmartDataPage>`, este componente ya provee **automáticamente**:
+- ✅ Columna "Acciones" con botones Editar (✏️) y Eliminar (🗑️)
+- ✅ Eliminación masiva (`onBulkDelete`)
+- ✅ PageHeader con breadcrumbs y botón "+ Nuevo Registro"
+- ✅ Importación, Exportación, Búsqueda, Paginación
+
+**PROHIBIDO** en páginas que usen `SmartDataPage`:
+- ❌ Definir una columna con `key: 'actions'` (causa doble encabezado "Acciones")
+- ❌ Crear botones manuales de Editar/Eliminar (ya los genera el componente)
+- ❌ Reimplementar `PageHeader` fuera del componente
+
+**PERMITIDO**: Agregar columnas con acciones **extra** (ej: Duplicar, Pago Rápido) usando un `key` descriptivo diferente como `'duplicate'`, `'quickPay'`, etc.
+
 ---
 
 ## 4. Sistema de Notificaciones Modales (UIContext)

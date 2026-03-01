@@ -204,9 +204,18 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
                 <div className="px-10 py-8 bg-slate-50 dark:bg-slate-800/40 border-t border-gray-100 dark:border-slate-700/50 flex items-center justify-between">
                     <button
                         onClick={() => {
-                            if (window.confirm('¿Deseas restablecer el orden original del Excel?')) {
-                                onReset();
-                            }
+                            setAlertModal({
+                                isOpen: true,
+                                type: 'warning',
+                                title: 'Restablecer Orden',
+                                message: '¿Deseas restablecer el orden original del Excel?',
+                                showCancel: true,
+                                confirmText: 'Restablecer',
+                                onConfirm: () => {
+                                    setAlertModal({ isOpen: false, message: '' });
+                                    onReset();
+                                }
+                            });
                         }}
                         className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-[0.2em]"
                     >

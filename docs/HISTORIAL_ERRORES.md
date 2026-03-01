@@ -25,3 +25,15 @@ CREATE POLICY "allow_all_tips_records" ON public.tips_records FOR ALL TO public 
 2. Cambiar  `.update({ deleted_at: ... })` por `.delete()` puro (Borrado Duro).
 3. Entrar vía SQL y purgar de manera definitiva (`DELETE FROM...`) los registros marcados como eliminados para no dejar rastros en `arqueos`, `tips_records` ni `transactions`.
 **Lección Aprendida:** **Jamás usar borrado suavizado para las tablas de transacciones y arqueos de este aplicativo**. El borrado debe ser total (`Hard Delete`) desde Supabase y en los archivos de servicio de forma física.
+
+---
+
+### [2026-02-28] - Categoría: Frontend / Consistencia Visual
+**Problema Inicial:** La tabla de Gastos Recurrentes mostraba **dos columnas "Acciones"** en el encabezado, cada una con sus propios botones de Editar y Eliminar.
+**Causa Raíz Diagnosticada:** La página `BudgetRecurring.tsx` definía manualmente una columna con `key: 'actions'` que incluía botones de Duplicar, Editar y Eliminar. Simultáneamente, `SmartDataPage` (componente padre) generaba **automáticamente** otra columna "Acciones" al recibir las props `onDelete` y `onEdit`. El mismo problema existía en `BudgetTable.tsx`.
+**Solución Exitosa:**
+1. Eliminar la columna `key: 'actions'` manual de las páginas que usan `SmartDataPage`.
+2. Los botones específicos de cada página (Duplicar, Pago Rápido) se movieron a columnas con keys descriptivos (`'duplicate'`, `'quickPay'`).
+3. Se agregó `onEdit={handleEdit}` donde faltaba para que la columna automática funcione correctamente.
+**Lección Aprendida:** **Nunca definir `key: 'actions'` en columnas de páginas que usen `SmartDataPage`**. Este componente ya provee Editar/Eliminar automáticamente. Si se necesitan acciones EXTRA, usar un key descriptivo diferente. Regla documentada en `design-system-core/SKILL.md` § 3.
+

@@ -15,13 +15,18 @@ Sigue estos pasos rigurosamente cada vez que el usuario solicite una nueva funci
    - Ejecutar `list_dir` en las carpetas relevantes para ver qué ya existe.
 
 3. **Verificar Estándares de Diseño (OBLIGATORIO para UI):**
-   - Si la funcionalidad implica cambios en la interfaz o nuevos componentes, DEBES leer `.agent/skills/Data_BI/design-system/SKILL.md` antes de proponer nada.
+   - Si la funcionalidad implica cambios en la interfaz o nuevos componentes, DEBES leer `.agent/skills/Data_BI/design-system-core/SKILL.md` antes de proponer nada.
    - Asegurar que la propuesta cumpla con los lineamientos de colores, espaciado y tipografía.
 
 4. **Verificar tipos existentes:**
    - Revisar `src/types/` para no duplicar interfaces.
    - Revisar `src/utils/` para no duplicar utilidades.
    - Revisar `src/components/ui/` para no duplicar componentes genéricos.
+
+5. **Verificar Anti-Duplicación (OBLIGATORIO):**
+   - Si la página usa `SmartDataPage`, **NO** crear columnas `key: 'actions'` ni botones de Editar/Eliminar manuales (ya los provee el componente).
+   - Verificar qué funcionalidad provee automáticamente el componente padre antes de implementar manualmente (PageHeader, CRUD, Import/Export).
+   - Consultar las Reglas Anti-Duplicación en `design-system-core/SKILL.md` § 3.
 
 ## 2. Fase de Propuesta
 1. **Plan de Implementación:**

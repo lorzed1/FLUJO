@@ -3,7 +3,8 @@ import { Column } from '../../../components/ui/SmartDataTable';
 import { budgetService } from '../../../services/budget';
 import { RecurrenceRule, RecurrenceFrequency } from '../../../types/budget';
 import { ArrowPathIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
-import { PencilIcon, TrashIcon } from '../../../components/ui/Icons';
+import { CategoryBadge } from '../../../components/ui/CategoryBadge';
+import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { RecurrenceRuleFormModal } from '../components/RecurrenceRuleFormModal';
 import { useUI } from '../../../context/UIContext';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
@@ -124,11 +125,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
             label: 'Categoría',
             sortable: true,
             filterable: true,
-            render: (value: string) => (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-[10px] font-semibold text-gray-600 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400">
-                    {value}
-                </span>
-            )
+            render: (value: string) => <CategoryBadge>{value}</CategoryBadge>
         },
         {
             key: 'frequency',
@@ -154,44 +151,24 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
             label: 'Estado',
             align: 'text-center' as const,
             render: (value: boolean) => (
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto ${value ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${value ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                    <span className={`text-[10px] font-semibold uppercase tracking-widest ${value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                        {value ? 'Activo' : 'Inactivo'}
-                    </span>
-                </div>
+                <StatusBadge variant={value ? 'success' : 'neutral'} label={value ? 'Activo' : 'Inactivo'} />
             )
         },
         {
-            key: 'actions',
+            key: 'duplicate',
             label: '',
-            width: 'w-24',
-            align: 'text-right' as const,
+            width: 'w-10',
+            align: 'text-center' as const,
             filterable: false,
+            sortable: false,
             render: (_: any, item: RecurrenceRule) => (
-                <div className="flex justify-end gap-1">
-                    <button
-                        onClick={() => handleDuplicate(item)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 transition-all rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        title="Duplicar regla"
-                    >
-                        <DocumentDuplicateIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1.5 text-slate-400 hover:text-purple-600 transition-all rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                        title="Editar regla"
-                    >
-                        <PencilIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-1.5 text-slate-300 hover:text-red-600 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                        title="Eliminar regla"
-                    >
-                        <TrashIcon className="w-4 h-4" />
-                    </button>
-                </div>
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleDuplicate(item); }}
+                    className="p-1.5 text-slate-400 hover:text-blue-600 transition-all rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    title="Duplicar regla"
+                >
+                    <DocumentDuplicateIcon className="w-4 h-4" />
+                </button>
             )
         }
     ], []);
@@ -339,6 +316,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                 columns={columns}
                 enableAdd={true}
                 onAdd={handleCreate}
+                onEdit={handleEdit}
                 searchPlaceholder="Buscar regla..."
                 infoDefinitions={[
                     {

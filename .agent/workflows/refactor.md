@@ -13,8 +13,9 @@ Protocolo paso a paso para refactorizar código de forma segura y controlada.
    - Contar líneas del archivo (verificar si supera límites: 250 componente, 400 servicio).
    - Identificar dependientes: `grep_search` para ver quién importa el archivo.
 3. **Verificar Estándares de Diseño (OBLIGATORIO para UI):**
-   - Si se refactoriza un componente visual, consultar `.agent/skills/Data_BI/design-system/SKILL.md`.
+   - Si se refactoriza un componente visual, consultar `.agent/skills/Data_BI/design-system-core/SKILL.md`.
    - Verificar si el código actual ya cumple o si la refactorización debe alinearlo con el estándar.
+   - **Verificar anti-duplicación:** ¿El componente padre ya provee alguna funcionalidad que se está reimplementando manualmente? (ej: columnas de acciones, PageHeader, CRUD). Consultar § 3 del design-system-core.
 
 ## 2. Plan de Refactoring
 1. **Listar cambios propuestos:**

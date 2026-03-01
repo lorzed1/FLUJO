@@ -5,8 +5,10 @@ import { purchaseService } from '../../../services/budget/purchases';
 import { Purchase } from '../../../types/budget';
 import { PurchaseFormModal } from '../components/PurchaseFormModal';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
+import { useUI } from '../../../context/UIContext';
 
 export const BudgetPurchases: React.FC = () => {
+    const { setAlertModal } = useUI();
     // --- MAIN VIEW STATE ---
     const [isImporting, setIsImporting] = useState(false);
     const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -38,10 +40,10 @@ export const BudgetPurchases: React.FC = () => {
     const handleAddPurchase = async (data: any) => {
         try {
             await purchaseService.savePurchase(data);
-            await loadData(); // Reload table
+            await loadData();
         } catch (error) {
             console.error(error);
-            alert("Hubo un error al guardar la compra.");
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Hubo un error al guardar la compra.' });
         }
     };
 
@@ -126,35 +128,43 @@ export const BudgetPurchases: React.FC = () => {
 
             await purchaseService.batchImport(purchasesToImport);
 
-            alert("¡Exito! Se han importado / actualizado los registros correctamente.");
+            setAlertModal({ isOpen: true, type: 'success', title: '¡Éxito!', message: 'Se han importado / actualizado los registros correctamente.' });
             setIsImporting(false);
             loadData();
         } catch (error: any) {
             console.error("Error al importar: ", error);
-            alert(`Error durante la importación: ${error.message || 'Desconocido'}`);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error de Importación', message: `Error durante la importación: ${error.message || 'Desconocido'}` });
         }
     };
 
 
     // --- BULK DELETE ---
     const handleBulkDelete = async (selectedIds: Set<string>) => {
-        if (!confirm(`¿Estás seguro de que deseas eliminar ${selectedIds.size} compras? Esta acción no se puede deshacer.`)) return;
-
-        setLoading(true);
-        try {
-            const idsArray = Array.from(selectedIds);
-            for (const id of idsArray) {
-                await purchaseService.deletePurchase(id);
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Confirmar Eliminación Masiva',
+            message: `¿Estás seguro de que deseas eliminar ${selectedIds.size} compras? Esta acción no se puede deshacer.`,
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                setLoading(true);
+                try {
+                    const idsArray = Array.from(selectedIds);
+                    for (const id of idsArray) {
+                        await purchaseService.deletePurchase(id);
+                    }
+                    await loadData();
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registros eliminados exitosamente.' });
+                } catch (error) {
+                    console.error("Error al eliminar registros:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Ocurrió un error al intentar eliminar algunos registros.' });
+                } finally {
+                    setLoading(false);
+                }
             }
-            // Recargar datos para refrescar la tabla
-            await loadData();
-            alert("Registros eliminados exitosamente.");
-        } catch (error) {
-            console.error("Error al eliminar registros:", error);
-            alert("Ocurrió un error al intentar eliminar algunos registros.");
-        } finally {
-            setLoading(false);
-        }
+        });
     };
 
     // --- MAIN LIST COLUMNS ---

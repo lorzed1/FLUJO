@@ -3,6 +3,7 @@ import { TransferRecord } from '../../types';
 import { DatabaseService } from '../../services/database';
 import { TrashIcon } from '../../components/ui/Icons';
 import { SmartDataTable, Column } from '../../components/ui/SmartDataTable';
+import { CategoryBadge } from '../../components/ui/CategoryBadge';
 import { useUI } from '../../context/UIContext';
 import { Button } from '@/components/ui/Button';
 
@@ -104,12 +105,7 @@ const TransfersView: React.FC = () => {
             filterable: true,
             render: (val) => {
                 const type = (val || 'unknown').toLowerCase();
-
-                return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-[10px] font-semibold text-gray-600 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400">
-                        {type}
-                    </span>
-                );
+                return <CategoryBadge>{type}</CategoryBadge>;
             }
         },
         {

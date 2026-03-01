@@ -4,7 +4,7 @@ import { useExpenseProjections } from '../hooks/useExpenseProjections';
 import { format, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatMoney, formatPercent } from '../../../utils/formatters';
-import { cn } from '@/lib/utils';
+import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { ChartBarIcon, QuestionMarkCircleIcon } from '../../../components/ui/Icons';
 import { DateNavigator } from '../../../components/ui/DateNavigator';
@@ -180,23 +180,13 @@ export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = (
             label: 'Estado',
             align: 'text-center',
             render: (value: string) => {
-                const config: Record<string, { label: string, dot: string, borderClass: string }> = {
-                    covered: { label: 'SALDADO', dot: 'bg-emerald-500', borderClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400' },
-                    at_risk: { label: 'PENDIENTE', dot: 'bg-amber-500', borderClass: 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400' },
-                    pending: { label: 'SIN VENTA', dot: 'bg-slate-400', borderClass: 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400' }
+                const statusMap: Record<string, { variant: 'success' | 'warning' | 'neutral'; label: string }> = {
+                    covered: { variant: 'success', label: 'SALDADO' },
+                    at_risk: { variant: 'warning', label: 'PENDIENTE' },
+                    pending: { variant: 'neutral', label: 'SIN VENTA' }
                 };
-                const style = config[value] || config.pending;
-                return (
-                    <div className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto",
-                        style.borderClass
-                    )}>
-                        <span className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
-                        <span className="text-[10px] font-semibold uppercase tracking-widest">
-                            {style.label}
-                        </span>
-                    </div>
-                );
+                const s = statusMap[value] || statusMap.pending;
+                return <StatusBadge variant={s.variant} label={s.label} />;
             }
         }
     ], []);

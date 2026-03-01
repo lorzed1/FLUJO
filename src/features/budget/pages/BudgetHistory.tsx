@@ -9,12 +9,14 @@ import { budgetService } from '../../../services/budget';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
+import { useUI } from '../../../context/UIContext';
 
 interface BudgetHistoryProps {
     hideHeader?: boolean;
 }
 
 export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false }) => {
+    const { setAlertModal } = useUI();
     const [logs, setLogs] = useState<BudgetExecutionLog[]>([]);
     const [loading, setLoading] = useState(false);
     const [detailLog, setDetailLog] = useState<BudgetExecutionLog | null>(null);
@@ -35,26 +37,35 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
         loadLogs();
     }, []);
 
-    const handleReconcileToday = async () => {
-        if (!confirm('¿Intentar reconstruir el historial de pagos de HOY basado en los registros existentes?')) return;
-
-        setLoading(true);
-        try {
-            const result = await budgetService.reconcileTodayLog();
-            if (result === 'exists') {
-                alert('Ya existe un registro de ejecución para hoy.');
-            } else if (result === 'no_payments') {
-                alert('No se encontraron pagos con fecha de hoy para registrar.');
-            } else if (result) {
-                alert('Registro reconstruido exitosamente.');
-                await loadLogs(); // Reload table
+    const handleReconcileToday = () => {
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Sincronizar Pagos de Hoy',
+            message: '¿Intentar reconstruir el historial de pagos de HOY basado en los registros existentes?',
+            showCancel: true,
+            confirmText: 'Sincronizar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                setLoading(true);
+                try {
+                    const result = await budgetService.reconcileTodayLog();
+                    if (result === 'exists') {
+                        setAlertModal({ isOpen: true, type: 'info', title: 'Sin Cambios', message: 'Ya existe un registro de ejecución para hoy.' });
+                    } else if (result === 'no_payments') {
+                        setAlertModal({ isOpen: true, type: 'info', title: 'Sin Pagos', message: 'No se encontraron pagos con fecha de hoy para registrar.' });
+                    } else if (result) {
+                        await loadLogs();
+                        setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registro reconstruido exitosamente.' });
+                    }
+                } catch (error: any) {
+                    console.error("Error reconciling:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: `Error al reconstruir el registro: ${error.message || 'Error desconocido'}` });
+                } finally {
+                    setLoading(false);
+                }
             }
-        } catch (error: any) {
-            console.error("Error reconciling:", error);
-            alert(`Error al intentar reconstruir el registro: ${error.message || JSON.stringify(error)}`);
-        } finally {
-            setLoading(false);
-        }
+        });
     };
 
     const formatCurrency = (amount: number) => {

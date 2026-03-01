@@ -3,6 +3,7 @@ import { useData } from '../../../context/DataContext';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
 import { TrashIcon, PlusIcon, TagIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../../components/layout/PageHeader';
+import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { TransactionType } from '../../../types';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/ui/Button';
@@ -65,14 +66,12 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
             label: 'Tipo de Flujo',
             sortable: true,
             render: (value: string) => {
-                const isExpense = value === TransactionType.EXPENSE;
+                const isExpense = value === 'expense';
                 return (
-                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit ${isExpense ? 'bg-rose-50 border-rose-200 dark:bg-rose-900/30 dark:border-rose-800' : 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${isExpense ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                        <span className={`text-[10px] font-semibold uppercase tracking-widest ${isExpense ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                            {isExpense ? 'Gasto' : 'Ingreso'}
-                        </span>
-                    </div>
+                    <StatusBadge
+                        variant={isExpense ? 'danger' : 'success'}
+                        label={isExpense ? 'Gasto' : 'Ingreso'}
+                    />
                 );
             }
         },

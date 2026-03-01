@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { TrashIcon, BanknotesIcon, TableCellsIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { Column } from '../../../components/ui/SmartDataTable';
+import { CategoryBadge } from '../../../components/ui/CategoryBadge';
+import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { budgetService } from '../../../services/budget';
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { BudgetCommitment } from '../../../types/budget';
-import { startOfMonth, endOfMonth, endOfYear, startOfYear, format } from 'date-fns';
+import { endOfYear, startOfYear, format } from 'date-fns';
 import { useUI } from '../../../context/UIContext';
 import { DateSelectionModal } from '../components/DateSelectionModal';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
@@ -237,11 +239,7 @@ export const BudgetTable: React.FC = () => {
             label: 'Categoría',
             sortable: true,
             filterable: true,
-            render: (value: string) => (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-[10px] font-semibold text-gray-600 uppercase tracking-widest dark:bg-slate-800 dark:border-slate-700 dark:text-gray-400">
-                    {value}
-                </span>
-            )
+            render: (value: string) => <CategoryBadge>{value}</CategoryBadge>
         },
         {
             key: 'status',
@@ -250,74 +248,32 @@ export const BudgetTable: React.FC = () => {
             filterable: true,
             align: 'text-center' as const,
             render: (value: string) => {
-                let dotColor = 'bg-slate-400';
-                let textColor = 'text-slate-700 dark:text-slate-400';
-                let colors = 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700';
-                let label = '';
-
-                switch (value) {
-                    case 'paid':
-                        dotColor = 'bg-emerald-500';
-                        textColor = 'text-emerald-700 dark:text-emerald-400';
-                        colors = 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800';
-                        label = 'Pagado';
-                        break;
-                    case 'pending':
-                        dotColor = 'bg-amber-500';
-                        textColor = 'text-amber-700 dark:text-amber-400';
-                        colors = 'bg-amber-50 border-amber-200 dark:bg-amber-900/30 dark:border-amber-800';
-                        label = 'Pendiente';
-                        break;
-                    case 'overdue':
-                        dotColor = 'bg-rose-500';
-                        textColor = 'text-rose-700 dark:text-rose-400';
-                        colors = 'bg-rose-50 border-rose-200 dark:bg-rose-900/30 dark:border-rose-800';
-                        label = 'Vencido';
-                        break;
-                }
-
-                return (
-                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-sm w-fit mx-auto ${colors}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                        <span className={`text-[10px] font-semibold uppercase tracking-widest ${textColor}`}>
-                            {label}
-                        </span>
-                    </div>
-                );
+                const statusMap: Record<string, { variant: 'success' | 'warning' | 'danger' | 'neutral'; label: string }> = {
+                    paid: { variant: 'success', label: 'Pagado' },
+                    pending: { variant: 'warning', label: 'Pendiente' },
+                    overdue: { variant: 'danger', label: 'Vencido' }
+                };
+                const s = statusMap[value] || { variant: 'neutral' as const, label: value };
+                return <StatusBadge variant={s.variant} label={s.label} />;
             }
         },
         {
-            key: 'actions',
+            key: 'quickPay',
             label: '',
-            width: 'w-24',
-            align: 'text-right' as const,
+            width: 'w-10',
+            align: 'text-center' as const,
             filterable: false,
+            sortable: false,
             render: (_: any, item: BudgetCommitment) => (
-                <div className="flex justify-end gap-1">
-                    {item.status !== 'paid' && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); handleQuickPay(item); }}
-                            className="text-emerald-400 hover:text-emerald-600 dark:text-emerald-500 dark:hover:text-emerald-300 transition-all p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                            title="Marcar como Pagado Hoy"
-                        >
-                            <BanknotesIcon className="w-4 h-4" />
-                        </button>
-                    )}
+                item.status !== 'paid' ? (
                     <button
-                        onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-                        className="text-slate-400 hover:text-purple-600 transition-all p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                        title="Editar"
+                        onClick={(e) => { e.stopPropagation(); handleQuickPay(item); }}
+                        className="text-emerald-400 hover:text-emerald-600 dark:text-emerald-500 dark:hover:text-emerald-300 transition-all p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                        title="Marcar como Pagado"
                     >
-                        <PencilIcon className="w-4 h-4" />
+                        <BanknotesIcon className="w-4 h-4" />
                     </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                        className="text-slate-300 hover:text-red-600 transition-all p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                        title="Eliminar"
-                    >
-                        <TrashIcon className="w-4 h-4" />
-                    </button>
-                </div>
+                ) : null
             )
         }
     ], [openForm, loadData]);

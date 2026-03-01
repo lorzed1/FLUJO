@@ -133,37 +133,55 @@ export const IncomeStatementTable: React.FC = () => {
     };
 
     const handleDeleteMonth = async (m: string) => {
-        if (window.confirm(`¿Borrar datos de ${m}?`)) {
-            try {
-                setIsLoading(true);
-                await FinancialStatementService.deleteMonth(m);
-                const updated = await FinancialStatementService.getAll();
-                setData(updated);
-                setShowDeleteMonth(false);
-            } catch (err) {
-                setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo borrar el mes.' });
-            } finally {
-                setIsLoading(false);
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Borrar Mes',
+            message: `¿Borrar todos los datos de ${m}?`,
+            showCancel: true,
+            confirmText: 'Borrar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                try {
+                    setIsLoading(true);
+                    await FinancialStatementService.deleteMonth(m);
+                    const updated = await FinancialStatementService.getAll();
+                    setData(updated);
+                    setShowDeleteMonth(false);
+                } catch (err) {
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo borrar el mes.' });
+                } finally {
+                    setIsLoading(false);
+                }
             }
-        }
+        });
     };
 
     const handleClearAll = async () => {
-        if (window.confirm('¿Estás seguro de que deseas borrar ABSOLUTAMENTE TODO el reporte? Esta acción no se puede deshacer.')) {
-            try {
-                setIsLoading(true);
-                await FinancialStatementService.clearAll();
-                setData([]);
-                setRowOrder([]);
-                setFormulas([]);
-                setShowDeleteMonth(false);
-                setAlertModal({ isOpen: true, type: 'success', title: 'Datos Borrados', message: 'Se han eliminado todos los registros y configuraciones.' });
-            } catch (err) {
-                setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo limpiar el reporte.' });
-            } finally {
-                setIsLoading(false);
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Borrar Todo el Reporte',
+            message: '¿Estás seguro de que deseas borrar ABSOLUTAMENTE TODO el reporte? Esta acción no se puede deshacer.',
+            showCancel: true,
+            confirmText: 'Sí, borrar todo',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                try {
+                    setIsLoading(true);
+                    await FinancialStatementService.clearAll();
+                    setData([]);
+                    setRowOrder([]);
+                    setFormulas([]);
+                    setShowDeleteMonth(false);
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Datos Borrados', message: 'Se han eliminado todos los registros y configuraciones.' });
+                } catch (err) {
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo limpiar el reporte.' });
+                } finally {
+                    setIsLoading(false);
+                }
             }
-        }
+        });
     };
 
     if (isLoading && data.length === 0) {

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
+import { useUI } from '../../../context/UIContext';
 
 export const GhostBuster: React.FC = () => {
+    const { setAlertModal } = useUI();
     const [allRecords, setAllRecords] = useState<BudgetCommitment[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -19,13 +21,23 @@ export const GhostBuster: React.FC = () => {
     };
 
     const deleteRecord = async (id: string) => {
-        if (!confirm('¿Eliminar este registro permanentemente?')) return;
-        try {
-            await budgetService.deleteCommitment(id);
-            loadAll();
-        } catch (e) {
-            alert('Error al eliminar');
-        }
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Confirmar Eliminación',
+            message: '¿Eliminar este registro permanentemente?',
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                try {
+                    await budgetService.deleteCommitment(id);
+                    loadAll();
+                } catch (e) {
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar el registro.' });
+                }
+            }
+        });
     };
 
     useEffect(() => {
@@ -93,6 +105,7 @@ export const GhostBuster: React.FC = () => {
 };
 
 const RulesBuster: React.FC = () => {
+    const { setAlertModal } = useUI();
     const [rules, setRules] = useState<any[]>([]);
 
     const loadRules = async () => {
@@ -105,13 +118,23 @@ const RulesBuster: React.FC = () => {
     };
 
     const deleteRule = async (id: string, name: string) => {
-        if (!confirm(`¿Eliminar la regla "${name}"? Dejará de crear gastos futuros.`)) return;
-        try {
-            await budgetService.deleteRecurrenceRule(id);
-            loadRules();
-        } catch (e) {
-            alert('Error al eliminar regla');
-        }
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Confirmar Eliminación de Regla',
+            message: `¿Eliminar la regla "${name}"? Dejará de crear gastos futuros.`,
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                try {
+                    await budgetService.deleteRecurrenceRule(id);
+                    loadRules();
+                } catch (e) {
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar la regla.' });
+                }
+            }
+        });
     };
 
     useEffect(() => { loadRules(); }, []);
