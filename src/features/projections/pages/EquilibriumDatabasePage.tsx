@@ -218,14 +218,6 @@ export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = (
                             onChange={setCurrentDate}
                         />
 
-                        {/* Help Button */}
-                        <button
-                            onClick={() => setIsHelpOpen(true)}
-                            className="h-full flex items-center justify-center p-2 bg-white dark:bg-slate-800 text-slate-500 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700 transition-all"
-                        >
-                            <QuestionMarkCircleIcon className="h-5 w-5" />
-                        </button>
-
                         {/* Config Button */}
                         <button
                             onClick={() => setIsConfigOpen(true)}
@@ -246,6 +238,7 @@ export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = (
                     enableColumnConfig={true}
                     enableExport={true}
                     enableSelection={true}
+                    onInfoClick={() => setIsHelpOpen(true)}
                     searchPlaceholder="Buscar semana..."
                     containerClassName="border-none shadow-none"
                 />

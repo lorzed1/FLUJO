@@ -22,11 +22,12 @@ import {
   ClockIcon,
   PlusIcon,
   MinusIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  WalletIcon
 } from './ui/Icons';
 import { useUI } from '../context/UIContext';
 
-type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections' | 'income-statement';
+type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections' | 'income-statement' | 'accounting';
 
 interface SidebarProps {
   currentView: View;
@@ -97,6 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       children: [
         { id: 'arqueo-form', label: 'Arqueo diario', icon: <ClipboardDocumentListIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/form' },
         { id: 'arqueo-history', label: 'Historial de cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/history' },
+        { id: 'arqueo-tips', label: 'Propinas', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/tips' },
       ]
     },
     {
@@ -134,6 +136,18 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       children: [
         { id: 'income-dashboard', label: 'BI PYG', icon: <ChartBarIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement' },
         { id: 'income-table', label: 'BD Estado de resultados', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/income-statement/table' },
+      ]
+    },
+    {
+      id: 'accounting',
+      label: 'Contabilidad',
+      icon: <TableCellsIcon className="h-5 w-5" />,
+      roles: ['admin'],
+      path: '/accounting',
+      children: [
+        { id: 'accounting-consolidated', label: 'Consloidado PYG', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/consolidated' },
+        { id: 'accounting-cta-natalia', label: 'Cta Natalia', icon: <WalletIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/cta-natalia' },
+        { id: 'accounting-asientos-contables', label: 'Asientos Contables', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/asientos-contables' },
       ]
     },
     {

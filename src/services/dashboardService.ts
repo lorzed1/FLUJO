@@ -63,78 +63,39 @@ export const dashboardService = {
     },
 
     /**
-     * Obtiene el resumen de ventas (Venta Bruta) para un mes específico desde la tabla arqueos.
-     */
-    /**
      * Obtiene el resumen de ventas para un mes específico.
-     * Calcula el total sumando los métodos de pago individuales para coincidir con el Mix de Pagos.
+     * Usa la vista SQL `view_monthly_sales_summary` para máximo rendimiento.
      */
     async getSalesSummary(year: number, month: number) {
-        // Current Month Range
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const lastDay = new Date(year, month, 0).getDate();
-        const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+        const currentMonthYear = `${year}-${String(month).padStart(2, '0')}`;
 
-        // Previous Month Range
+        // Mes anterior
         const prevDate = new Date(year, month - 2, 1);
-        const prevYear = prevDate.getFullYear();
-        const prevMonth = prevDate.getMonth() + 1;
-        const prevStartDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
-        const prevLastDay = new Date(prevYear, prevMonth, 0).getDate();
-        const prevEndDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${prevLastDay}`;
+        const prevMonthYear = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
-        const queryCols = `
-            venta_pos,
-            visitas,
-            ingreso_covers
-        `;
+        const { data, error } = await supabase
+            .from('view_monthly_sales_summary')
+            .select('*')
+            .in('month_year', [currentMonthYear, prevMonthYear]);
 
-        // Parallel Requests
-        const [currRes, prevRes] = await Promise.all([
-            supabase
-                .from('arqueos')
-                .select(queryCols)
-                .gte('parsed_date', startDate)
-                .lte('parsed_date', endDate)
-                .is('deleted_at', null),
-            supabase
-                .from('arqueos')
-                .select(queryCols)
-                .gte('parsed_date', prevStartDate)
-                .lte('parsed_date', prevEndDate)
-                .is('deleted_at', null)
-        ]);
+        if (error) throw error;
 
-        if (currRes.error) throw currRes.error;
-        if (prevRes.error) throw prevRes.error;
+        const curr = (data || []).find(d => d.month_year === currentMonthYear);
+        const prev = (data || []).find(d => d.month_year === prevMonthYear);
 
-        // Note on Logic (User Clarity):
-        // "Venta POS" (System Raw) = item.venta_pos (approx $27m)
-        // "Venta Bruta" (Real Revenue) = item.venta_pos - item.ingreso_covers (approx $26m)
-        // We display "Venta Bruta" as the main KPI.
+        const currSales = Number(curr?.venta_bruta) || 0;
+        const currVisits = Number(curr?.total_visitas) || 0;
+        const currTicket = Number(curr?.ticket_promedio) || 0;
 
-        // Current Metrics
-        const currData = currRes.data || [];
-        const currSales = currData.reduce((sum, item) => sum + (Number(item.venta_pos) || 0) - (Number(item.ingreso_covers) || 0), 0);
-        const currVisits = currData.reduce((sum, item) => sum + (Number(item.visitas) || 0), 0);
-        const currTicket = currVisits > 0 ? currSales / currVisits : 0;
+        const prevSales = Number(prev?.venta_bruta) || 0;
+        const prevVisits = Number(prev?.total_visitas) || 0;
+        const prevTicket = Number(prev?.ticket_promedio) || 0;
 
-        // Previous Metrics
-        const prevData = prevRes.data || [];
-        const prevSales = prevData.reduce((sum, item) => sum + (Number(item.venta_pos) || 0) - (Number(item.ingreso_covers) || 0), 0);
-        const prevVisits = prevData.reduce((sum, item) => sum + (Number(item.visitas) || 0), 0);
-        const prevTicket = prevVisits > 0 ? prevSales / prevVisits : 0;
-
-        // Helper for Trend
-        const calcTrend = (curr: number, prev: number) => {
-            if (prev === 0) return 0;
-            return ((curr - prev) / prev) * 100;
-        };
+        const calcTrend = (c: number, p: number) => p === 0 ? 0 : ((c - p) / p) * 100;
 
         return {
             totalSales: currSales,
             totalVisits: currVisits,
-            // trends
             salesTrend: calcTrend(currSales, prevSales),
             visitsTrend: calcTrend(currVisits, prevVisits),
             ticketTrend: calcTrend(currTicket, prevTicket)
@@ -154,7 +115,6 @@ export const dashboardService = {
             .select('parsed_date, venta_pos, visitas')
             .gte('parsed_date', startDate)
             .lte('parsed_date', endDate)
-            .is('deleted_at', null)
             .order('parsed_date', { ascending: true });
 
         if (error) {
@@ -189,54 +149,27 @@ export const dashboardService = {
 
     /**
      * Obtiene la distribución de métodos de pago para un mes específico.
+     * Usa la vista SQL `view_payment_method_stats` para máximo rendimiento.
      */
     async getPaymentMethodsSummary(year: number, month: number) {
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const lastDay = new Date(year, month, 0).getDate();
-        const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+        const monthYear = `${year}-${String(month).padStart(2, '0')}`;
 
         const { data, error } = await supabase
-            .from('arqueos')
-            .select(`
-                efectivo,
-                datafono_david,
-                datafono_julian,
-                transf_bancolombia,
-                nequi,
-                rappi
-            `)
-            .gte('parsed_date', startDate)
-            .lte('parsed_date', endDate)
-            .is('deleted_at', null);
+            .from('view_payment_method_stats')
+            .select('*')
+            .eq('month_year', monthYear);
 
         if (error) {
             console.error('Error fetching payment methods summary:', error);
             throw error;
         }
 
-        const totals = (data || []).reduce((acc, curr) => ({
-            efectivo: acc.efectivo + (Number(curr.efectivo) || 0),
-            datafono_david: acc.datafono_david + (Number(curr.datafono_david) || 0),
-            datafono_julian: acc.datafono_julian + (Number(curr.datafono_julian) || 0),
-            nequi: acc.nequi + (Number(curr.nequi) || 0),
-            rappi: acc.rappi + (Number(curr.rappi) || 0)
-        }), {
-            efectivo: 0,
-            datafono_david: 0,
-            datafono_julian: 0,
-            nequi: 0,
-            rappi: 0
-        });
+        const methods = (data || []).map(d => ({
+            method: String(d.method_name),
+            amount: Number(d.total_amount) || 0
+        }));
 
-        const totalAmount = Object.values(totals).reduce((a, b) => a + b, 0);
-
-        const methods = [
-            { method: 'Efectivo', amount: totals.efectivo },
-            { method: 'Dataf. David', amount: totals.datafono_david },
-            { method: 'Dataf. Julian', amount: totals.datafono_julian },
-            { method: 'Nequi', amount: totals.nequi },
-            { method: 'Rappi', amount: totals.rappi }
-        ];
+        const totalAmount = methods.reduce((sum, m) => sum + m.amount, 0);
 
         return methods
             .filter(item => item.amount > 0)
@@ -284,7 +217,6 @@ export const dashboardService = {
             .select('parsed_date, venta_pos, ingreso_covers, visitas')
             .gte('parsed_date', startDateStr)
             .lte('parsed_date', endDateStr)
-            .is('deleted_at', null)
             .order('parsed_date', { ascending: true });
 
         if (error) {
@@ -386,7 +318,6 @@ export const dashboardService = {
                 .select('parsed_date, venta_pos, ingreso_covers')
                 .gte('parsed_date', prevStartDateStr)
                 .lte('parsed_date', endDateStr)
-                .is('deleted_at', null)
         ]);
 
         const { data: purchasesData, error: purchasesError } = purchasesRes;
@@ -458,47 +389,28 @@ export const dashboardService = {
 
     /**
      * Obtiene el total de compras del mes actual y su variación respecto al mes anterior.
-     * Solo usa la columna 'debito'.
+     * Usa la vista SQL `view_monthly_purchases_summary` para máximo rendimiento.
      */
     async getMonthlyPurchasesKPI(year: number, month: number) {
-        const getStartAndEndOfMonth = (y: number, m: number) => {
-            const start = new Date(y, m - 1, 1);
-            const end = new Date(y, m, 0); // last day
-
-            const z = (n: number) => ('0' + n).slice(-2);
-            return {
-                start: `${start.getFullYear()}-${z(start.getMonth() + 1)}-${z(start.getDate())}`,
-                end: `${end.getFullYear()}-${z(end.getMonth() + 1)}-${z(end.getDate())}`
-            };
-        };
-
-        const currentMonthRange = getStartAndEndOfMonth(year, month);
+        const currentMonthYear = `${year}-${String(month).padStart(2, '0')}`;
 
         let prevYear = year;
         let prevMonth = month - 1;
-        if (prevMonth === 0) {
-            prevMonth = 12;
-            prevYear--;
-        }
-        const prevMonthRange = getStartAndEndOfMonth(prevYear, prevMonth);
+        if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+        const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
 
-        const fetchTotal = async (start: string, end: string) => {
-            const { data, error } = await supabase
-                .from('budget_purchases')
-                .select('debito')
-                .gte('fecha', start)
-                .lte('fecha', end);
+        const { data, error } = await supabase
+            .from('view_monthly_purchases_summary')
+            .select('*')
+            .in('month_year', [currentMonthYear, prevMonthYear]);
 
-            if (error) {
-                console.error('Error fetching purchases total:', error);
-                return 0;
-            }
+        if (error) throw error;
 
-            return (data || []).reduce((sum, item) => sum + (Number(item.debito) || 0), 0);
-        };
+        const curr = (data || []).find(d => d.month_year === currentMonthYear);
+        const prev = (data || []).find(d => d.month_year === prevMonthYear);
 
-        const currentTotal = await fetchTotal(currentMonthRange.start, currentMonthRange.end);
-        const prevTotal = await fetchTotal(prevMonthRange.start, prevMonthRange.end);
+        const currentTotal = Number(curr?.total_debito) || 0;
+        const prevTotal = Number(prev?.total_debito) || 0;
 
         let change = 0;
         if (prevTotal > 0) {
@@ -514,72 +426,48 @@ export const dashboardService = {
     },
 
     /**
-     * Obtiene el KPI de porcentaje de compras respecto a ventas brutas (sin covers).
+     * KPI de porcentaje de compras respecto a ventas brutas (sin covers).
+     * Combina las vistas `view_monthly_purchases_summary` y `view_monthly_sales_summary`.
      */
     async getMonthlyPurchasesPercentageKPI(year: number, month: number) {
-        const getStartAndEndOfMonth = (y: number, m: number) => {
-            const start = new Date(y, m - 1, 1);
-            const end = new Date(y, m, 0);
-            const z = (n: number) => ('0' + n).slice(-2);
-            return {
-                start: `${start.getFullYear()}-${z(start.getMonth() + 1)}-${z(start.getDate())}`,
-                end: `${end.getFullYear()}-${z(end.getMonth() + 1)}-${z(end.getDate())}`
-            };
-        };
+        const currentMonthYear = `${year}-${String(month).padStart(2, '0')}`;
 
-        const currentMonthRange = getStartAndEndOfMonth(year, month);
         let prevYear = year;
         let prevMonth = month - 1;
-        if (prevMonth === 0) {
-            prevMonth = 12;
-            prevYear--;
-        }
-        const prevMonthRange = getStartAndEndOfMonth(prevYear, prevMonth);
+        if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+        const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
 
-        const fetchPurchases = async (start: string, end: string) => {
-            const { data, error } = await supabase
-                .from('budget_purchases')
-                .select('debito')
-                .gte('fecha', start)
-                .lte('fecha', end);
-            if (error) return 0;
-            return (data || []).reduce((sum, item) => sum + (Number(item.debito) || 0), 0);
-        };
-
-        const fetchSales = async (start: string, end: string) => {
-            const { data, error } = await supabase
-                .from('arqueos')
-                .select('venta_pos, ingreso_covers')
-                .gte('parsed_date', start)
-                .lte('parsed_date', end)
-                .is('deleted_at', null);
-            if (error) return 0;
-            return (data || []).reduce((sum, item) => {
-                const grossSale = Number(item.venta_pos) || 0;
-                const covers = Number(item.ingreso_covers) || 0;
-                return sum + Math.max(0, grossSale - covers);
-            }, 0);
-        };
-
-        const [currPurchases, currSales, prevPurchases, prevSales] = await Promise.all([
-            fetchPurchases(currentMonthRange.start, currentMonthRange.end),
-            fetchSales(currentMonthRange.start, currentMonthRange.end),
-            fetchPurchases(prevMonthRange.start, prevMonthRange.end),
-            fetchSales(prevMonthRange.start, prevMonthRange.end)
+        const [purchasesRes, salesRes] = await Promise.all([
+            supabase
+                .from('view_monthly_purchases_summary')
+                .select('*')
+                .in('month_year', [currentMonthYear, prevMonthYear]),
+            supabase
+                .from('view_monthly_sales_summary')
+                .select('*')
+                .in('month_year', [currentMonthYear, prevMonthYear])
         ]);
+
+        if (purchasesRes.error) throw purchasesRes.error;
+        if (salesRes.error) throw salesRes.error;
+
+        const currPurchases = Number((purchasesRes.data || []).find(d => d.month_year === currentMonthYear)?.total_debito) || 0;
+        const prevPurchases = Number((purchasesRes.data || []).find(d => d.month_year === prevMonthYear)?.total_debito) || 0;
+        const currSales = Number((salesRes.data || []).find(d => d.month_year === currentMonthYear)?.venta_bruta) || 0;
+        const prevSales = Number((salesRes.data || []).find(d => d.month_year === prevMonthYear)?.venta_bruta) || 0;
 
         const currentPercentage = currSales > 0 ? (currPurchases / currSales) * 100 : 0;
         const prevPercentage = prevSales > 0 ? (prevPurchases / prevSales) * 100 : 0;
 
         let change = 0;
         if (prevPercentage > 0) {
-            change = currentPercentage - prevPercentage; // Puntos porcentuales
+            change = currentPercentage - prevPercentage;
         }
 
         return {
             percentage: currentPercentage,
             change: change,
-            isUp: change > 0 // Si el % de compras sube, es un incremento en el gasto
+            isUp: change > 0
         };
     }
 };

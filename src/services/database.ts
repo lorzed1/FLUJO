@@ -53,8 +53,7 @@ export class DatabaseService {
                     is_recurring: t.isRecurring || false,
                     recurring_id: t.recurringId || null,
                     metadata: t.metadata || {},
-                    status: t.status || 'completed',
-                    deleted_at: null // Revive if was soft deleted
+                    status: t.status || 'completed'
                 }));
 
                 // Upsert en lotes de 500
@@ -82,7 +81,6 @@ export class DatabaseService {
             const { data, error } = await supabase
                 .from('transactions')
                 .select('*')
-                .is('deleted_at', null)
                 .order('date', { ascending: false })
                 .range(0, 10000);
 
@@ -362,8 +360,7 @@ export class DatabaseService {
                 // These might be redundant if we fully move to arqueo_details, but keeping for compatibility
                 base_detail: arqueo.baseDetail || null,
                 cuadre_detail: arqueo.cuadreDetail || null,
-                total_ingresos: arqueo.totalIngresos ?? null,
-                deleted_at: null
+                total_ingresos: arqueo.totalIngresos ?? null
             };
 
             const query = supabase.from('arqueos');
@@ -391,7 +388,6 @@ export class DatabaseService {
             const { data, error } = await supabase
                 .from('arqueos')
                 .select('*')
-                .is('deleted_at', null)
                 .order('fecha', { ascending: false });
 
             if (error) throw error;
@@ -500,8 +496,7 @@ export class DatabaseService {
                 description: transfer.description,
                 arqueo_id: transfer.arqueoId || null,
                 created_at: transfer.createdAt,
-                status: 'completed',
-                deleted_at: null
+                status: 'completed'
             };
 
             const { error } = await supabase
@@ -523,7 +518,6 @@ export class DatabaseService {
                 .from('transactions')
                 .select('*')
                 .eq('type', 'transfer')
-                .is('deleted_at', null)
                 .order('date', { ascending: false });
 
             if (error) throw error;

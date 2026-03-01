@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -10,6 +10,7 @@ import autoTable from 'jspdf-autotable';
 export interface Column<T> {
     key: string;
     label: string;
+    type?: 'text' | 'number' | 'currency' | 'date' | 'boolean';
     width?: string;
     align?: 'text-left' | 'text-center' | 'text-right';
     render?: (value: any, item: T) => React.ReactNode;
@@ -21,7 +22,7 @@ export interface Column<T> {
     className?: string;
 }
 
-export interface SmartDataTableProps<T extends { id: string }> {
+export interface SmartDataTableProps<T extends Record<string, any>> {
     id?: string;
     data: T[];
     columns: Column<T>[];
@@ -30,6 +31,7 @@ export interface SmartDataTableProps<T extends { id: string }> {
     enableExport?: boolean;
     enableColumnConfig?: boolean;
     onImport?: () => void;
+    onImportFile?: (file: File) => void;
     onBulkDelete?: (ids: Set<string>) => void;
     onDelete?: (item: T) => void;
     onEdit?: (item: T) => void;
@@ -46,6 +48,7 @@ export interface SmartDataTableProps<T extends { id: string }> {
     onSearchChange?: (term: string) => void;
     sortConfig?: { key: string; direction: 'asc' | 'desc' };
     onSortChange?: (config: { key: string; direction: 'asc' | 'desc' }) => void;
+    onInfoClick?: () => void;
     renderExtraFilters?: () => React.ReactNode;
     renderSelectionActions?: (selectedIds: Set<string>) => React.ReactNode;
     exportDateField?: string;
@@ -57,6 +60,29 @@ export interface SmartDataTableProps<T extends { id: string }> {
 // Helpers
 // ============================================
 
+export function formatDateToDisplayLocal(dateStr: string | any): string {
+    if (!dateStr) return '';
+    try {
+        let isoStr = dateStr;
+        if (dateStr instanceof Date) {
+            isoStr = dateStr.toISOString().split('T')[0];
+        } else if (typeof dateStr === 'string') {
+            isoStr = dateStr.split('T')[0];
+        }
+
+        if (typeof isoStr === 'string' && isoStr.includes('-')) {
+            const parts = isoStr.split('-');
+            if (parts.length === 3) {
+                const [year, month, day] = parts;
+                return `${day}/${month}/${year}`;
+            }
+        }
+        return String(dateStr);
+    } catch (e) {
+        return String(dateStr);
+    }
+}
+
 export function getCellValue<T>(item: T, col: Column<T>): string | number {
     if (col.getValue) return col.getValue(item);
     const value = (item as any)[col.key];
@@ -65,6 +91,13 @@ export function getCellValue<T>(item: T, col: Column<T>): string | number {
 
 export function getRenderedStringValue<T>(item: T, col: Column<T>): string {
     const val = getCellValue(item, col);
+    if (val === undefined || val === null || val === '') return '';
+    if (String(col.type).startsWith('currency') && typeof val === 'number') {
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+    }
+    if (col.type === 'date' && typeof val === 'string') {
+        return formatDateToDisplayLocal(val);
+    }
     return String(val);
 }
 
@@ -72,7 +105,7 @@ export function getRenderedStringValue<T>(item: T, col: Column<T>): string {
 // Hook
 // ============================================
 
-export function useSmartDataTable<T extends { id: string }>({
+export function useSmartDataTable<T extends Record<string, any>>({
     data,
     columns: initialColumns,
     enableSearch = true,
@@ -93,6 +126,9 @@ export function useSmartDataTable<T extends { id: string }>({
     const [showExportModal, setShowExportModal] = useState(false);
     const [pendingExportFormat, setPendingExportFormat] = useState<'excel' | 'csv' | 'pdf' | null>(null);
     const [exportDateRange, setExportDateRange] = useState({ start: '', end: '' });
+
+    // --- Refs ---
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- Internal State ---
     const [internalSearchTerm, setInternalSearchTerm] = useState('');
@@ -150,6 +186,21 @@ export function useSmartDataTable<T extends { id: string }>({
             localStorage.setItem(`dt_cols_${tableId}`, JSON.stringify(visibleColumns));
         }
     }, [visibleColumns, tableId]);
+
+    // Handle dynamic column additions (like in wizards where columns load later)
+    useEffect(() => {
+        setVisibleColumns(prev => {
+            let changed = false;
+            const next = { ...prev };
+            initialColumns.forEach(col => {
+                if (next[col.key] === undefined) {
+                    next[col.key] = col.defaultHidden ? false : true;
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, [initialColumns]);
 
     // --- Unique Values (for Excel-style filters) ---
     const getUniqueValues = (colKey: string) => {
@@ -367,6 +418,7 @@ export function useSmartDataTable<T extends { id: string }>({
         activeFilters,
         visibleColumns,
         setVisibleColumns,
+        fileInputRef,
         currentPage,
         setCurrentPage,
         pageSize,

@@ -10,6 +10,8 @@ const DashboardView = lazy(() => import('../features/dashboard/DashboardView'));
 const UsersManagementView = lazy(() => import('../features/auth/UsersManagementView'));
 const Login = lazy(() => import('../features/auth/Login'));
 const ArqueoView = lazy(() => import('../features/cash-flow/ArqueoPreview'));
+const TipsPage = lazy(() => import('../features/cash-flow/pages/TipsPage'));
+
 const RescueData = lazy(() => import('../pages/RescueData'));
 const ButtonDesignPlayground = lazy(() => import('../pages/ButtonDesignPlayground'));
 
@@ -32,6 +34,12 @@ const ProjectionsView = lazy(() => import('../features/projections/ProjectionsVi
 const IncomeStatementLayout = lazy(() => import('../features/income-statement/layouts/IncomeStatementLayout').then(m => ({ default: m.IncomeStatementLayout })));
 const IncomeStatementDashboard = lazy(() => import('../features/income-statement/pages/IncomeStatementDashboard').then(m => ({ default: m.IncomeStatementDashboard })));
 const IncomeStatementTable = lazy(() => import('../features/income-statement/pages/IncomeStatementTable').then(m => ({ default: m.IncomeStatementTable })));
+
+// Accounting Module
+const AccountingLayout = lazy(() => import('../features/accounting/layouts/AccountingLayout').then(m => ({ default: m.AccountingLayout })));
+const AccountingConsolidatedPYG = lazy(() => import('../features/accounting/pages/AccountingConsolidatedPYG').then(m => ({ default: m.AccountingConsolidatedPYG })));
+const AccountingCtaNatalia = lazy(() => import('../features/accounting/pages/AccountingCtaNatalia').then(m => ({ default: m.AccountingCtaNatalia })));
+const AccountingAsientosContables = lazy(() => import('../features/accounting/pages/AccountingAsientosContables').then(m => ({ default: m.AccountingAsientosContables })));
 
 const AppRouter: React.FC = () => {
     // Contextos especializados
@@ -97,6 +105,9 @@ const AppRouter: React.FC = () => {
             {/* Layout Principal */}
             <Route element={<MainLayout />}>
                 {/* Arqueo: Accesible para Admin y Cajero */}
+                <Route path="/arqueo/tips" element={
+                    <TipsPage />
+                } />
                 <Route path="/arqueo/*" element={
                     <ArqueoView />
                 } />
@@ -134,6 +145,13 @@ const AppRouter: React.FC = () => {
                 <Route path="/income-statement" element={userRole === 'admin' ? <IncomeStatementLayout /> : <Navigate to="/arqueo" replace />}>
                     <Route index element={<IncomeStatementDashboard />} />
                     <Route path="table" element={<IncomeStatementTable />} />
+                </Route>
+
+                {/* Accounting Module */}
+                <Route path="/accounting" element={userRole === 'admin' ? <AccountingLayout /> : <Navigate to="/arqueo" replace />}>
+                    <Route path="consolidated" element={<AccountingConsolidatedPYG />} />
+                    <Route path="cta-natalia" element={<AccountingCtaNatalia />} />
+                    <Route path="asientos-contables" element={<AccountingAsientosContables />} />
                 </Route>
 
                 <Route path="/rescate" element={<RescueData />} />

@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { TransferRecord } from '../../types';
 import { DatabaseService } from '../../services/database';
-import { ArrowPathIcon, BanknotesIcon, TrashIcon } from '../../components/ui/Icons';
+import { TrashIcon } from '../../components/ui/Icons';
 import { SmartDataTable, Column } from '../../components/ui/SmartDataTable';
-import { formatCOP } from '../../components/ui/Input';
 import { useUI } from '../../context/UIContext';
-import { formatDateToDisplay } from '../../utils/dateUtils';
 import { Button } from '@/components/ui/Button';
 
 const TransfersView: React.FC = () => {
@@ -95,9 +93,9 @@ const TransfersView: React.FC = () => {
         {
             key: 'date',
             label: 'Fecha',
+            type: 'date',
             sortable: true,
             filterable: true,
-            render: (val) => <span>{val ? formatDateToDisplay(val) : ''}</span>
         },
         {
             key: 'type',
@@ -137,17 +135,13 @@ const TransfersView: React.FC = () => {
             label: 'Descripción',
             sortable: true,
             filterable: true,
-            render: (val) => <span>{val || ''}</span>
         },
         {
             key: 'amount',
             label: 'Monto',
+            type: 'currency',
             sortable: true,
-            render: (val) => (
-                <span className="tabular-nums">
-                    {val ? formatCOP(Number(val)) : '$ 0'}
-                </span>
-            )
+            align: 'text-right',
         }
     ], []);
 
@@ -165,6 +159,7 @@ const TransfersView: React.FC = () => {
                 <SmartDataTable
                     data={transfers}
                     columns={columns}
+                    loading={isLoading}
                     enableSearch={true}
                     searchPlaceholder="Buscar transferencias..."
                     enableSelection={true}
@@ -175,38 +170,7 @@ const TransfersView: React.FC = () => {
                     onBulkDelete={handleBulkDelete}
                     exportDateField="date"
                     containerClassName="border-none shadow-none"
-                    // Botones extra en la barra de herramientas
-                    renderExtraFilters={() => (
-                        <>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={async () => {
-                                    const corrupt = transfers.filter(t => !t.type || !t.amount);
-                                    if (corrupt.length === 0) {
-                                        setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: 'No se encontraron registros corruptos.' });
-                                        return;
-                                    }
-                                    await handleBulkDelete(new Set(corrupt.map(t => t.id)), 'Esto eliminará TODOS los registros de transferencia que no tengan tipo o monto válido. ¿Continuar?');
-                                }}
-                                className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 text-gray-500 hover:text-red-600 hover:border-red-200"
-                                title="Limpiar registros corruptos"
-                            >
-                                <TrashIcon className="h-3.5 w-3.5" />
-                                Limpiar Basura
-                            </Button>
-
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => loadTransfers(true)}
-                                className="h-8 w-8 p-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-gray-500 hover:text-purple-600"
-                                title="Recargar datos"
-                            >
-                                <ArrowPathIcon className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                            </Button>
-                        </>
-                    )}
+                    id="cash-flow-transfers"
                     // Eliminar individual
                     renderSelectionActions={(ids) => (
                         <Button

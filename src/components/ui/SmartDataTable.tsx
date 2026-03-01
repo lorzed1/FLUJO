@@ -15,16 +15,20 @@ import {
     TrashIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
-    ArrowUpTrayIcon
+    ArrowUpTrayIcon,
+    PencilIcon,
+    QuestionMarkCircleIcon,
+    InformationCircleIcon
 } from './Icons';
 import { cn } from '@/lib/utils';
 
 // Re-export types from hook for consumers
 export type { Column, SmartDataTableProps } from '@/hooks/useSmartDataTable';
 import { useSmartDataTable, type SmartDataTableProps } from '@/hooks/useSmartDataTable';
+import { useUI } from '@/context/UIContext';
 
 // --- Componente Maestro ---
-export function SmartDataTable<T extends { id: string }>(props: SmartDataTableProps<T>) {
+export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTableProps<T>) {
     const {
         columns: initialColumns,
         enableSearch = true,
@@ -32,6 +36,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
         enableExport = true,
         enableColumnConfig = true,
         onImport,
+        onImportFile,
         onBulkDelete,
         onRowClick,
         containerClassName = "",
@@ -39,9 +44,24 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
         renderExtraFilters,
         renderSelectionActions,
         loading = false,
+        onInfoClick,
     } = props;
 
     const table = useSmartDataTable(props);
+    const { setAlertModal } = useUI();
+
+    const handleInfoClick = () => {
+        if (onInfoClick) {
+            onInfoClick();
+        } else {
+            setAlertModal({
+                isOpen: true,
+                title: 'Información del Sistema',
+                message: 'La documentación detallada de estas columnas y cálculos estará disponible próximamente. Estamos trabajando para brindarte mayor transparencia en tus datos.',
+                type: 'info'
+            });
+        }
+    };
 
     return (
         <div className={`flex flex-col min-h-0 ${containerClassName} relative`}>
@@ -74,9 +94,10 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                     {renderSelectionActions ? renderSelectionActions(table.selectedIds) : (
                         onBulkDelete && (
                             <Button
+                                variant="danger"
                                 size="sm"
                                 onClick={table.handleBulkDeleteAction}
-                                className="h-7 px-3 gap-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 dark:bg-transparent dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30 rounded-md text-xs font-semibold shadow-sm transition-colors"
+                                className="h-7 px-3 gap-1.5 text-xs font-bold rounded-md"
                             >
                                 <TrashIcon className="h-3.5 w-3.5" /> Eliminar
                             </Button>
@@ -86,7 +107,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
             )}
 
             {/* Barra Principal: Buscar + Columnas + Exportar — FIJA, no scrollea */}
-            <div className="flex flex-wrap gap-4 items-center justify-between px-4 py-3 shrink-0">
+            <div className="flex flex-wrap gap-4 items-center justify-between px-8 py-3 shrink-0">
                 {enableSearch && (
                     <div className="relative w-full max-w-sm group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -102,21 +123,66 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                 )}
 
                 <div className="flex items-center gap-2 ml-auto">
+
+                    {/* 1. Botones extra de cada página (siempre al inicio de la toolbar, a la izquierda) */}
                     {renderExtraFilters?.()}
 
-                    {/* Botón de Importar */}
-                    {onImport && (
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-8 gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm text-xs font-medium rounded-lg"
-                            onClick={onImport}
-                        >
-                            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
-                            Importar
-                        </Button>
+                    {/* 2. Botón de Importar */}
+                    {(onImport || onImportFile) && (
+                        <>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm text-xs font-medium rounded-lg"
+                                onClick={() => {
+                                    if (onImportFile && table.fileInputRef?.current) {
+                                        table.fileInputRef.current.click();
+                                    } else if (onImport) {
+                                        onImport();
+                                    }
+                                }}
+                            >
+                                <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                                Importar
+                            </Button>
+                            {onImportFile && (
+                                <input
+                                    type="file"
+                                    ref={table.fileInputRef}
+                                    className="hidden"
+                                    accept=".xlsx,.xls,.csv,.json"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            onImportFile(file);
+                                        }
+                                        if (e.target) e.target.value = '';
+                                    }}
+                                />
+                            )}
+                        </>
                     )}
 
+                    {/* 3. Botón de Exportación */}
+                    {enableExport && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="secondary" size="sm" className="h-8 gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm text-xs font-medium rounded-lg">
+                                    <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                                    Exportar
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Descargar como</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => table.initiateExport('excel')}>Excel (.xlsx)</DropdownMenuCheckboxItem>
+                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => table.initiateExport('csv')}>CSV (.csv)</DropdownMenuCheckboxItem>
+                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => table.initiateExport('pdf')}>PDF (.pdf)</DropdownMenuCheckboxItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+
+                    {/* 4. Botón de Columnas */}
                     {enableColumnConfig && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -156,24 +222,16 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                         </DropdownMenu>
                     )}
 
-                    {/* Exportación */}
-                    {enableExport && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="secondary" size="sm" className="h-8 gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm text-xs font-medium rounded-lg">
-                                    <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                                    Exportar
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Descargar como</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => table.initiateExport('excel')}>Excel (.xlsx)</DropdownMenuCheckboxItem>
-                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => table.initiateExport('csv')}>CSV (.csv)</DropdownMenuCheckboxItem>
-                                <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => table.initiateExport('pdf')}>PDF (.pdf)</DropdownMenuCheckboxItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                    {/* 5. Botón de Información (Siempre Visible - Al final a la derecha) */}
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-8 w-8 p-0 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-500 hover:text-purple-600 border border-gray-200 shadow-sm rounded-lg transition-all active:scale-95"
+                        onClick={handleInfoClick}
+                        title="Información de datos y cálculos"
+                    >
+                        <InformationCircleIcon className="h-4 w-4" />
+                    </Button>
                 </div>
             </div>
 
@@ -187,7 +245,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                 <TableHeader className="bg-white dark:bg-slate-800 sticky top-0 z-20 shadow-sm">
                                     <TableRow className="hover:bg-transparent border-none">
                                         {enableSelection && (
-                                            <TableHead className="w-[40px] pl-0 pr-4 py-2.5 bg-white dark:bg-slate-800 text-left custom-header-cell sticky top-0 z-20 shadow-none border-b border-gray-100 dark:border-slate-700">
+                                            <TableHead className="w-[40px] pl-0 pr-4 py-2 bg-transparent text-left custom-header-cell sticky top-0 z-20 shadow-none border-b border-gray-100 dark:border-slate-700">
                                                 <Checkbox
                                                     checked={table.selectedIds.size > 0 && table.selectedIds.size === table.processedData.length}
                                                     onCheckedChange={table.toggleSelectAll}
@@ -198,12 +256,19 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                         )}
                                         {initialColumns.filter(c => table.visibleColumns[c.key]).map((col, idx, arr) => {
                                             const isFiltered = table.activeFilters[col.key]?.length > 0;
+                                            // Alineación automática por tipo de dato si no se especifica
+                                            const autoAlign = col.align || (
+                                                (col.type === 'currency' || col.type === 'number' || col.key === 'actions')
+                                                    ? 'text-right'
+                                                    : 'text-left'
+                                            );
+
                                             return (
                                                 <TableHead
                                                     key={col.key}
                                                     className={cn(
-                                                        "text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-2.5 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-sm",
-                                                        col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
+                                                        "text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none",
+                                                        autoAlign === 'text-right' ? 'text-right' : autoAlign === 'text-center' ? 'text-center' : 'text-left',
                                                         idx === 0 && !enableSelection ? "pl-0 pr-4" : "px-4",
                                                         idx === arr.length - 1 ? "pr-0 pl-4" : "",
                                                         col.width
@@ -212,7 +277,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                 >
                                                     <div className={cn(
                                                         "flex items-center gap-1.5",
-                                                        col.align === 'text-right' ? 'justify-end' : col.align === 'text-center' ? 'justify-center' : 'justify-start'
+                                                        autoAlign === 'text-right' ? 'justify-end' : autoAlign === 'text-center' ? 'justify-center' : 'justify-start'
                                                     )}>
                                                         <span
                                                             className={cn(
@@ -222,7 +287,7 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                             )}
                                                             onClick={() => col.sortable !== false && table.toggleSort(col.key)}
                                                         >
-                                                            {col.label}
+                                                            {(col.key === 'actions' && (!col.label || col.label === '')) ? 'Acciones' : col.label}
                                                         </span>
 
                                                         <div className="flex items-center">
@@ -280,12 +345,12 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                             );
                                         })}
                                         {(props.onDelete || props.onEdit || props.onView) && (
-                                            <TableHead className="w-[100px] text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-2.5 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-sm">
+                                            <TableHead className="w-[100px] text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none">
                                                 Acciones
                                             </TableHead>
                                         )}
                                         {/* Columna espaciadora (Filler) para evitar que pocas columnas se estiren demasiado */}
-                                        <TableHead className="w-full min-w-0 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 sticky top-0 z-20 shadow-sm" />
+                                        <TableHead className="w-full min-w-0 bg-transparent border-b border-gray-100 dark:border-slate-700 sticky top-0 z-20 shadow-none" />
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -301,8 +366,8 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                     table.selectedIds.has(item.id)
                                                         ? "bg-purple-50 dark:bg-purple-900/40"
                                                         : index % 2 === 0
-                                                            ? "bg-white hover:bg-slate-50 dark:bg-[#0f172a] dark:hover:bg-slate-800/60"
-                                                            : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700"
+                                                            ? "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                                                            : "bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80"
                                                 )}
                                             >
                                                 {enableSelection && (
@@ -317,37 +382,52 @@ export function SmartDataTable<T extends { id: string }>(props: SmartDataTablePr
                                                 )}
                                                 {/* Celdas de Datos */}
                                                 {true && (
-                                                    initialColumns.filter(c => table.visibleColumns[c.key]).map((col, idx, arr) => (
-                                                        <TableCell
-                                                            key={col.key}
-                                                            className={cn(
-                                                                col.align === 'text-right' ? 'text-right' : col.align === 'text-center' ? 'text-center' : 'text-left',
-                                                                "py-2.5 text-[12px] leading-[19.4px] text-[#363636] dark:text-gray-300 font-sans font-normal align-middle whitespace-nowrap",
-                                                                idx === 0 && !enableSelection ? "pl-0 pr-4" : idx === arr.length - 1 && !props.onDelete && !props.onEdit && !props.onView ? "pl-4 pr-0" : "px-4",
-                                                                col.className
-                                                            )}
-                                                        >
-                                                            {item ? (
-                                                                col.render ? col.render((item as any)[col.key], item) : table.getRenderedStringValue(item, col)
-                                                            ) : null}
-                                                        </TableCell>
-                                                    ))
+                                                    initialColumns.filter(c => table.visibleColumns[c.key]).map((col, idx, arr) => {
+                                                        const autoAlign = col.align || (
+                                                            (col.type === 'currency' || col.type === 'number' || col.key === 'actions')
+                                                                ? 'text-right'
+                                                                : 'text-left'
+                                                        );
+                                                        return (
+                                                            <TableCell
+                                                                key={col.key}
+                                                                className={cn(
+                                                                    autoAlign === 'text-right' ? 'text-right' : autoAlign === 'text-center' ? 'text-center' : 'text-left',
+                                                                    "py-2.5 text-[12px] leading-[19.4px] text-[#363636] dark:text-gray-300 font-sans font-normal align-middle whitespace-nowrap",
+                                                                    idx === 0 && !enableSelection ? "pl-0 pr-4" : idx === arr.length - 1 && !props.onDelete && !props.onEdit && !props.onView ? "pl-4 pr-0" : "px-4",
+                                                                    col.key !== 'actions' && "[&>div]:!flex [&>div]:!flex-row [&>div]:!items-center [&>div]:!gap-2 [&_.block]:!inline [&_div.mt-0\\.5]:!mt-0",
+                                                                    col.className?.includes('font-result') ? "font-bold text-purple-700 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/10" : "",
+                                                                    col.className
+                                                                )}
+                                                            >
+                                                                {item ? (
+                                                                    col.render ? col.render((item as any)[col.key], item) : (
+                                                                        (col.type && String(col.type).startsWith('currency')) ? (
+                                                                            <span className="tabular-nums">
+                                                                                {table.getRenderedStringValue(item, col)}
+                                                                            </span>
+                                                                        ) : table.getRenderedStringValue(item, col)
+                                                                    )
+                                                                ) : null}
+                                                            </TableCell>
+                                                        );
+                                                    })
                                                 )}
                                                 {(props.onDelete || props.onEdit || props.onView) && (
                                                     <TableCell className="w-[80px] py-1.5 px-4 text-center align-middle">
-                                                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center justify-center gap-1 transition-opacity">
                                                             {props.onView && (
-                                                                <button onClick={(e) => { e.stopPropagation(); props.onView?.(item); }} className="p-1 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Ver">
+                                                                <button onClick={(e) => { e.stopPropagation(); props.onView?.(item); }} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all" title="Ver">
                                                                     <EyeIcon className="h-4 w-4" />
                                                                 </button>
                                                             )}
                                                             {props.onEdit && (
-                                                                <button onClick={(e) => { e.stopPropagation(); props.onEdit?.(item); }} className="p-1 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Editar">
-                                                                    <ArrowUpTrayIcon className="h-4 w-4 rotate-90" />
+                                                                <button onClick={(e) => { e.stopPropagation(); props.onEdit?.(item); }} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all" title="Editar">
+                                                                    <PencilIcon className="h-4 w-4" />
                                                                 </button>
                                                             )}
                                                             {props.onDelete && (
-                                                                <button onClick={(e) => { e.stopPropagation(); props.onDelete?.(item); }} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar">
+                                                                <button onClick={(e) => { e.stopPropagation(); props.onDelete?.(item); }} className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all" title="Eliminar">
                                                                     <TrashIcon className="h-4 w-4" />
                                                                 </button>
                                                             )}

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { SmartDataTable } from '../../../components/ui/SmartDataTable';
+import { Column } from '../../../components/ui/SmartDataTable';
 import { budgetService } from '../../../services/budget';
-import { RecurrenceRule } from '../../../types/budget';
-import { ArrowPathIcon, TrashIcon, PencilSquareIcon, PlusIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
-import { PageHeader } from '../../../components/layout/PageHeader';
+import { RecurrenceRule, RecurrenceFrequency } from '../../../types/budget';
+import { ArrowPathIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon } from '../../../components/ui/Icons';
 import { RecurrenceRuleFormModal } from '../components/RecurrenceRuleFormModal';
 import { useUI } from '../../../context/UIContext';
-import { Button } from '@/components/ui/Button';
+import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { BudgetCategories } from './BudgetCategories';
+import * as XLSX from 'xlsx';
 
 const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = ({ onSwitchToCategories }) => {
     const { setAlertModal } = useUI();
@@ -103,7 +104,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
         }
     };
 
-    const columns = useMemo(() => [
+    const columns: Column<RecurrenceRule>[] = useMemo(() => [
         {
             key: 'title',
             label: 'Descripción',
@@ -114,9 +115,9 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
         {
             key: 'amount',
             label: 'Monto',
+            type: 'currency',
             sortable: true,
             align: 'text-right' as const,
-            render: (value: number) => <span className="tabular-nums">${value.toLocaleString()}</span>
         },
         {
             key: 'category',
@@ -171,21 +172,21 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                 <div className="flex justify-end gap-1">
                     <button
                         onClick={() => handleDuplicate(item)}
-                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 transition-all rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
                         title="Duplicar regla"
                     >
                         <DocumentDuplicateIcon className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => handleEdit(item)}
-                        className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-purple-600 transition-all rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20"
                         title="Editar regla"
                     >
-                        <PencilSquareIcon className="w-4 h-4" />
+                        <PencilIcon className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => handleDelete(item.id)}
-                        className="p-1 text-gray-400 hover:text-rose-600 transition-colors"
+                        className="p-1.5 text-slate-300 hover:text-red-600 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Eliminar regla"
                     >
                         <TrashIcon className="w-4 h-4" />
@@ -249,61 +250,134 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
         });
     };
 
+    // --- Importar desde Excel ---
+    const handleImportFile = async (file: File) => {
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet);
+
+            if (rows.length === 0) {
+                setAlertModal({ isOpen: true, type: 'info', title: 'Archivo vacío', message: 'No se encontraron filas en el archivo.' });
+                return;
+            }
+
+            // Helper para buscar valor con nombres flexibles
+            const get = (row: Record<string, any>, ...keys: string[]) => {
+                for (const k of keys) {
+                    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+                }
+                return undefined;
+            };
+
+            const parseFrequency = (val: any): RecurrenceFrequency => {
+                const s = String(val || '').toLowerCase().trim();
+                if (s.includes('seman') || s === 'weekly') return 'weekly';
+                if (s.includes('anual') || s === 'yearly') return 'yearly';
+                return 'monthly'; // default
+            };
+
+            let created = 0;
+            let skipped = 0;
+
+            for (const row of rows) {
+                const title = String(get(row, 'title', 'titulo', 'Titulo', 'TITULO', 'Descripción', 'descripcion', 'DESCRIPCION', 'nombre', 'Nombre', 'NOMBRE') || '').trim();
+                const amount = Number(get(row, 'amount', 'monto', 'Monto', 'MONTO', 'valor', 'Valor', 'VALOR') || 0);
+
+                if (!title || amount <= 0) {
+                    skipped++;
+                    continue;
+                }
+
+                const category = String(get(row, 'category', 'categoria', 'Categoria', 'CATEGORIA', 'Categoría', 'categoría') || 'General').trim();
+                const frequency = parseFrequency(get(row, 'frequency', 'frecuencia', 'Frecuencia', 'FRECUENCIA'));
+                const dayToSend = Number(get(row, 'dayToSend', 'day_to_send', 'dia', 'Dia', 'DIA', 'Día', 'día', 'day') || 1);
+                const interval = Number(get(row, 'interval', 'intervalo', 'Intervalo', 'INTERVALO') || 1);
+                const description = String(get(row, 'description', 'descripcion', 'Descripcion', 'DESCRIPCION', 'notas', 'Notas') || '').trim();
+                const startDate = String(get(row, 'startDate', 'start_date', 'fecha_inicio', 'Fecha Inicio', 'FECHA INICIO') || new Date().toISOString().split('T')[0]);
+
+                await budgetService.addRecurrenceRule({
+                    title,
+                    amount,
+                    frequency,
+                    interval,
+                    dayToSend,
+                    startDate,
+                    category,
+                    description: description || undefined,
+                    active: true,
+                });
+                created++;
+            }
+
+            await loadRules();
+            setAlertModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Importación Exitosa',
+                message: `Se crearon ${created} reglas recurrentes.${skipped > 0 ? ` ${skipped} filas omitidas (sin título o monto).` : ''}`
+            });
+        } catch (error: any) {
+            console.error('Error importing rules:', error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error de Importación', message: error.message || 'No se pudo procesar el archivo.' });
+        }
+    };
+
+    // --- RENDER ---
     return (
-        <div>
-            <PageHeader
+        <>
+            <SmartDataPage<RecurrenceRule>
                 title="Gastos Recurrentes"
+                icon={<ArrowPathIcon className="h-6 w-6 text-purple-600" />}
                 breadcrumbs={[
-                    { label: 'Egresos', path: '/budget' },
+                    { label: 'Egresos', href: '/budget' },
                     { label: 'Recurrentes' }
                 ]}
-                icon={<ArrowPathIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex gap-2">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={onSwitchToCategories}
-                            className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700"
-                        >
-                            Categorías
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={handleCreate}
-                        >
-                            <PlusIcon className="w-4 h-4 mr-2" />
-                            Nueva Regla
-                        </Button>
-                    </div>
-                }
+                supabaseTableName="budget_recurrence_rules"
+                fetchData={budgetService.getRecurrenceRules}
+                columns={columns}
+                enableAdd={true}
+                onAdd={handleCreate}
+                searchPlaceholder="Buscar regla..."
+                infoDefinitions={[
+                    {
+                        label: 'Descripción',
+                        description: 'Nombre asignado a la regla para identificar el concepto del gasto recurrente.',
+                        origin: 'Configuración de Regla'
+                    },
+                    {
+                        label: 'Monto',
+                        description: 'Cantidad de dinero que el sistema proyectará automáticamente en cada ciclo.',
+                        origin: 'Presupuesto Estimado'
+                    },
+                    {
+                        label: 'Categoría',
+                        description: 'Grupo administrativo al que pertenece la regla para fines de reporte mensual.',
+                        origin: 'Módulo de Categorías'
+                    },
+                    {
+                        label: 'Frecuencia',
+                        description: 'Define cada cuánto tiempo se repite el gasto (Semanal, Mensual o Anual) y en qué día específico.',
+                        calculation: 'Lógica Cron del Sistema'
+                    },
+                    {
+                        label: 'Estado',
+                        description: 'Las reglas Activas generan proyecciones en el calendario; las Inactivas permanecen guardadas pero no crean gastos futuros.',
+                        origin: 'Interruptor de Operación'
+                    }
+                ]}
+                mapImportRow={(row) => ({
+                    // Mapping logic for Excel import
+                    title: String(row.title || row.TITULO || row.Descripción || ''),
+                    amount: Number(row.amount || row.Monto || row.Valor || 0),
+                    category: String(row.category || row.Categoría || 'General'),
+                    frequency: 'monthly', // simplistic mapping
+                    dayToSend: 1,
+                    active: true,
+                    startDate: new Date().toISOString().split('T')[0]
+                })}
             />
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden mt-6">
-                <SmartDataTable
-                    data={rules}
-                    columns={columns}
-                    enableSearch={true}
-                    enableColumnConfig={true}
-                    enableExport={true}
-                    enableSelection={true}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onBulkDelete={handleBulkDelete}
-                    searchPlaceholder="Buscar regla..."
-                    containerClassName="border-none shadow-none"
-                    // Eliminar individual (Selection Actions are handled by SmartDataTable internal logic usually, or customized via props if supported)
-                    renderSelectionActions={(ids) => (
-                        <Button
-                            size="sm"
-                            onClick={() => handleBulkDelete(ids)}
-                            className="h-7 px-3 gap-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 dark:bg-transparent dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30 rounded-md text-xs font-semibold shadow-sm transition-colors"
-                        >
-                            <TrashIcon className="h-3.5 w-3.5" /> Eliminar
-                        </Button>
-                    )}
-                />
-            </div>
 
             <RecurrenceRuleFormModal
                 isOpen={isModalOpen}
@@ -312,7 +386,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                 isDuplicate={isDuplicating}
                 onSubmit={handleSaveRule}
             />
-        </div>
+        </>
     );
 };
 

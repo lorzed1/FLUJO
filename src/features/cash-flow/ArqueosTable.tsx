@@ -16,6 +16,7 @@ interface ArqueosTableProps {
     onDelete: (id: string) => void;
     userRole?: string | null;
     extraActions?: React.ReactNode;
+    onInfoClick?: () => void;
 }
 
 export interface ArqueosTableHandle {
@@ -78,7 +79,7 @@ const EditableCell = ({
 };
 
 
-const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueos, onUpdate, onDelete, userRole, extraActions }, ref) => {
+const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueos, onUpdate, onDelete, userRole, extraActions, onInfoClick }, ref) => {
 
     const dataWithTotals = useMemo(() => {
         return arqueos.map(item => {
@@ -206,8 +207,9 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             width: 'w-28',
             align: 'text-right',
             sortable: true,
+            className: 'font-result',
             render: (_, item) => (
-                <span className="tabular-nums text-violet-700 dark:text-violet-400">
+                <span className="tabular-nums">
                     {formatCompact(Math.round(item.ventaBase || 0))}
                 </span>
             )
@@ -218,8 +220,9 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             width: 'w-24',
             align: 'text-right',
             sortable: true,
+            className: 'font-result',
             render: (_, item) => (
-                <span className="tabular-nums text-amber-700 dark:text-amber-400">
+                <span className="tabular-nums">
                     {formatCompact(Math.round(item.inc || 0))}
                 </span>
             )
@@ -248,8 +251,9 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             label: 'TOTAL INGRESOS',
             width: 'w-32',
             align: 'text-right',
+            className: 'font-result',
             render: (_, item) => (
-                <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="tabular-nums">
                     {formatCompact(item.totalIngresos || 0)}
                 </span>
             )
@@ -536,6 +540,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     containerClassName="border-none shadow-none"
                     enableSearch={true}
                     enableSelection={true}
+                    enableColumnConfig={true}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     enableExport={true}
@@ -564,6 +569,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                     }}
                     searchPlaceholder="Buscar arqueos..."
                     renderExtraFilters={() => extraActions}
+                    onInfoClick={onInfoClick}
                     footerMessage="Doble clic en las celdas para editar valores"
                 />
             </div>

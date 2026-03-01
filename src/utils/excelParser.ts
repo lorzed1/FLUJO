@@ -16,6 +16,7 @@ export interface ArqueoData {
     ingresoCovers: number;
     cajero: string;
     visitas: number;
+    noTrabajadores: number;
     [key: string]: any; // Permitir columnas extra
 }
 
@@ -231,7 +232,7 @@ export function parseExcelRows(
             // Asegurar que campos requeridos de ArqueoData tengan valor (default 0 para números)
             const numericFields: (keyof ArqueoData)[] = [
                 'ventaPos', 'propina', 'efectivo', 'datafonoDavid', 'datafonoJulian',
-                'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas'
+                'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas', 'noTrabajadores'
             ];
             numericFields.forEach(f => {
                 if ((data as any)[f] === undefined) (data as any)[f] = 0;
@@ -277,25 +278,4 @@ export function parseExcelData(text: string): ParseResult {
     return parseExcelRows(lines, mapping, types, headerIndex);
 }
 
-/**
- * Calcula el total recaudado para un registro de Arqueo
- */
-export function calculateTotalRecaudado(data: Partial<ArqueoData>): number {
-    return (
-        (Number(data.efectivo) || 0) +
-        (Number(data.datafonoDavid) || 0) +
-        (Number(data.datafonoJulian) || 0) +
-        (Number(data.transfBancolombia) || 0) +
-        (Number(data.nequi) || 0) +
-        (Number(data.rappi) || 0)
-    );
-}
-
-/**
- * Calcula el descuadre para un registro de Arqueo
- */
-export function calculateDescuadre(data: Partial<ArqueoData>): number {
-    const totalIngresos = (Number(data.ventaPos) || 0) + (Number(data.propina) || 0);
-    const totalEgresos = calculateTotalRecaudado(data);
-    return totalEgresos - totalIngresos;
-}
+export { calculateTotalRecaudado, calculateDescuadre } from './arqueoCalculations';

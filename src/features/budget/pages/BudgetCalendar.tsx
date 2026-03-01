@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS, es } from 'date-fns/locale';
@@ -24,6 +24,7 @@ import { BudgetPaymentModal } from '../components/BudgetPaymentModal';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '../../../components/ui/Button';
 import { DateNavigator } from '../../../components/ui/DateNavigator';
+import { resolveCommitmentVisualStatus, getCommitmentColors } from '../../../utils/budgetCalculations';
 
 // --- TYPES ---
 interface MyEvent {
@@ -58,8 +59,25 @@ export const BudgetCalendar: React.FC = () => {
     // State
     const [events, setEvents] = useState<MyEvent[]>([]);
     const [date, setDate] = useState(new Date());
-    const [view, setView] = useState<View>('month');
+    const [view, setView] = useState<View>(() => {
+        const savedView = localStorage.getItem('budgetCalendarView');
+        return (savedView as View) || 'month';
+    });
     const [isLoading, setIsLoading] = useState(false);
+
+    const currentWeekRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        localStorage.setItem('budgetCalendarView', view);
+    }, [view]);
+
+    useEffect(() => {
+        if (view === 'month' && !isLoading && currentWeekRef.current) {
+            setTimeout(() => {
+                currentWeekRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 150);
+        }
+    }, [view, date, isLoading]);
 
     // Payment Modal State
     const [paymentModal, setPaymentModal] = useState<{
@@ -130,9 +148,10 @@ export const BudgetCalendar: React.FC = () => {
     }, [openForm]);
 
     const eventPropGetter = useCallback((event: MyEvent) => {
-        const isPaid = event.resource.status === 'paid';
-        const isProjected = event.isProjected;
-        const isOverdue = !isPaid && event.start < new Date(new Date().setHours(0, 0, 0, 0));
+        const visualStatus = resolveCommitmentVisualStatus(
+            event.resource.status, event.start, event.isProjected
+        );
+        const { bgColor, borderColor, textColor } = getCommitmentColors(visualStatus);
 
         let style: React.CSSProperties = {
             borderRadius: '4px',
@@ -142,17 +161,11 @@ export const BudgetCalendar: React.FC = () => {
             padding: '2px 6px',
             marginBottom: '2px',
             cursor: 'pointer',
+            backgroundColor: bgColor,
+            borderLeftColor: borderColor,
+            color: textColor,
+            opacity: visualStatus === 'projected' ? 0.85 : 1,
         };
-
-        if (isPaid) {
-            style = { ...style, backgroundColor: '#ecfdf5', borderLeftColor: '#10b981', color: '#047857' };
-        } else if (isOverdue) {
-            style = { ...style, backgroundColor: '#fef2f2', borderLeftColor: '#ef4444', color: '#b91c1c' };
-        } else if (isProjected) {
-            style = { ...style, backgroundColor: '#f8fafc', borderLeftColor: '#94a3b8', color: '#64748b', opacity: 0.85, borderStyle: 'dashed' };
-        } else {
-            style = { ...style, backgroundColor: '#fffbeb', borderLeftColor: '#f59e0b', color: '#b45309' };
-        }
 
         return { style };
     }, []);
@@ -161,25 +174,10 @@ export const BudgetCalendar: React.FC = () => {
         event: ({ event }: { event: MyEvent }) => {
             const isPaid = event.resource.status === 'paid';
             const isProjected = event.isProjected;
-            const isOverdue = !isPaid && event.start < new Date(new Date().setHours(0, 0, 0, 0));
-
-            let bgColor = '#fffbeb';
-            let borderColor = '#f59e0b';
-            let textColor = '#b45309';
-
-            if (isPaid) {
-                bgColor = '#ecfdf5';
-                borderColor = '#10b981';
-                textColor = '#047857';
-            } else if (isOverdue) {
-                bgColor = '#fef2f2';
-                borderColor = '#ef4444';
-                textColor = '#b91c1c';
-            } else if (isProjected) {
-                bgColor = '#f8fafc';
-                borderColor = '#94a3b8';
-                textColor = '#64748b';
-            }
+            const visualStatus = resolveCommitmentVisualStatus(
+                event.resource.status, event.start, isProjected
+            );
+            const { bgColor, borderColor, textColor } = getCommitmentColors(visualStatus);
 
             return (
                 <div
@@ -354,9 +352,18 @@ export const BudgetCalendar: React.FC = () => {
                                     const isToday = isSameDay(dayItem, new Date());
                                     const dailyTotal = dayEvents.reduce((sum, e) => sum + e.resource.amount, 0);
 
+                                    const today = new Date();
+                                    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+                                    const currentWeekEnd = endOfWeek(today, { weekStartsOn: 1 });
+                                    const isCurrentWeek = dayItem >= currentWeekStart && dayItem <= currentWeekEnd;
+
+                                    // Assign the ref to the Monday of the current week (or any day in that week, but Monday is best)
+                                    const isFirstDayOfCurrentWeek = isCurrentWeek && dayItem.getDay() === 1;
+
                                     return (
                                         <div
                                             key={idx}
+                                            ref={isFirstDayOfCurrentWeek ? currentWeekRef : null}
                                             className={`
                                                   min-h-[120px] p-2 bg-white dark:bg-slate-800 flex flex-col gap-1 transition-colors
                                                   ${!isSelectedMonth ? '!bg-slate-50/50 dark:!bg-slate-900/50' : ''}
@@ -392,25 +399,10 @@ export const BudgetCalendar: React.FC = () => {
                                                 {dayEvents.map((event) => {
                                                     const isPaid = event.resource.status === 'paid';
                                                     const isProjected = event.isProjected;
-                                                    const isOverdue = !isPaid && event.start < new Date(new Date().setHours(0, 0, 0, 0));
-
-                                                    let bgColor = '#fffbeb';
-                                                    let borderColor = '#f59e0b';
-                                                    let textColor = '#b45309';
-
-                                                    if (isPaid) {
-                                                        bgColor = '#ecfdf5';
-                                                        borderColor = '#10b981';
-                                                        textColor = '#047857';
-                                                    } else if (isOverdue) {
-                                                        bgColor = '#fef2f2';
-                                                        borderColor = '#ef4444';
-                                                        textColor = '#b91c1c';
-                                                    } else if (isProjected) {
-                                                        bgColor = '#f8fafc';
-                                                        borderColor = '#94a3b8';
-                                                        textColor = '#64748b';
-                                                    }
+                                                    const visualStatus = resolveCommitmentVisualStatus(
+                                                        event.resource.status, event.start, isProjected
+                                                    );
+                                                    const { bgColor, borderColor, textColor } = getCommitmentColors(visualStatus);
 
                                                     return (
                                                         <div

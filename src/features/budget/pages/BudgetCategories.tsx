@@ -202,6 +202,7 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
                                 columns={columns}
                                 enableSearch={true}
                                 searchPlaceholder="Filtrar por nombre o tipo..."
+                                id="budget-categories"
                             />
                         </div>
                     </div>

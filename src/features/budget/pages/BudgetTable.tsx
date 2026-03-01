@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { PencilSquareIcon, TrashIcon, BanknotesIcon, TableCellsIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { PageHeader } from '../../../components/layout/PageHeader';
-import { BudgetCommitment } from '../../../types/budget';
+import { TrashIcon, BanknotesIcon, TableCellsIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { Column } from '../../../components/ui/SmartDataTable';
 import { budgetService } from '../../../services/budget';
 import { useBudgetContext } from '../layouts/BudgetLayout';
-import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
+import { BudgetCommitment } from '../../../types/budget';
 import { startOfMonth, endOfMonth, endOfYear, startOfYear, format } from 'date-fns';
 import { useUI } from '../../../context/UIContext';
 import { DateSelectionModal } from '../components/DateSelectionModal';
-import { Button } from '@/components/ui/Button';
+import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 
 export const BudgetTable: React.FC = () => {
     const { openForm, refreshTrigger } = useBudgetContext();
@@ -178,30 +177,16 @@ export const BudgetTable: React.FC = () => {
             label: 'Descripción / Proveedor',
             sortable: true,
             filterable: true,
-            render: (value: string, item: BudgetCommitment) => (
-                <div>
-                    <span className="block">{value}</span>
-                    {item.recurrenceRuleId && (
-                        <div className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-md border border-indigo-200 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-800 w-fit">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                            <span className="text-[9px] font-semibold uppercase text-indigo-700 dark:text-indigo-400 tracking-widest">
-                                {item.id.startsWith('projected-') ? 'Proyectado' : 'Recurrente'}
-                            </span>
-                        </div>
-                    )}
-                </div>
+            render: (value: string) => (
+                <span className="block">{value}</span>
             )
         },
         {
             key: 'amount',
             label: 'Monto',
+            type: 'currency',
             sortable: true,
             align: 'text-right' as const,
-            render: (value: number) => (
-                <span className="tabular-nums">
-                    ${value.toLocaleString()}
-                </span>
-            )
         },
         {
             key: 'dueDate',
@@ -209,11 +194,14 @@ export const BudgetTable: React.FC = () => {
             sortable: true,
             filterable: true,
             width: 'w-24',
-            render: (value: string) => (
-                <span>
-                    {value}
-                </span>
-            )
+            render: (value: string) => {
+                if (!value) return <span className="text-slate-300">-</span>;
+                try {
+                    const parts = value.split('T')[0].split('-');
+                    if (parts.length === 3) return <span>{parts[2]}/{parts[1]}/{parts[0]}</span>;
+                } catch (e) { }
+                return <span>{value}</span>;
+            }
         },
         {
             key: 'paidDate',
@@ -234,7 +222,13 @@ export const BudgetTable: React.FC = () => {
                     disabled={item.status !== 'paid'}
                     title={item.status === 'paid' ? "Cambiar fecha de pago" : ""}
                 >
-                    {value || '-'}
+                    {value ? (() => {
+                        try {
+                            const parts = value.split('T')[0].split('-');
+                            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                        } catch (e) { }
+                        return value;
+                    })() : '-'}
                 </button>
             )
         },
@@ -303,7 +297,7 @@ export const BudgetTable: React.FC = () => {
                     {item.status !== 'paid' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); handleQuickPay(item); }}
-                            className="text-emerald-400 hover:text-emerald-600 dark:text-emerald-500 dark:hover:text-emerald-300 transition-colors p-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                            className="text-emerald-400 hover:text-emerald-600 dark:text-emerald-500 dark:hover:text-emerald-300 transition-all p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                             title="Marcar como Pagado Hoy"
                         >
                             <BanknotesIcon className="w-4 h-4" />
@@ -311,14 +305,14 @@ export const BudgetTable: React.FC = () => {
                     )}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-                        className="text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors p-1 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        className="text-slate-400 hover:text-purple-600 transition-all p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20"
                         title="Editar"
                     >
-                        <PencilSquareIcon className="w-4 h-4" />
+                        <PencilIcon className="w-4 h-4" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                        className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="text-slate-300 hover:text-red-600 transition-all p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Eliminar"
                     >
                         <TrashIcon className="w-4 h-4" />
@@ -339,25 +333,55 @@ export const BudgetTable: React.FC = () => {
         );
     }
 
+    // --- RENDER ---
     return (
-        <div className="space-y-6">
-            <PageHeader
+        <>
+            <SmartDataPage<BudgetCommitment>
                 title="BD de gastos"
+                icon={<TableCellsIcon className="h-6 w-6 text-purple-600" />}
                 breadcrumbs={[
-                    { label: 'Egresos', path: '/budget' },
+                    { label: 'Egresos', href: '/budget' },
                     { label: 'Tabla' }
                 ]}
-                icon={<TableCellsIcon className="h-6 w-6" />}
-                actions={
-                    <Button
-                        onClick={() => openForm()}
-                        variant="primary"
-                        className="gap-2"
-                    >
-                        <PlusIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Nuevo Gasto</span>
-                    </Button>
-                }
+                supabaseTableName="budget_commitments"
+                fetchData={loadData as any} // Use internal loader for custom date ranges
+                columns={columns}
+                enableAdd={true}
+                onAdd={() => openForm()}
+                onEdit={handleEdit}
+                searchPlaceholder="Buscar por proveedor, categoría..."
+                infoDefinitions={[
+                    {
+                        label: 'Descripción / Proveedor',
+                        description: 'Indica el concepto del gasto o el nombre del tercero a quien se adeuda el pago.',
+                        origin: 'Registro de Compromiso'
+                    },
+                    {
+                        label: 'Monto',
+                        description: 'Valor monetario total de la obligación registrada.',
+                        origin: 'Factura / Cotización'
+                    },
+                    {
+                        label: 'Vencimiento',
+                        description: 'Fecha límite estipulada para cumplir con el pago sin generar intereses o moras.',
+                        origin: 'Términos de Pago'
+                    },
+                    {
+                        label: 'Fecha Pago',
+                        description: 'Día exacto en que se registró la salida de dinero en el sistema.',
+                        origin: 'Comprobante de Pago'
+                    },
+                    {
+                        label: 'Categoría',
+                        description: 'Clasificación administrativa para agrupar los gastos (ej. Operativos, Fijos, Nómina).',
+                        origin: 'Configuración de Categorías'
+                    },
+                    {
+                        label: 'Estado',
+                        description: 'Muestra si el gasto está al día (Pagado), pendiente de pago o si ya superó su fecha límite (Vencido).',
+                        calculation: 'Filtro por Fecha de Vencimiento vs Fecha Actual'
+                    }
+                ]}
             />
 
             <DateSelectionModal
@@ -370,24 +394,6 @@ export const BudgetTable: React.FC = () => {
                 confirmText="Confirmar"
                 initialDate={paymentModal.item?.paidDate}
             />
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-                <SmartDataTable
-                    data={commitments}
-                    columns={columns}
-                    enableSearch={true}
-                    enableColumnConfig={true}
-                    enableExport={true}
-                    enableSelection={true}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onBulkDelete={handleBulkDelete}
-                    onRowClick={handleEdit}
-                    searchPlaceholder="Buscar por proveedor, categoría..."
-                    containerClassName="border-none shadow-none"
-                    exportDateField="dueDate"
-                />
-            </div>
-        </div>
+        </>
     );
 };

@@ -27,6 +27,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { BudgetHistory } from './BudgetHistory';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
+import { calculateTotalAvailable, isCommitmentOverdue } from '../../../utils/budgetCalculations';
 
 /* ──────────────────────────────────────────────────────────
    BudgetExecutionContent – Vista principal de pagos semanales
@@ -136,12 +137,10 @@ const BudgetExecutionContent: React.FC = () => {
 
     /* ── Calculations ── */
     const totalAvailable = useMemo(() => {
-        return (parseFloat(ctaCorriente) || 0) +
-            (parseFloat(ctaAhorrosJ) || 0) +
-            (parseFloat(ctaAhorrosN) || 0) +
-            (parseFloat(ctaNequi) || 0) +
-            (parseFloat(otrosIngresos) || 0) +
-            (parseFloat(efectivo) || 0);
+        return calculateTotalAvailable({
+            ctaCorriente, ctaAhorrosJ, ctaAhorrosN,
+            ctaNequi, otrosIngresos, efectivo
+        });
     }, [ctaCorriente, ctaAhorrosJ, ctaAhorrosN, ctaNequi, otrosIngresos, efectivo]);
 
     const handleSaveAvailability = async () => {
@@ -262,8 +261,8 @@ const BudgetExecutionContent: React.FC = () => {
     const sorted = useMemo(() => [...commitments].sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [commitments]);
     const pending = sorted.filter(c => c.status === 'pending');
     const paid = sorted.filter(c => c.status === 'paid');
-    const overdue = pending.filter(c => isBefore(parseISO(c.dueDate), startOfDay(new Date())));
-    const upcoming = pending.filter(c => !isBefore(parseISO(c.dueDate), startOfDay(new Date())));
+    const overdue = pending.filter(c => isCommitmentOverdue(c.status, c.dueDate));
+    const upcoming = pending.filter(c => !isCommitmentOverdue(c.status, c.dueDate));
 
     /* ════════════════════════════════════════════════════════
        RENDER – Aliaddo Design System

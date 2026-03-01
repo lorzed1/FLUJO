@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getLocalDateISO } from '../../../utils/dateUtils';
-import { calculateTotalRecaudado, calculateDescuadre, type ParsedRow } from '../../../utils/excelParser';
+import { type ParsedRow } from '../../../utils/excelParser';
+import { calculateArqueoTotals, calculateTotalRecaudado } from '../../../utils/arqueoCalculations';
 
 // ============================================
 // Types
@@ -19,6 +20,7 @@ export interface ArqueoData {
     ingresoCovers: number;
     cajero: string;
     visitas: number;
+    noTrabajadores: number;
     baseDetail?: Record<string, number>;
     cuadreDetail?: Record<string, number>;
 }
@@ -67,7 +69,8 @@ const INITIAL_FORM_DATA = (today: string): ArqueoData => ({
     rappi: 0,
     ingresoCovers: 0,
     cajero: '',
-    visitas: 0
+    visitas: 0,
+    noTrabajadores: 0
 });
 
 // ============================================
@@ -105,7 +108,19 @@ export function useArqueoForm() {
         const today = getLocalDateISO();
         const fallback = INITIAL_FORM_DATA(today);
         const saved = getInitialState(STORAGE_KEYS.FORM_DATA, null);
-        if (saved) return { ...saved, fecha: today };
+        if (saved) {
+            const merged = { ...fallback, ...saved, fecha: today };
+            const numericFields = [
+                'ventaPos', 'propina', 'efectivo', 'datafonoDavid', 'datafonoJulian',
+                'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas', 'noTrabajadores'
+            ];
+            numericFields.forEach(key => {
+                if (typeof (merged as any)[key] !== 'number' || isNaN((merged as any)[key])) {
+                    (merged as any)[key] = 0;
+                }
+            });
+            return merged;
+        }
         return fallback;
     });
 
@@ -192,19 +207,11 @@ export function useArqueoForm() {
 
     // Calculate overall totals
     useEffect(() => {
-        const expected = formData.ventaPos + formData.propina;
+        const { ventaTotalEsperada: expected, totalRecaudado: collected, descuadre: diff } = calculateArqueoTotals(formData);
+
         setVentaTotalEsperada(expected);
-
-        const collected =
-            formData.efectivo +
-            formData.datafonoDavid +
-            formData.datafonoJulian +
-            formData.transfBancolombia +
-            formData.nequi +
-            formData.rappi;
         setTotalRecaudado(collected);
-
-        setDescuadre(collected - expected);
+        setDescuadre(diff);
     }, [formData]);
 
     // ============================================
@@ -217,7 +224,7 @@ export function useArqueoForm() {
 
     const handleSimpleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        if (name === 'visitas') {
+        if (name === 'visitas' || name === 'noTrabajadores') {
             setFormData(prev => ({ ...prev, [name]: parseInt(value) || 0 }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -279,7 +286,7 @@ export function useArqueoForm() {
             fecha: mockDate, ventaPos: 1500000, propina: 120000,
             efectivo: 850000, datafonoDavid: 300000, datafonoJulian: 200000,
             transfBancolombia: 150000, nequi: 100000, rappi: 20000,
-            ingresoCovers: 50000, cajero: 'Simulador Test', visitas: 45
+            ingresoCovers: 50000, cajero: 'Simulador Test', visitas: 45, noTrabajadores: 4
         });
         setPaymentDetails({ nequi: [60000, 40000], transfBancolombia: [150000] });
         setBaseCaja({ '50': 0, '100': 0, '200': 0, '500': 0, '1000': 0, '2000': 0, '5000': 0, '10000': 10, '20000': 10, '50000': 6, '100000': 2 });

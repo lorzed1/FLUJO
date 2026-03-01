@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
 import {
     ClockIcon,
     ArrowTrendingDownIcon,
@@ -74,22 +72,26 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
             label: 'Fecha Ejecución',
             sortable: true,
             width: 'w-32',
-            render: (value: string) => (
-                <span className="whitespace-nowrap">
-                    {format(parseISO(value), 'dd MMM yyyy, HH:mm', { locale: es })}
-                </span>
-            )
+            render: (value: string) => {
+                try {
+                    const parts = value.split('T')[0].split('-');
+                    if (parts.length === 3) return <span className="whitespace-nowrap">{parts[2]}/{parts[1]}/{parts[0]}</span>;
+                } catch (e) { }
+                return <span className="whitespace-nowrap">{value}</span>;
+            }
         },
         {
             key: 'weekStartDate',
             label: 'Semana Del',
             sortable: true,
             width: 'w-24',
-            render: (value: string) => (
-                <span>
-                    {format(parseISO(value), 'dd MMM yyyy', { locale: es })}
-                </span>
-            )
+            render: (value: string) => {
+                try {
+                    const parts = value.split('T')[0].split('-');
+                    if (parts.length === 3) return <span>{parts[2]}/{parts[1]}/{parts[0]}</span>;
+                } catch (e) { }
+                return <span>{value}</span>;
+            }
         },
         {
             key: 'itemsCount',
@@ -186,6 +188,8 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
                     data={logs}
                     columns={columns}
                     enableSearch={true}
+                    enableColumnConfig={true}
+                    enableExport={true}
                     searchPlaceholder="Buscar por fecha..."
                     containerClassName="border-none shadow-none"
                     id="budget-history-table"

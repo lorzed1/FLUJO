@@ -8,7 +8,9 @@ import {
     MoonIcon,
     SunIcon,
     CalendarDaysIcon,
+    QuestionMarkCircleIcon
 } from '../../components/ui/Icons';
+import { InfoModal, DataDefinition } from '../../components/ui/InfoModal';
 import AlertModal from '../../components/ui/AlertModal';
 import { TransferRecord, TransferType, ArqueoRecord } from '../../types';
 import { useArqueos } from '../../context/ArqueoContext';
@@ -21,6 +23,7 @@ import ExcelImportTab from './ExcelImportTab';
 import ArqueosTable, { type ArqueosTableHandle } from './ArqueosTable';
 import TransfersView from './TransfersView';
 import { DatabaseService } from '../../services/database';
+import { tipsService } from '../../services/tipsService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -50,6 +53,45 @@ const ArqueoPreview: React.FC = () => {
     const useMonoFont = userRole === 'admin';
     const form = useArqueoForm();
     const tableRef = useRef<ArqueosTableHandle>(null);
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
+
+    const arqueoInfoDefinitions: DataDefinition[] = [
+        {
+            label: 'Venta POS',
+            description: 'Venta bruta total reportada por el sistema POS de Unplugged.',
+            origin: 'Reporte de Caja POS'
+        },
+        {
+            label: 'Venta Bruta',
+            description: 'Venta total neta de conceptos externos como covers o entradas.',
+            calculation: 'Venta POS - Ingreso Covers'
+        },
+        {
+            label: 'Venta Base',
+            description: 'Valor neto de la venta antes de aplicar el Impuesto al Consumo (INC).',
+            calculation: 'Venta Bruta / 1.108'
+        },
+        {
+            label: 'INC (8%)',
+            description: 'Impuesto Nacional al Consumo del 8% aplicado a la venta de alimentos y bebidas.',
+            calculation: 'Venta Base * 0.08'
+        },
+        {
+            label: 'Total Ingresos',
+            description: 'Suma de la venta reportada más las propinas recaudadas. Es el dinero que DEBE estar en caja.',
+            calculation: 'Venta POS + Propina'
+        },
+        {
+            label: 'Total Egresos (Recaudado)',
+            description: 'Suma real detectada de todos los medios de pago físicos y electrónicos.',
+            origin: 'Conteo Físico + Reportes Datafonos/Apps'
+        },
+        {
+            label: 'Descuadre',
+            description: 'Diferencia neta entre el dinero recaudado y el dinero que el sistema esperaba recibir.',
+            calculation: 'Total Egresos - Total Ingresos'
+        }
+    ];
 
     // --- Tab routing ---
     const [activeTab, setActiveTab] = useState<'arqueo' | 'historial'>('arqueo');
@@ -163,6 +205,47 @@ const ArqueoPreview: React.FC = () => {
 
                     if (transfersToSave.length > 0) {
                         await Promise.all(transfersToSave.map(t => DatabaseService.saveTransfer(t)));
+                    }
+
+                    try {
+                        const division = Number(form.formData.noTrabajadores) || 0;
+                        const totalPropinas = Number(form.formData.propina) || 0;
+                        const existingTips = await tipsService.getTips(date, date);
+
+                        // Si existe un registro este día, lo actualizamos. Sino lo creamos.
+                        if (existingTips && existingTips.length > 0) {
+                            const tipToUpdate = existingTips[0];
+                            const base = tipToUpdate.base_propinas || 0;
+                            const comision = tipToUpdate.comision_medios_electronicos || 0;
+                            const repartir = totalPropinas - comision - base;
+                            const unp = repartir > 0 ? Math.round(repartir * 0.10) : 0;
+                            const totalPersona = division > 0 && repartir > 0 ? Math.round((repartir - unp) / division) : 0;
+
+                            await tipsService.updateTip(tipToUpdate.id, {
+                                total_propinas: totalPropinas,
+                                division: division,
+                                total_persona: totalPersona,
+                                unp: unp
+                            });
+                        } else {
+                            const base = 0;
+                            const comision = 0;
+                            const repartir = totalPropinas - comision - base;
+                            const unp = repartir > 0 ? Math.round(repartir * 0.10) : 0;
+                            const totalPersona = division > 0 && repartir > 0 ? Math.round((repartir - unp) / division) : 0;
+
+                            await tipsService.addTip({
+                                fecha: date,
+                                total_propinas: totalPropinas,
+                                comision_medios_electronicos: comision,
+                                base_propinas: base,
+                                division: division,
+                                total_persona: totalPersona,
+                                unp: unp
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error saving tips:', err);
                     }
                 } catch (err) {
                     console.error('Error saving transfers:', err);
@@ -304,6 +387,7 @@ const ArqueoPreview: React.FC = () => {
                                         onUpdate={onUpdateArqueo}
                                         onDelete={onDeleteArqueo}
                                         userRole={userRole}
+                                        onInfoClick={() => setIsInfoOpen(true)}
                                         extraActions={
                                             <div className="flex items-center gap-2">
                                                 <Button
@@ -327,6 +411,12 @@ const ArqueoPreview: React.FC = () => {
                                                 </Button>
                                             </div>
                                         }
+                                    />
+                                    <InfoModal
+                                        isOpen={isInfoOpen}
+                                        onClose={() => setIsInfoOpen(false)}
+                                        title="Información de Arqueos"
+                                        definitions={arqueoInfoDefinitions}
                                     />
                                     <AccountingExportWizard
                                         isOpen={form.showAccountingWizard}
@@ -391,6 +481,13 @@ const ArqueoPreview: React.FC = () => {
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Total Visitas</label>
                                                 <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
+                                                    className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                                    placeholder="0" />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">No Trabajadores</label>
+                                                <input type="number" name="noTrabajadores" value={form.formData.noTrabajadores || ''} onChange={form.handleSimpleChange}
                                                     className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                                                     placeholder="0" />
                                             </div>
@@ -524,7 +621,7 @@ const ArqueoPreview: React.FC = () => {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

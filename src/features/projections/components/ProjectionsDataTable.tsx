@@ -12,6 +12,7 @@ interface ProjectionsDataTableProps {
     storedProjections: Record<string, SalesProjection>;
     realSales?: Record<string, number>;
     containerClassName?: string;
+    onInfoClick?: () => void;
 }
 
 export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
@@ -20,7 +21,8 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
     calculatedProjections,
     storedProjections,
     realSales = {},
-    containerClassName
+    containerClassName,
+    onInfoClick
 }) => {
     // Estado para ordenamiento (inicial: por fecha descendente - más reciente arriba)
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -127,7 +129,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             filterable: true,
             width: 'w-24',
             render: (_: string, item: any) => (
-                <span className="font-medium text-slate-700 dark:text-slate-200">
+                <span className="text-slate-700 dark:text-slate-200">
                     {item.dateFormatted}
                 </span>
             )
@@ -291,8 +293,9 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             tooltip: 'Venta final proyectada (Venta Base + Inflación + Crecimiento + Eventos).',
             sortable: true,
             align: 'text-right' as const,
+            className: 'font-result',
             render: (value: number) => (
-                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded">
+                <span className="font-mono">
                     {formatCurrency(value)}
                 </span>
             )
@@ -305,7 +308,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 font-medium">
                     {formatCurrency(value)}
                 </span>
             )
@@ -318,7 +321,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             align: 'text-right' as const,
             defaultHidden: true,
             render: (value: number) => (
-                <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 font-medium">
                     {formatCurrency(value)}
                 </span>
             )
@@ -412,6 +415,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
                 exportDateField="dateStr"
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
+                onInfoClick={onInfoClick}
             />
         </div>
     );

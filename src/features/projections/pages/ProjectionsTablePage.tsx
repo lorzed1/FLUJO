@@ -3,7 +3,7 @@ import { SalesEvent, SalesProjection } from '../../../types';
 import { ProjectionResult } from '../../../utils/projections';
 import { ProjectionsDataTable } from '../components/ProjectionsDataTable';
 import { PageHeader } from '../../../components/layout/PageHeader';
-import { ChartBarIcon, QuestionMarkCircleIcon } from '../../../components/ui/Icons';
+import { ChartBarIcon, QuestionMarkCircleIcon, InformationCircleIcon } from '../../../components/ui/Icons';
 import { DateNavigator } from '../../../components/ui/DateNavigator';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -46,14 +46,6 @@ export const ProjectionsTablePage: React.FC<ProjectionsTablePageProps> = ({
                             onChange={setCurrentDate}
                         />
 
-                        {/* Help Button */}
-                        <button
-                            onClick={() => setIsHelpOpen(true)}
-                            className="h-full flex items-center justify-center p-2 bg-white dark:bg-slate-800 text-slate-500 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700 transition-all"
-                        >
-                            <QuestionMarkCircleIcon className="h-5 w-5" />
-                        </button>
-
                         {/* Config Button */}
                         <button
                             onClick={() => setIsConfigOpen(true)}
@@ -73,6 +65,7 @@ export const ProjectionsTablePage: React.FC<ProjectionsTablePageProps> = ({
                     calculatedProjections={calculatedProjections}
                     storedProjections={storedProjections}
                     realSales={realSales}
+                    onInfoClick={() => setIsHelpOpen(true)}
                 />
             </div>
         </div>

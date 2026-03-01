@@ -242,7 +242,7 @@ const UsersManagementView: React.FC = () => {
                         },
                         {
                             key: 'actions' as any,
-                            label: 'Acciones',
+                            label: '',
                             width: 'w-1/6',
                             align: 'text-right',
                             filterable: false,
@@ -250,21 +250,21 @@ const UsersManagementView: React.FC = () => {
                                 <div className="flex gap-2 justify-end">
                                     <button
                                         onClick={() => openEditModal(user)}
-                                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                        className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all active:scale-95"
                                         title="Editar usuario"
                                     >
                                         <PencilIcon className="h-4 w-4" />
                                     </button>
                                     <button
                                         onClick={() => openPasswordModal(user.username)}
-                                        className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                                        className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all active:scale-95"
                                         title="Cambiar contraseña"
                                     >
                                         <KeyIcon className="h-4 w-4" />
                                     </button>
                                     <button
                                         onClick={() => handleDeleteUser(user.username)}
-                                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                        className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all active:scale-95"
                                         title="Eliminar usuario"
                                     >
                                         <TrashIcon className="h-4 w-4" />
@@ -276,6 +276,7 @@ const UsersManagementView: React.FC = () => {
                     enableSelection={false}
                     enableExport={true}
                     searchPlaceholder="Buscar usuarios..."
+                    id="users-management"
                 />
             </div>
 
