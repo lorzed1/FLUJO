@@ -275,17 +275,20 @@ export const ProjectionsCalendar: React.FC<ProjectionsCalendarProps> = ({
                             // Si está cerrado, la meta es 0. Si no, usamos el valor ajustado manual o el del sistema.
                             const finalSale = isClosed ? 0 : (stored?.amountAdjusted ?? proj?.final ?? 0);
                             const isSelected = selectedDate === dateStr && modalOpen;
+                            const targetSale = (showFinancial && finProj > 0) ? finProj : finalSale;
+                            const isSuccess = real > 0 && real >= targetSale;
+                            const progressPercent = targetSale > 0 ? Math.min(100, Math.round((real / targetSale) * 100)) : (real > 0 ? 100 : 0);
 
                             return (
                                 <div
                                     key={dateStr}
                                     onClick={() => inMonth && openModal(dateStr)}
                                     className={`
-                                        min-h-[110px] p-2.5 group relative transition-colors
+                                        min-h-[110px] p-2.5 group relative transition-all duration-300
                                         ${inMonth ? 'cursor-pointer' : 'cursor-default'}
                                         ${!inMonth ? 'bg-slate-50/50 dark:bg-slate-900/50 opacity-40' : 'bg-white dark:bg-slate-800/50'}
                                         ${isClosed && inMonth ? 'bg-slate-50 dark:bg-slate-900/30' : ''}
-                                        ${isSelected ? 'bg-purple-50/40 dark:bg-purple-900/10 ring-2 ring-inset ring-purple-400/30' : inMonth ? 'hover:bg-slate-50/80 dark:hover:bg-slate-700/30' : ''}
+                                        ${isSelected ? 'bg-purple-50/40 dark:bg-purple-900/10 ring-2 ring-inset ring-purple-400/30' : inMonth ? 'hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-white dark:hover:bg-slate-700/30 hover:z-10' : ''}
                                         ${today && !isSelected ? '!bg-purple-50/20 dark:!bg-purple-900/10' : ''}
                                     `}
                                 >
@@ -302,12 +305,13 @@ export const ProjectionsCalendar: React.FC<ProjectionsCalendarProps> = ({
                                         </span>
                                     </div>
 
-                                    <div className="flex flex-col gap-0.5 mt-auto">
+                                    <div className="flex flex-col gap-0.5 mt-auto relative z-10">
                                         {/* Valor Histórico / Estadística — Aliaddo Premium §1 */}
                                         {inMonth && (baseSale > 0 || isClosed) && (
                                             <div className="flex items-center justify-between text-[10px]">
-                                                <span className="text-slate-400 font-medium tabular-nums">
-                                                    {fmt(finalSale)}
+                                                <span className="text-slate-400 font-medium tabular-nums flex items-center gap-1">
+                                                    <span>{fmt(finalSale)}</span>
+                                                    <span className="text-[8px] text-slate-300 dark:text-slate-500 font-normal tracking-wide">(Est.)</span>
                                                 </span>
                                             </div>
                                         )}
@@ -315,21 +319,36 @@ export const ProjectionsCalendar: React.FC<ProjectionsCalendarProps> = ({
                                         {/* Meta Financiera (PE) — Aliaddo Premium §1 */}
                                         {inMonth && showFinancial && finProj > 0 && (
                                             <div className="flex items-center justify-between text-[10px]">
-                                                <span className="text-purple-600/70 dark:text-purple-400/70 font-bold tabular-nums">
-                                                    {fmt(finProj)}
+                                                <span className="text-purple-600/70 dark:text-purple-400/70 font-bold tabular-nums flex items-center gap-1">
+                                                    <span>{fmt(finProj)}</span>
+                                                    <span className="text-[8px] text-purple-300 dark:text-purple-500/50 font-normal tracking-wide">(PE)</span>
                                                 </span>
                                             </div>
                                         )}
 
                                         {/* Venta Real — Protagonista con color semántico calibrado */}
                                         {inMonth && real > 0 && (
-                                            <div className="mt-1 pt-1 border-t border-slate-50 dark:border-slate-800/50">
-                                                <span className={`text-[12px] font-black tabular-nums block ${real >= (finProj > 0 && showFinancial ? finProj : finalSale)
-                                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                                    : 'text-slate-400 dark:text-slate-500 line-through decoration-rose-400/30'
-                                                    }`}>
-                                                    {fmt(real)}
-                                                </span>
+                                            <div className="mt-1 pt-1.5 border-t border-slate-50 dark:border-slate-800/50 relative">
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[12px] font-black tabular-nums block leading-none ${isSuccess
+                                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                                        : 'text-rose-500 dark:text-rose-400'
+                                                        }`}>
+                                                        {fmt(real)}
+                                                    </span>
+                                                    {!isSuccess && targetSale > 0 && (
+                                                        <span className="text-[8px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/30 px-1 py-0.5 rounded flex items-center gap-0.5 leading-none">
+                                                            <svg className="w-2 h-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                                                            {100 - progressPercent}%
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="w-full h-1 bg-slate-100 dark:bg-slate-700/50 rounded-full mt-1.5 overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-500 ${isSuccess ? 'bg-emerald-400 dark:bg-emerald-500' : 'bg-rose-400 dark:bg-rose-500'}`}
+                                                        style={{ width: `${progressPercent}%` }}
+                                                    />
+                                                </div>
                                             </div>
                                         )}
                                     </div>

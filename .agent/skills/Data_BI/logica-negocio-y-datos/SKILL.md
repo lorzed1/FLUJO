@@ -25,7 +25,7 @@ Esta habilidad documenta la fuente definitiva de verdad para la arquitectura de 
 ---
 
 ## 2. Lógica Financiera y Arqueos (Hard Rules)
-- **Ventas Reales (Venta Bruta Operativa)**: Se calcula exclusivamente como `SUM(venta_bruta) - SUM(ingreso_covers)`. NUNCA calcules el volumen de ventas sumando los métodos de pago (ej. sumando los totales de Nequi + Efectivo). Usa la columna matriz `venta_bruta` como verdad absoluta para evitar descuadres. (Los Covers son solo informativos del derecho de admisión).
+- **Venta Bruta (Indicador Maestro de Ventas)**: Este es el indicador estándar que CASI SIEMPRE se debe usar en todos los KPIs y dashboards como métrica principal de ventas reales. Sale directamente de la columna "Venta Bruta" del historial de cierres. Matemáticamente siempre equivale a `SUM(venta_pos) - SUM(ingreso_covers)`. Usa la constante calculada `ventaBruta` en el front-end como verdad absoluta para evitar descuadres. NUNCA calcules el volumen de ventas sumando los métodos de pago (Nequi + Efectivo). (Los Covers son solo informativos del derecho de admisión y por eso mismo se descuentan).
 - **Total de Ingresos Esperados**: `Venta POS` (incluye covers o propinas pre-cargadas desde el punto de venta).
 - **Total Egresos (Reportado por Cajero)**: Sumatoria de todos los medios de pago físicos y digitales recogidos al final (Efectivo, Datáfonos 1 y 2, Bancolombia, Nequi, etc.).
 - **Descuadre de Caja**: `Total Egresos - Total Ingresos Esperados`. Si la cifra es positiva, hubo Sobrante de dinero. Si es negativa, es un Faltante.
@@ -34,7 +34,7 @@ Esta habilidad documenta la fuente definitiva de verdad para la arquitectura de 
 ---
 
 ## 3. Integración Base de Datos (Supabase) y Consultas
-1. **Regla de Soft Deletes (Borrado Lógico)**: La base de datos usa `deleted_at`. Por ende, TODAS las consultas `SELECT` a tablas críticas DEBEN tener el filtro `.is('deleted_at', null)`. Si omites esto, el dashboard procesará ventas en estado "Eliminado/Fantasma".
+1. **Regla de Borrados (Hard Deletes)**: Anteriormente se usaba `deleted_at` para borrado lógico (Soft Deletes), pero fue ELIMINADO del sistema porque generaba reportes con datos fantasma. Todo borrado (`DELETE`) en Supabase debe ser un borrado absoluto y destructivo (Hard Delete). No incluyas filtros `.is('deleted_at', null)` en las consultas, pues la columna ya no se maneja o causará errores prehistóricos.
 2. **Fechas ISO Universales**: Al guardar en base de datos, toda fecha se pasa a string `YYYY-MM-DD`. Ordena siempre tus queries por fecha (ascendente o descendente) para garantizar la coherencia de reportes y gráficas.
 3. **Migraciones (DDL)**: No inyectes SQL directo en el código para alterar el esquema. Las modificaciones de columnas (`ALTER TABLE`) se realizan únicamente a través de migraciones formales invocando la herramienta MCP `apply_migration`.
 

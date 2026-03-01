@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { XMarkIcon, DocumentTextIcon, CalculatorIcon } from '@heroicons/react/24/outline';
 import { TipRecord } from '../../../services/tipsService';
@@ -118,10 +119,9 @@ export const TipsFormModal: React.FC<TipsFormModalProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Fecha</label>
-                            <Input
-                                type="date"
-                                value={formData.fecha}
-                                onChange={e => setFormData({ ...formData, fecha: e.target.value })}
+                            <DatePicker
+                                value={formData.fecha || ''}
+                                onChange={val => setFormData({ ...formData, fecha: val })}
                                 required
                                 className="!h-11 font-bold tracking-tight"
                             />

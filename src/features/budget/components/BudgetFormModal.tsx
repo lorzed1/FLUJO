@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '../../../components/ui/Input';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { Select } from '../../../components/ui/Select';
 import { format } from 'date-fns';
@@ -172,10 +173,9 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                             </div>
                             <div>
                                 <FormLabel>Fecha de Vencimiento</FormLabel>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={formData.date}
-                                    onChange={e => handleChange('date', e.target.value)}
+                                    onChange={val => handleChange('date', val)}
                                     className="!h-10 text-[13px] font-medium uppercase tracking-tight"
                                     required
                                 />
@@ -206,10 +206,9 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                             {formData.status === 'paid' ? (
                                 <div>
                                     <FormLabel>Fecha de Liquidación</FormLabel>
-                                    <Input
-                                        type="date"
+                                    <DatePicker
                                         value={formData.paymentDate}
-                                        onChange={e => handleChange('paymentDate', e.target.value)}
+                                        onChange={val => handleChange('paymentDate', val)}
                                         className="!h-10 text-[13px] font-medium uppercase tracking-tight border-emerald-100 bg-emerald-50/10"
                                     />
                                 </div>

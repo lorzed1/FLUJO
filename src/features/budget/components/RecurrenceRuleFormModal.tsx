@@ -4,6 +4,7 @@ import { useData } from '../../../context/DataContext';
 import { TransactionType } from '../../../types';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Input } from '../../../components/ui/Input';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -261,10 +262,9 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                         {/* 3. Start Date */}
                         <div>
                             <FormLabel>Inicio</FormLabel>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={formData.validFrom}
-                                onChange={e => handleChange('validFrom', e.target.value)}
+                                onChange={val => handleChange('validFrom', val)}
                                 required
                                 className={inputClasses}
                             />
@@ -273,10 +273,9 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                         {/* 4. End Date */}
                         <div>
                             <FormLabel>Fin (Opcional)</FormLabel>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={formData.validUntil}
-                                onChange={e => handleChange('validUntil', e.target.value)}
+                                onChange={val => handleChange('validUntil', val)}
                                 className={inputClasses}
                             />
                         </div>

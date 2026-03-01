@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { SalesEvent, SalesProjection, ArqueoRecord } from '../../../types';
 import { projectionsService } from '../../../services/projectionsService';
 import { calculateDailyProjection, ProjectionResult, ProjectionOptions } from '../../../utils/projections';
-import { startOfMonth, endOfMonth, format, addMonths, subMonths, getDay, addDays } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, addMonths, subMonths, getDay, addDays } from 'date-fns';
 import { useArqueos } from '../../../context/ArqueoContext';
+import { getCompleteWeeksRange } from '../../../utils/dateUtils';
 
 export const useProjections = () => {
     const { arqueos } = useArqueos(); // Need historical data
@@ -36,7 +37,7 @@ export const useProjections = () => {
         loadPersistedConfig();
     }, []);
 
-    // Normalizar arqueos: Restar ingresoCovers de ventaPos para proyectar sobre el valor real de facturación
+    // Normalizar arqueos: La Venta Bruta real operativa es Venta POS - Covers
     const normalizedArqueos = useMemo(() => {
         if (!arqueos) return [];
         return arqueos.map(r => {
@@ -50,7 +51,7 @@ export const useProjections = () => {
 
             return {
                 ...r,
-                ventaPos: bruta - covers // Trabajamos sobre la "Venta Neta" definida por el usuario
+                ventaPos: bruta - covers // Venta Bruta Operativa real
             };
         });
     }, [arqueos]);
@@ -62,8 +63,8 @@ export const useProjections = () => {
     const loadMonthData = useCallback(async () => {
         setLoading(true);
         try {
-            const start = format(startOfMonth(currentDate), 'yyyy-MM-dd');
-            const end = format(endOfMonth(currentDate), 'yyyy-MM-dd');
+            // Expandimos a las semanas completas que intersectan el mes (Lunes a Domingo)
+            const { calendarStart, calendarEnd, startStr: start, endStr: end } = getCompleteWeeksRange(currentDate);
 
             // 1. Fetch Events
             const monthEvents = await projectionsService.getSalesEvents(start, end);
@@ -78,8 +79,8 @@ export const useProjections = () => {
             const allEvents = await projectionsService.getSalesEvents();
 
             const results: Record<string, ProjectionResult> = {};
-            let day = startOfMonth(currentDate);
-            const endDay = endOfMonth(currentDate);
+            let day = new Date(calendarStart);
+            const endDay = new Date(calendarEnd);
 
             while (day <= endDay) {
                 const dateStr = format(day, 'yyyy-MM-dd');

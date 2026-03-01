@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { XMarkIcon, CalendarIcon, TableCellsIcon } from '../../components/ui/Icons';
+import { DatePicker } from '../ui/DatePicker';
 
 interface ExportConfigModalProps {
     isOpen: boolean;
@@ -67,8 +68,8 @@ const ExportConfigModal: React.FC<ExportConfigModalProps> = ({ isOpen, onClose, 
                                     key={fmt}
                                     onClick={() => setFormat(fmt)}
                                     className={`flex-1 py-2 px-4 rounded-lg border text-sm font-semibold capitalize transition-all ${format === fmt
-                                            ? 'bg-primary/10 border-primary text-primary dark:bg-blue-500/20 dark:border-blue-400 dark:text-blue-400'
-                                            : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+                                        ? 'bg-primary/10 border-primary text-primary dark:bg-blue-500/20 dark:border-blue-400 dark:text-blue-400'
+                                        : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'
                                         }`}
                                 >
                                     {fmt}
@@ -85,20 +86,18 @@ const ExportConfigModal: React.FC<ExportConfigModalProps> = ({ isOpen, onClose, 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Desde</label>
-                                <input
-                                    type="date"
+                                <DatePicker
                                     value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white text-sm"
+                                    onChange={(val) => setStartDate(val)}
+                                    className="w-full text-sm"
                                 />
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Hasta</label>
-                                <input
-                                    type="date"
+                                <DatePicker
                                     value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white text-sm"
+                                    onChange={(val) => setEndDate(val)}
+                                    className="w-full text-sm"
                                 />
                             </div>
                         </div>

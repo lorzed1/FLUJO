@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CalendarDaysIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { DatePicker } from '../../../components/ui/DatePicker';
 
 interface DateSelectionModalProps {
     isOpen: boolean;
@@ -38,7 +39,7 @@ export const DateSelectionModal: React.FC<DateSelectionModalProps> = ({
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={onClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200"
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200 overflow-visible"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-start mb-4">
@@ -61,14 +62,12 @@ export const DateSelectionModal: React.FC<DateSelectionModalProps> = ({
                         {label}
                     </label>
                     <div className="relative group">
-                        <input
-                            type="date"
+                        <DatePicker
                             value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-slate-700 dark:text-slate-200 font-medium"
+                            onChange={(val) => setDate(val)}
+                            className="w-full"
                             required
                         />
-                        <CalendarDaysIcon className="w-5 h-5 text-slate-400 group-focus-within:text-emerald-500 absolute left-3 top-2.5 transition-colors pointer-events-none" />
                     </div>
                 </div>
 

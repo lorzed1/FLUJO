@@ -1,6 +1,8 @@
 /**
  * Utilidades para parsear fechas en formato español
  */
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
+
 
 const MESES_ESPANOL: Record<string, number> = {
     'enero': 1,
@@ -100,4 +102,29 @@ export function formatDateToDisplay(dateStr: string | any): string {
     } catch (e) {
         return String(dateStr);
     }
+}
+
+/**
+ * Retorna las fechas exactas de inicio y fin para buscar semanas completas 
+ * que intersectan un mes dado (incluso si cruzan de mes).
+ * Empieza el primer Lunes contiguo y termina el último Domingo contiguo.
+ * Estandarizado para evitar repetir la misma lógica en múltiples gráficas semanales.
+ */
+export function getCompleteWeeksRange(currentDate: Date | number, weekStartsOn: 0 | 1 = 1) {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn });
+
+    const weekDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+    return {
+        monthStart,
+        monthEnd,
+        calendarStart,
+        calendarEnd,
+        weekDays,
+        startStr: format(calendarStart, 'yyyy-MM-dd'),
+        endStr: format(calendarEnd, 'yyyy-MM-dd')
+    };
 }

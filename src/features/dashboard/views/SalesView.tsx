@@ -3,7 +3,7 @@ import React from 'react';
 import { MOCK_SALES_DATA } from '../dashboard-mock-data';
 import {
     ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
-    CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, BarChart,
+    CartesianGrid, Tooltip, Legend, BarChart,
 } from 'recharts';
 import {
     ArrowTrendingUpIcon, ArrowTrendingDownIcon, CurrencyDollarIcon,
@@ -80,7 +80,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
     }
 
     return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
 
             {/* ── KPI Row ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -94,7 +94,8 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     return (
                         <div
                             key={i}
-                            className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300"
+                            className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
+                            style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
                         >
                             <div className="flex justify-between items-start mb-2">
                                 <div>
@@ -112,7 +113,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                                         }
                                     </h3>
                                 </div>
-                                <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                                     {icons[i]}
                                 </div>
                             </div>
@@ -158,178 +159,101 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                 })}
             </div>
 
-            {/* ── Row 2: Daily Sales + Payment Mix ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                {/* Daily Sales Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                    <div className="mb-2 flex justify-between items-center">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            Ventas Diarias
-                        </h3>
-                        <div className="flex gap-3">
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
-                                <span className="text-[10px] text-gray-500">Ventas</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                <span className="text-[10px] text-gray-500">Visitas</span>
-                            </div>
+            {/* ── Row 2: Ventas Diarias — Full Width ── */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="mb-3 flex justify-between items-center">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        Ventas Diarias
+                    </h3>
+                    <div className="flex gap-3">
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                            <span className="text-[10px] text-gray-500">Ventas</span>
                         </div>
-                    </div>
-
-                    <div className="flex-1 h-[180px] w-full">
-                        {isMounted && (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart
-                                    data={realDailySales}
-                                    margin={{ top: 15, right: 10, left: 0, bottom: 0 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                                    <XAxis
-                                        dataKey="day"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#9ca3af', fontSize: 9 }}
-                                        dy={0}
-                                        padding={{ left: 10, right: 10 }}
-                                    />
-                                    <YAxis
-                                        yAxisId="left"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#9ca3af', fontSize: 10 }}
-                                        tickFormatter={formatCOP}
-                                        width={80}
-                                    />
-                                    <YAxis
-                                        yAxisId="right"
-                                        orientation="right"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={false}
-                                        width={5}
-                                    />
-                                    <Tooltip
-                                        formatter={(value: number, name: string) => {
-                                            if (name === 'Ventas') return formatCOP(value);
-                                            return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(value);
-                                        }}
-                                        contentStyle={{
-                                            borderRadius: '8px',
-                                            border: '1px solid #e5e7eb',
-                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                        }}
-                                        labelStyle={{ fontWeight: 600, color: '#1f2937' }}
-                                    />
-                                    <Bar
-                                        yAxisId="left"
-                                        dataKey="sales"
-                                        name="Ventas"
-                                        fill="#7c3aed"
-                                        radius={[2, 2, 0, 0]}
-                                        barSize={15}
-                                    />
-                                    <Line
-                                        yAxisId="right"
-                                        type="monotone"
-                                        dataKey="visits"
-                                        name="Visitas"
-                                        stroke="#059669"
-                                        strokeWidth={1.5}
-                                        dot={{ r: 2, fill: '#059669' }}
-                                    />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[10px] text-gray-500">Visitas</span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Payment Mix Donut */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
-                        Mix Pagos
-                    </h3>
-
-                    <div className="relative h-[140px] w-full">
-                        {isMounted && (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                    <Pie
-                                        data={realPaymentMethods}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={50}
-                                        outerRadius={65}
-                                        paddingAngle={4}
-                                        dataKey="amount"
-                                        stroke="none"
-                                    >
-                                        {realPaymentMethods.map((_, idx) => (
-                                            <Cell
-                                                key={`cell-${idx}`}
-                                                fill={PAYMENT_COLORS[idx % PAYMENT_COLORS.length]}
-                                            />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        formatter={(val: number) => formatCOP(val)}
-                                        contentStyle={{
-                                            borderRadius: '8px',
-                                            border: '1px solid #e5e7eb',
-                                        }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        )}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                            <span className="text-xl font-bold text-gray-800 dark:text-white">
-                                {realPaymentMethods.length > 0 ? realPaymentMethods.length : '---'}
-                            </span>
-                            <p className="text-[10px] text-gray-500">Métodos</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2 mt-2">
-                        {realPaymentMethods.map((pm, idx) => (
-                            <div
-                                key={idx}
-                                className="flex items-center justify-between group cursor-default"
+                <div className="h-[220px] w-full">
+                    {isMounted && (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart
+                                data={realDailySales}
+                                margin={{ top: 15, right: 10, left: 0, bottom: 0 }}
                             >
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="w-2.5 h-2.5 rounded-full"
-                                        style={{ backgroundColor: PAYMENT_COLORS[idx % PAYMENT_COLORS.length] }}
-                                    ></div>
-                                    <span className="text-xs text-gray-600 dark:text-gray-300">
-                                        {pm.method}
-                                    </span>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
-                                        {formatCOP(pm.amount)}
-                                    </p>
-                                    <p className="text-[10px] text-gray-400">
-                                        {pm.percentage.toFixed(1)}%
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                                <XAxis
+                                    dataKey="day"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#9ca3af', fontSize: 9 }}
+                                    dy={0}
+                                    padding={{ left: 10, right: 10 }}
+                                />
+                                <YAxis
+                                    yAxisId="left"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                                    tickFormatter={formatCOP}
+                                    width={80}
+                                />
+                                <YAxis
+                                    yAxisId="right"
+                                    orientation="right"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={false}
+                                    width={5}
+                                />
+                                <Tooltip
+                                    formatter={(value: number, name: string) => {
+                                        if (name === 'Ventas') return formatCOP(value);
+                                        return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(value);
+                                    }}
+                                    contentStyle={{
+                                        borderRadius: '8px',
+                                        border: '1px solid #e5e7eb',
+                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                    }}
+                                    labelStyle={{ fontWeight: 600, color: '#1f2937' }}
+                                />
+                                <Bar
+                                    yAxisId="left"
+                                    dataKey="sales"
+                                    name="Ventas"
+                                    fill="#7c3aed"
+                                    radius={[2, 2, 0, 0]}
+                                    barSize={15}
+                                />
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="visits"
+                                    name="Visitas"
+                                    stroke="#059669"
+                                    strokeWidth={1.5}
+                                    dot={{ r: 2, fill: '#059669' }}
+                                />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
             </div>
 
-            {/* ── Row 3: Resumen Semanal ── */}
-            <div className="grid grid-cols-1 gap-4">
+            {/* ── Row 3: Resumen Semanal (2/3) + Mix Pagos compacto (1/3) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                 {/* Weekly Sales vs Target */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                         Resumen Semanal
                     </h3>
 
-                    <div className="h-[140px] w-full">
+                    <div className="h-[220px] w-full">
                         {isMounted && (
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={realWeeklySales} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
@@ -400,66 +324,141 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     </div>
                 </div>
 
-                {/* Top Products Table */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <h3 className="text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-white mb-4">
-                        Productos Más Vendidos
+                {/* Payment Mix — Barra 100% Apilada + Lista */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                        Mix de Pagos
                     </h3>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="border-b border-gray-100 dark:border-gray-700">
-                                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                        Producto
-                                    </th>
-                                    <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                        Cant.
-                                    </th>
-                                    <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                        Ingresos
-                                    </th>
-                                    <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                        Participación
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {MOCK_SALES_DATA.topProducts.map((prod, idx) => (
-                                    <tr
+                    {/* Stacked 100% Bar */}
+                    {realPaymentMethods.length > 0 ? (
+                        <>
+                            <div className="w-full h-6 rounded-md overflow-hidden flex" title="Distribución de métodos de pago">
+                                {realPaymentMethods.map((pm, idx) => (
+                                    <div
                                         key={idx}
-                                        className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                                        className="h-full relative group/seg transition-all duration-300 hover:opacity-80"
+                                        style={{
+                                            width: `${pm.percentage}%`,
+                                            backgroundColor: PAYMENT_COLORS[idx % PAYMENT_COLORS.length],
+                                            minWidth: pm.percentage > 0 ? '4px' : '0',
+                                        }}
                                     >
-                                        <td className="px-4 py-3.5 text-[13px] font-medium text-gray-900 dark:text-gray-100">
-                                            {prod.product}
-                                        </td>
-                                        <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">
-                                            {prod.quantity.toLocaleString()}
-                                        </td>
-                                        <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">
-                                            {formatCOP(prod.revenue)}
-                                        </td>
-                                        <td className="px-4 py-3.5 text-right">
-                                            {/* Mini bar indicator */}
-                                            <div className="inline-flex items-center gap-2">
-                                                <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                                                    <div
-                                                        className="bg-purple-600 h-1.5 rounded-full"
-                                                        style={{ width: `${prod.share}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">
-                                                    {prod.share}%
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                        {/* Tooltip on hover */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded-md whitespace-nowrap opacity-0 group-hover/seg:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                                            <div className="font-bold">{pm.method}</div>
+                                            <div>{formatCOP(pm.amount)} · {pm.percentage.toFixed(1)}%</div>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+                                        </div>
+                                        {/* Percentage label if segment is wide enough */}
+                                        {pm.percentage >= 15 && (
+                                            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white drop-shadow-sm">
+                                                {pm.percentage.toFixed(0)}%
+                                            </span>
+                                        )}
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
+                            </div>
+
+                            {/* Total */}
+                            <div className="flex justify-between items-center mt-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-[10px] font-medium text-gray-400">Total</span>
+                                <span className="text-sm font-bold text-gray-800 dark:text-white">
+                                    {formatCOP(realPaymentMethods.reduce((sum, pm) => sum + pm.amount, 0))}
+                                </span>
+                            </div>
+
+                            {/* Detail List */}
+                            <div className="space-y-2.5 flex-1">
+                                {realPaymentMethods.map((pm, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex items-center gap-2 group cursor-default"
+                                    >
+                                        <div
+                                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                                            style={{ backgroundColor: PAYMENT_COLORS[idx % PAYMENT_COLORS.length] }}
+                                        />
+                                        <span className="text-xs text-gray-600 dark:text-gray-300 flex-1 truncate">
+                                            {pm.method}
+                                        </span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">
+                                            {formatCOP(pm.amount)}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 tabular-nums w-10 text-right">
+                                            {pm.percentage.toFixed(1)}%
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center">
+                            <p className="text-[11px] text-gray-400">Sin datos de pagos</p>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div >
+
+            {/* Top Products Table */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                    Productos Más Vendidos
+                </h3>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-100 dark:border-gray-700">
+                                <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
+                                    Producto
+                                </th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
+                                    Cant.
+                                </th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
+                                    Ingresos
+                                </th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
+                                    Participación
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {MOCK_SALES_DATA.topProducts.map((prod, idx) => (
+                                <tr
+                                    key={idx}
+                                    className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                                >
+                                    <td className="px-4 py-3.5 text-[13px] font-medium text-gray-900 dark:text-gray-100">
+                                        {prod.product}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">
+                                        {prod.quantity.toLocaleString()}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">
+                                        {formatCOP(prod.revenue)}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-right">
+                                        {/* Mini bar indicator */}
+                                        <div className="inline-flex items-center gap-2">
+                                            <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                                                <div
+                                                    className="bg-purple-600 h-1.5 rounded-full"
+                                                    style={{ width: `${prod.share}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">
+                                                {prod.share}%
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     );
 };

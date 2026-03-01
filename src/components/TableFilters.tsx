@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/DropdownMenu"
+import { DatePicker } from "@/components/ui/DatePicker"
 import { CalendarIcon, Hash, Search } from "lucide-react"
 
 // FILTRO DE TEXTO
@@ -39,9 +40,9 @@ export function DateRangeFilter({ dateFrom, dateTo, onChange }: { dateFrom?: str
             <DropdownMenuContent className="w-64 p-4">
                 <div className="grid gap-2">
                     <label className="text-sm font-medium">Desde</label>
-                    <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                    <DatePicker value={from} onChange={(val) => setFrom(val)} />
                     <label className="text-sm font-medium">Hasta</label>
-                    <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                    <DatePicker value={to} onChange={(val) => setTo(val)} />
                 </div>
                 <div className="flex justify-end pt-2">
                     <Button size="sm" onClick={() => onChange(from || undefined, to || undefined)}>Aplicar</Button>

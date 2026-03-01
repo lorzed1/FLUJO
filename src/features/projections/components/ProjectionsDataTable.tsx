@@ -124,10 +124,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'dateStr',
             label: 'Fecha',
+            type: 'date' as const,
             tooltip: 'Fecha del día proyectado. Los cálculos se basan en este día de la semana.',
             sortable: true,
             filterable: true,
             width: 'w-24',
+            getValue: (item: any) => item.dateStr,
             render: (_: string, item: any) => (
                 <span className="text-slate-700 dark:text-slate-200">
                     {item.dateFormatted}
@@ -138,10 +140,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'yoySameDaySale',
             label: 'YoY Mismo Día',
+            type: 'currency' as const,
             tooltip: 'Venta bruta exacta del mismo día del año anterior (Year over Year).',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.yoySameDaySale ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -151,9 +155,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'yoyEquivalentDaySale',
             label: 'YoY Equivalente',
+            type: 'currency' as const,
             tooltip: 'Venta del día de la semana más cercano del año anterior (ej: el viernes equivalente).',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.yoyEquivalentDaySale ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -163,9 +169,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'avg4WeeksSale',
             label: 'Prom. 4 Sem',
+            type: 'currency' as const,
             tooltip: 'Promedio de ventas de las últimas 4 semanas para este mismo día de la semana.',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.avg4WeeksSale ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -175,10 +183,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'avg8WeeksSale',
             label: 'Prom. 8 Sem',
+            type: 'currency' as const,
             tooltip: 'Promedio de ventas de las últimas 8 semanas para este mismo día de la semana.',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.avg8WeeksSale ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -188,10 +198,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'historicalMonthAvgSale',
             label: 'Prom. Mes Histórico',
+            type: 'currency' as const,
             tooltip: 'Promedio histórico de todos los años anteriores para este mes y día de la semana.',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.historicalMonthAvgSale ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -201,10 +213,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'recordsUsedCount',
             label: 'N° Registros',
+            type: 'number' as const,
             tooltip: 'Cantidad de días históricos válidos encontrados para calcular el promedio (excluyendo anomalías).',
             sortable: true,
             align: 'text-center' as const,
             width: 'w-24',
+            getValue: (item: any) => item.recordsUsedCount ?? 0,
             render: (value: number) => (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md font-mono text-xs border border-slate-100 dark:border-slate-700">
                     {value}
@@ -215,10 +229,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'avgVisits',
             label: 'Visitas Prom',
+            type: 'number' as const,
             tooltip: 'Promedio histórico de visitas de clientes para este tipo de día.',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => Math.round(item.avgVisits ?? 0),
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {Math.round(value)}
@@ -228,9 +244,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'avgTicket',
             label: 'Ticket Prom',
+            type: 'currency' as const,
             tooltip: 'Venta promedio por transacción/mesa en base a los registros históricos usados.',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.avgTicket ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -241,9 +259,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'baseSale',
             label: 'Venta Base',
+            type: 'currency' as const,
             tooltip: 'Promedio ponderado de los históricos seleccionados (Venta de donde partimos).',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.baseSale ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-slate-600 dark:text-slate-300">
                     {formatCurrency(value)}
@@ -253,9 +273,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'inflationAdj',
             label: '+ Inflación',
+            type: 'currency' as const,
             tooltip: 'Monto sumado para ajustar la venta histórica a los precios actuales (Costo de vida).',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.inflationAdj ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -265,9 +287,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'growthAdj',
             label: '+ Crecimiento',
+            type: 'currency' as const,
             tooltip: 'Monto sumado por la meta de crecimiento real en volumen de ventas.',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.growthAdj ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                     {formatCurrency(value)}
@@ -277,9 +301,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'eventsImpactAdj',
             label: '+ Eventos',
+            type: 'currency' as const,
             tooltip: 'Impacto monetario de los eventos del día (Festivos, quincenas, promociones, etc).',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.eventsImpactAdj ?? 0,
             render: (value: number) => (
                 <span className={`font-mono text-xs font-medium ${value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {value >= 0 ? '+' : ''}{formatCurrency(value)}
@@ -290,10 +316,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'meta',
             label: 'Meta Total',
+            type: 'currency' as const,
             tooltip: 'Venta final proyectada (Venta Base + Inflación + Crecimiento + Eventos).',
             sortable: true,
             align: 'text-right' as const,
             className: 'font-result',
+            getValue: (item: any) => item.meta ?? 0,
             render: (value: number) => (
                 <span className="font-mono">
                     {formatCurrency(value)}
@@ -303,10 +331,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'rangeMin',
             label: 'Rango Mín',
+            type: 'currency' as const,
             tooltip: 'Escenario pesimista (Límite inferior sugerido para cubrir costos).',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.rangeMin ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400 font-medium">
                     {formatCurrency(value)}
@@ -316,10 +346,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'rangeMax',
             label: 'Rango Máx',
+            type: 'currency' as const,
             tooltip: 'Escenario optimista (Límite superior sugerido para preparación de stock).',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.rangeMax ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400 font-medium">
                     {formatCurrency(value)}
@@ -329,10 +361,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'volatility',
             label: 'Volatilidad (σ)',
+            type: 'currency' as const,
             tooltip: 'Desviación estándar de los históricos. Entre más alto, más impredecible es el día.',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.volatility ?? 0,
             render: (value: number) => (
                 <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
                     ±{formatCurrency(value)}
@@ -343,9 +377,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'real',
             label: 'Venta Real',
+            type: 'currency' as const,
             tooltip: 'Venta bruta registrada realmente ese día en el arqueo.',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.hasReal ? (item.real ?? 0) : 0,
             render: (value: number, item: any) => {
                 if (!item.hasReal) {
                     return <span className="text-slate-300 dark:text-slate-600">-</span>;
@@ -360,9 +396,11 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'compliance',
             label: 'Cumplimiento',
+            type: 'number' as const,
             tooltip: 'Porcentaje de la meta alcanzado (Venta Real vs Meta Total).',
             sortable: true,
             align: 'text-right' as const,
+            getValue: (item: any) => item.hasReal ? (item.compliance ?? 0) : 0,
             render: (value: number, item: any) => {
                 if (!item.hasReal) {
                     return <span className="text-slate-300 dark:text-slate-600">-</span>;
@@ -377,10 +415,12 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         {
             key: 'yoyGrowthPercent',
             label: 'Crec. YoY',
+            type: 'number' as const,
             tooltip: 'Crecimiento porcentual comparado con el mismo día del año anterior.',
             sortable: true,
             align: 'text-right' as const,
             defaultHidden: true,
+            getValue: (item: any) => item.yoyGrowthPercent ?? 0,
             render: (value: number) => (
                 <span className={`font-bold text-xs ${(value ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                     {formatPercent(value)}
@@ -396,6 +436,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
             filterable: true,
             align: 'text-center' as const,
             width: 'w-24',
+            getValue: (item: any) => item.confidence === 'high' ? 'Alta' : item.confidence === 'medium' ? 'Media' : 'Baja',
             render: (value: 'high' | 'medium' | 'low') => renderConfidence(value)
         }
     ], []);
@@ -412,7 +453,6 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
                 enableSelection={true}
                 searchPlaceholder="Buscar por fecha..."
                 containerClassName="border-none shadow-none"
-                exportDateField="dateStr"
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
                 onInfoClick={onInfoClick}

@@ -1,8 +1,7 @@
 import React, { ReactNode, useState } from 'react';
 import { PageHeader } from '../../../components/layout/PageHeader';
-import { PresentationChartLineIcon, ChartBarIcon, WalletIcon, TrendingUpIcon, BanknotesIcon, ShoppingCartIcon, InformationCircleIcon } from '../../../components/ui/Icons';
+import { PresentationChartLineIcon, ChartBarIcon, TrendingUpIcon, BanknotesIcon, ShoppingCartIcon } from '../../../components/ui/Icons';
 import { DashboardControls } from './DashboardControls';
-import { DashboardInfoModal } from './DashboardInfoModal';
 
 type ViewMode = 'overview' | 'sales' | 'projections' | 'expenses' | 'purchases';
 
@@ -21,7 +20,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     selectedDate,
     onDateChange
 }) => {
-    const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
     const views = [
         { id: 'overview', label: 'General', icon: PresentationChartLineIcon },
@@ -33,10 +31,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     return (
         <div className="space-y-4 pb-20 animate-in fade-in duration-500 min-h-screen">
-            {/* Header Section */}
-            <div className="flex flex-col gap-6">
-                {/* Top Row: Title & Date Controls */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Header Section — Excepción Dashboard: controles inline con título */}
+            <div className="flex flex-col gap-4">
+                {/* Top Row: Title + Info + Date Controls — todo en una línea */}
+                <div>
                     <PageHeader
                         title="Business Intelligence"
                         breadcrumbs={[
@@ -44,26 +42,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             { label: 'Dashboard Principal' }
                         ]}
                         icon={<PresentationChartLineIcon className="h-6 w-6" />}
+                        actions={
+                            <DashboardControls
+                                selectedDate={selectedDate}
+                                onDateChange={onDateChange}
+                            />
+                        }
                     />
-
-                    {/* Date Filter Control & Info */}
-                    <div className="w-full lg:w-auto flex items-center justify-end gap-2">
-                        <button
-                            onClick={() => setIsInfoModalOpen(true)}
-                            className="p-1.5 lg:p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-md border border-indigo-200 transition-colors"
-                            title="Información y Fórmulas"
-                        >
-                            <InformationCircleIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-                        </button>
-                        <DashboardControls
-                            selectedDate={selectedDate}
-                            onDateChange={onDateChange}
-                        />
-                    </div>
                 </div>
 
                 {/* Bottom Row: View Switcher (Segmented Control Aliaddo) */}
-                <div className="overflow-x-auto pb-1">
+                <div className="overflow-x-auto pb-1 -mt-2">
                     <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden w-fit min-w-full md:min-w-0 h-10">
                         {views.map((view, idx) => {
                             const Icon = view.icon;
@@ -74,11 +63,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     key={view.id}
                                     onClick={() => onViewChange(view.id as ViewMode)}
                                     className={`
-                                        flex-1 flex items-center justify-center gap-2 px-4 h-full text-[13px] font-semibold transition-colors whitespace-nowrap
+                                        flex-1 flex items-center justify-center gap-2 px-4 h-full text-[13px] font-semibold transition-all duration-200 whitespace-nowrap cursor-pointer
+                                        min-h-[40px]
                                         ${!isLast ? 'border-r border-slate-200 dark:border-slate-700' : ''}
                                         ${isActive
-                                            ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                            : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300'
+                                            ? 'bg-purple-600 text-white shadow-inner'
+                                            : 'bg-transparent text-slate-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-700 dark:hover:text-purple-300'
                                         }
                                     `}
                                 >
@@ -91,18 +81,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="relative">
-                {/* Removed decorative blobs to adhere to professional 'clean and airy' standard */}
+            {/* Main Content Area — con animación escalonada */}
+            <div className="relative animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
                 <div>
                     {children}
                 </div>
             </div>
 
-            <DashboardInfoModal
-                isOpen={isInfoModalOpen}
-                onClose={() => setIsInfoModalOpen(false)}
-            />
         </div>
     );
 };

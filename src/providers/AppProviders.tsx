@@ -4,6 +4,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { UIProvider } from '../context/UIContext';
 import { DataProvider } from '../context/DataContext';
 import { ArqueoProvider, ReconciliationProvider } from '../context/ArqueoContext';
+import { SidebarLabelsProvider } from '../context/SidebarLabelsContext';
 
 /**
  * AppProviders: Composición optimizada de contextos
@@ -23,13 +24,15 @@ export const AppProviders: React.FC<{ children: ReactNode }> = ({ children }) =>
         <BrowserRouter>
             <AuthProvider>
                 <UIProvider>
-                    <DataProvider>
-                        <ArqueoProvider>
-                            <ReconciliationProvider>
-                                {children}
-                            </ReconciliationProvider>
-                        </ArqueoProvider>
-                    </DataProvider>
+                    <SidebarLabelsProvider>
+                        <DataProvider>
+                            <ArqueoProvider>
+                                <ReconciliationProvider>
+                                    {children}
+                                </ReconciliationProvider>
+                            </ArqueoProvider>
+                        </DataProvider>
+                    </SidebarLabelsProvider>
                 </UIProvider>
             </AuthProvider>
         </BrowserRouter>

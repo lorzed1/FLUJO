@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRightIcon } from '../ui/Icons';
+import { useSidebarLabels } from '../../context/SidebarLabelsContext';
 
 interface PageHeaderProps {
     title: string;
@@ -10,6 +11,9 @@ interface PageHeaderProps {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, actions, icon }) => {
+    const { resolveLabel } = useSidebarLabels();
+    const resolvedTitle = resolveLabel(title);
+
     return (
         <div className="mb-1 sm:mb-4">
             {/* Breadcrumbs */}
@@ -20,11 +24,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, acti
                         <ChevronRightIcon className="h-3 w-3 mx-1 text-slate-300" />
                         {crumb.path ? (
                             <Link to={crumb.path} className="hover:text-purple-600 transition-colors">
-                                {crumb.label}
+                                {resolveLabel(crumb.label)}
                             </Link>
                         ) : (
                             <span className="text-slate-600 dark:text-slate-300 pointer-events-none">
-                                {crumb.label}
+                                {resolveLabel(crumb.label)}
                             </span>
                         )}
                     </React.Fragment>
@@ -40,7 +44,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, breadcrumbs, acti
                         </div>
                     )}
                     <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">
-                        {title}
+                        {resolvedTitle}
                     </h1>
                 </div>
 

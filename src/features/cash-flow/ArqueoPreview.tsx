@@ -16,6 +16,7 @@ import { TransferRecord, TransferType, ArqueoRecord } from '../../types';
 import { useArqueos } from '../../context/ArqueoContext';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/layout/PageHeader';
+import { DatePicker } from '../../components/ui/DatePicker';
 import { AccountingExportWizard } from './components/AccountingExportWizard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -318,36 +319,7 @@ const ArqueoPreview: React.FC = () => {
                     icon={<ClipboardDocumentListIcon className="h-6 w-6" />}
                     actions={
                         <div className="flex items-center gap-2">
-                            {activeTab === 'historial' && (
-                                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-10 mr-2">
-                                    <button
-                                        onClick={() => setHistorySubTab('cierres')}
-                                        className={`
-                                        flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors border-r border-slate-200 dark:border-slate-700
-                                        ${historySubTab === 'cierres'
-                                                ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                                : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
-                                            }
-                                    `}
-                                    >
-                                        <CalendarDaysIcon className="h-4 w-4 mr-2" />
-                                        Cierres
-                                    </button>
-                                    <button
-                                        onClick={() => setHistorySubTab('medios')}
-                                        className={`
-                                        flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors
-                                        ${historySubTab === 'medios'
-                                                ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                                : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
-                                            }
-                                    `}
-                                    >
-                                        <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-                                        Medios
-                                    </button>
-                                </div>
-                            )}
+
 
                             <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm h-10">
                                 <button
@@ -464,10 +436,12 @@ const ArqueoPreview: React.FC = () => {
                                         <div className="space-y-3 sm:space-y-5">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Fecha del Arqueo</label>
-                                                <input type="date" name="fecha" value={form.formData.fecha}
-                                                    readOnly
-                                                    className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                                    required />
+                                                <DatePicker
+                                                    value={form.formData.fecha}
+                                                    onChange={() => { }} // ReadOnly visually
+                                                    className="w-full h-14"
+                                                    required
+                                                />
                                             </div>
 
                                             <div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
+import { DatePicker } from './DatePicker';
 import { CurrencyInput } from './CurrencyInput';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { Column } from '../../hooks/useSmartDataTable';
@@ -126,10 +127,9 @@ export function SmartDataFormModal<T extends Record<string, any>>({
                                             className="!h-10 text-[13px] font-medium"
                                         />
                                     ) : col.type === 'date' ? (
-                                        <Input
-                                            type="date"
+                                        <DatePicker
                                             value={val as string || ''}
-                                            onChange={e => handleChange(col.key as keyof T, e.target.value)}
+                                            onChange={v => handleChange(col.key as keyof T, v)}
                                             className="!h-10 text-[13px] font-medium uppercase tracking-tight"
                                         />
                                     ) : (

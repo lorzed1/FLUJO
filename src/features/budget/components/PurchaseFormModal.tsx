@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from '../../../components/ui/Input';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { Button } from '../../../components/ui/Button';
 import { ShoppingBagIcon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -135,10 +136,9 @@ export const PurchaseFormModal: React.FC<PurchaseFormModalProps> = ({
                         </div>
                         <div>
                             <FormLabel>Fecha <span className="text-red-500">*</span></FormLabel>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={formData.fecha}
-                                onChange={e => handleChange('fecha', e.target.value)}
+                                onChange={val => handleChange('fecha', val)}
                                 className="!h-10 text-[13px] font-medium uppercase tracking-tight"
                                 required
                             />

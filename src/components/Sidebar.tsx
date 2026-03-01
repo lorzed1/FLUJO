@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ChartPieIcon,
@@ -26,6 +26,7 @@ import {
   WalletIcon
 } from './ui/Icons';
 import { useUI } from '../context/UIContext';
+import { useSidebarLabels } from '../context/SidebarLabelsContext';
 
 type View = 'dashboard' | 'users' | 'budget' | 'arqueo' | 'projections' | 'income-statement' | 'accounting';
 
@@ -59,6 +60,40 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     budget: true // Default expanded
   });
+
+  // --- Rename feature (uses shared context) ---
+  const { getLabel, setLabel } = useSidebarLabels();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
+
+  const startEditing = useCallback((id: string, currentLabel: string) => {
+    setEditingId(id);
+    setEditValue(currentLabel);
+  }, []);
+
+  const commitRename = useCallback(() => {
+    if (!editingId) return;
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed.length > 0) {
+      setLabel(editingId, trimmed);
+    }
+    setEditingId(null);
+    setEditValue('');
+  }, [editingId, editValue, setLabel]);
+
+  const cancelRename = useCallback(() => {
+    setEditingId(null);
+    setEditValue('');
+  }, []);
+  // --- End rename feature ---
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -98,6 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       children: [
         { id: 'arqueo-form', label: 'Arqueo diario', icon: <ClipboardDocumentListIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/form' },
         { id: 'arqueo-history', label: 'Historial de cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/history' },
+        { id: 'arqueo-transfers', label: 'Medios de Pago', icon: <ArrowDownTrayIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/transfers' },
         { id: 'arqueo-tips', label: 'Propinas', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/tips' },
       ]
     },
@@ -220,7 +256,30 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                   <div className={`flex-shrink-0 ${(isItemActive && !hasChildren) ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
                     {React.cloneElement(item.icon as any, { className: "h-5 w-5" })}
                   </div>
-                  <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal flex-1 text-left tracking-normal`}>{item.label}</span>
+                  {editingId === item.id ? (
+                    <input
+                      ref={editInputRef}
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                        if (e.key === 'Escape') cancelRename();
+                      }}
+                      onBlur={commitRename}
+                      onClick={e => e.stopPropagation()}
+                      className="ml-3 flex-1 bg-white/10 text-white text-[14px] leading-[17.5px] px-1.5 py-0.5 rounded border border-slate-500 focus:border-purple-400 focus:outline-none font-normal"
+                      maxLength={30}
+                    />
+                  ) : (
+                    <span
+                      className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal flex-1 text-left tracking-normal`}
+                      onDoubleClick={e => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        startEditing(item.id, getLabel(item.id, item.label));
+                      }}
+                    >{getLabel(item.id, item.label)}</span>
+                  )}
                   {!isCollapsed && hasChildren && (
                     <div className="text-slate-500 group-hover:text-white transition-colors">
                       {isExpanded ? <MinusIcon className="h-3.5 w-3.5" strokeWidth={2.5} /> : <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />}
@@ -236,7 +295,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                       return (
                         <button
                           key={child.id}
-                          onClick={() => handleNavigation(child.path, child.id)}
+                          onClick={() => editingId === child.id ? undefined : handleNavigation(child.path, child.id)}
                           className={`flex items-center w-full pl-12 pr-4 py-2 transition-colors duration-200 text-[13px] leading-[17.5px]
                             ${isChildActive
                               ? 'text-white font-medium'
@@ -245,7 +304,29 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                           `}
                         >
                           <span className={`mr-2.5 block text-[18px] leading-none ${isChildActive ? 'text-white' : 'text-slate-500'}`}>-</span>
-                          {child.label}
+                          {editingId === child.id ? (
+                            <input
+                              ref={editInputRef}
+                              value={editValue}
+                              onChange={e => setEditValue(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                                if (e.key === 'Escape') cancelRename();
+                              }}
+                              onBlur={commitRename}
+                              onClick={e => e.stopPropagation()}
+                              className="flex-1 bg-white/10 text-white text-[13px] leading-[17.5px] px-1.5 py-0.5 rounded border border-slate-500 focus:border-purple-400 focus:outline-none font-normal"
+                              maxLength={30}
+                            />
+                          ) : (
+                            <span
+                              onDoubleClick={e => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                startEditing(child.id, getLabel(child.id, child.label));
+                              }}
+                            >{getLabel(child.id, child.label)}</span>
+                          )}
                         </button>
                       );
                     })}
@@ -350,7 +431,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                 <div className={`${isActive ? 'scale-110' : ''} transition-transform duration-200`}>
                   {item.icon}
                 </div>
-                <span className="text-[10px] font-medium leading-none">{item.label}</span>
+                <span className="text-[10px] font-medium leading-none">{getLabel(item.id, item.label)}</span>
                 {isActive && <div className="absolute top-0 w-8 h-1 bg-primary rounded-b-lg" />}
               </button>
             );

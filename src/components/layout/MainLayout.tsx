@@ -48,7 +48,7 @@ const MainLayout: React.FC = () => {
             <div className="flex-1 flex flex-col h-full w-full min-w-0 transition-all duration-300">
                 <TopBar />
 
-                <main className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 bg-gray-50/50 dark:bg-slate-900 scroll-smooth">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 bg-transparent dark:bg-slate-900 scroll-smooth">
                     <div className="min-h-full flex flex-col">
                         <Suspense fallback={<PageLoader />}>
                             <Outlet />

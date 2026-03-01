@@ -4,6 +4,23 @@
 
 ---
 
+### [2026-03-01] - Categoría: Frontend / Lógica Matemática (Dashboard Proyecciones)
+**Problema Inicial:** Los KPIs de "Cumplimiento" y "Diferencia" en el Dashboard de Proyecciones no coincidían con los cálculos manuales y los reportes esperados (ej. Cumplimiento del 89.6% vs 88.1% manual, o diferencias monetarias descuadradas).
+**Causa Raíz Diagnosticada:** 
+1. **Confusión Venta Bruta vs Covers:** El código le estaba restando los `ingreso_covers` a la `Venta POS` en el dashboard, argumentando que los covers no son venta real (comida/bebida). Esto alteraba la Venta Real Acumulada.
+2. **Cumplimiento Run-Rate vs Absoluto:** El algoritmo calculaba el porcentaje dividiendo la venta actual *exclusivamente entre la meta de los días transcurridos hasta la fecha* (Run-Rate), en lugar de dividirlo entre la meta total del mes entero.
+**Solución Exitosa:**
+1. **Unificación Venta Bruta:** Se estableció por regla absoluta en base de datos y skills (`logica-negocio-y-datos/SKILL.md`) que la "Venta Bruta" operativa SIEMPRE es el resultado de `venta_pos - ingreso_covers`. Esta resta es obligatoria para reflejar la venta real. Las proyecciones ahora respetan esta matemática.
+2. **Cálculo Absoluto Mensual:** En `ProjectionsView.tsx`, se modificó el denominador para `Cumplimiento`. Ahora siempre se toma la sumatoria total de la meta del mes (`totalMeta`) como divisor. La `Diferencia` también se calcula como `Venta Real Acumulada - Meta Total del Mes`.
+**Lección Aprendida:** **Jamás calcular métricas de cumplimiento contra metas parciales (días transcurridos) a menos que se especifique estúdielo como un "Ritmo de Corrida" (Run-Rate).** El KPI general de Cumplimiento siempre implica (Venta Actual / Meta Absoluta Mensual). Además, la Venta Bruta operativa a nivel lógico SIEMPRE margina (resta) el valor de los Covers.
+
+---
+
+### [2026-03-01] - Categoría: Frontend / Exportación (Excel & Proyecciones)
+**Lección Aprendida:** Para tablas de proyecciones o cálculos complejos en cliente, **no usar filtros de fecha en el exportador**. Exportar siempre el `processedData` actual de la vista para evitar discrepancias entre lo que el usuario ve y lo que el filtro intenta "re-calcular".
+
+---
+
 ### [2026-02-28] - Categoría: Base de Datos / RLS (Supabase)
 **Problema Inicial:** La nueva tabla de Propinas no mostraba los datos cargados en el frontend, regresaba los arreglos vacíos `[]` silenciosamente, a pesar de que la consola de red no reportaba errores explícitos (Status 200/204 de la consulta).
 **Causa Raíz Diagnosticada:** La tabla en Supabase fue creada con políticas de seguridad a nivel de filas (RLS) estrictas que exigían `authenticated users` (usuarios autenticados). Al acceder internamente como usuario "público/anónimo" sin sesión activa desde el dashboard, Supabase cortaba el acceso sin escupir errores ruidosos.
@@ -36,4 +53,3 @@ CREATE POLICY "allow_all_tips_records" ON public.tips_records FOR ALL TO public 
 2. Los botones específicos de cada página (Duplicar, Pago Rápido) se movieron a columnas con keys descriptivos (`'duplicate'`, `'quickPay'`).
 3. Se agregó `onEdit={handleEdit}` donde faltaba para que la columna automática funcione correctamente.
 **Lección Aprendida:** **Nunca definir `key: 'actions'` en columnas de páginas que usen `SmartDataPage`**. Este componente ya provee Editar/Eliminar automáticamente. Si se necesitan acciones EXTRA, usar un key descriptivo diferente. Regla documentada en `design-system-core/SKILL.md` § 3.
-

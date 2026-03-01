@@ -317,57 +317,57 @@ export function useSmartDataTable<T extends Record<string, any>>({
 
     // --- Export Logic ---
     const performExport = (dataToExport: T[], format: 'excel' | 'csv' | 'pdf') => {
-        const rows = dataToExport.map(item => {
-            const row: Record<string, any> = {};
-            initialColumns.filter(c => visibleColumns[c.key]).forEach(col => {
-                if (format === 'excel') {
-                    const rawValue = getCellValue(item, col);
-                    // Preserve numbers for excel so users can correctly apply currency/formats
-                    // Rounding them to 2 decimal places fixes the "montón de números" (excessive decimals) complaint.
-                    if (typeof rawValue === 'number') {
-                        row[col.label] = Number(rawValue.toFixed(2));
-                    } else if (typeof rawValue === 'string' && /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(rawValue) && !isNaN(Date.parse(rawValue))) {
-                        // Detect dates and convert to Date objects for Excel to natively recognize
-                        if (rawValue.length === 10) { // Format YYYY-MM-DD
-                            const [year, month, day] = rawValue.split('-');
-                            row[col.label] = new Date(Number(year), Number(month) - 1, Number(day));
-                        } else {
-                            row[col.label] = new Date(rawValue);
-                        }
-                    } else {
-                        row[col.label] = getRenderedStringValue(item, col);
-                    }
+        // Fallback: if visibleColumns filters out ALL columns (e.g. corrupted localStorage),
+        // export all non-action columns instead
+        const exportColumns = initialColumns.filter(c => visibleColumns[c.key]);
+        const columnsToExport = exportColumns.length > 0
+            ? exportColumns
+            : initialColumns.filter(c => c.key !== 'actions');
+
+        const headersToExport = columnsToExport.map(col => col.label || 'Columna');
+        const aoaData: any[][] = [headersToExport];
+
+        dataToExport.forEach(item => {
+            const rowData: any[] = [];
+            columnsToExport.forEach(col => {
+                const rawValue = getCellValue(item, col);
+                if (typeof rawValue === 'number') {
+                    rowData.push(isNaN(rawValue) ? 0 : Number(rawValue.toFixed(2)));
                 } else {
-                    row[col.label] = getRenderedStringValue(item, col);
+                    rowData.push(getRenderedStringValue(item, col));
                 }
             });
-            return row;
+            aoaData.push(rowData);
         });
 
         const dateStr = new Date().toISOString().split('T')[0];
 
         if (format === 'excel') {
-            const ws = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: 'yyyy-mm-dd' });
+            const ws = XLSX.utils.aoa_to_sheet(aoaData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Datos");
             XLSX.writeFile(wb, `export_${dateStr}.xlsx`);
         } else if (format === 'csv') {
-            if (rows.length === 0) return;
-            const headers = Object.keys(rows[0]);
-            const csvContent = [headers.join(','), ...rows.map(row => headers.map(h => `"${row[h]}"`).join(','))].join('\n');
+            if (aoaData.length <= 1) return;
+            const csvHeaders = aoaData[0];
+            const csvRows = aoaData.slice(1);
+            const csvContent = [
+                csvHeaders.join(','),
+                ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `export_${dateStr}.csv`;
             link.click();
         } else if (format === 'pdf') {
-            if (rows.length === 0) return;
+            if (aoaData.length <= 1) return;
             const doc = new jsPDF();
-            const headers = Object.keys(rows[0]);
-            const body = rows.map(row => Object.values(row));
+            const pdfHeaders = aoaData[0];
+            const pdfBody = aoaData.slice(1);
             autoTable(doc, {
-                head: [headers],
-                body: body,
+                head: [pdfHeaders],
+                body: pdfBody,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229] }
             });
@@ -378,6 +378,10 @@ export function useSmartDataTable<T extends Record<string, any>>({
     const initiateExport = (format: 'excel' | 'csv' | 'pdf') => {
         if (selectedIds.size > 0) {
             const dataToExport = processedData.filter(item => selectedIds.has(item.id));
+            if (dataToExport.length === 0) {
+                alert('Error: La selección de filas falló al intentar recopilar la información. Intente recargar.');
+                return;
+            }
             performExport(dataToExport, format);
             return;
         }
@@ -386,23 +390,53 @@ export function useSmartDataTable<T extends Record<string, any>>({
             setShowExportModal(true);
             return;
         }
+        if (processedData.length === 0) {
+            alert('Aviso: La tabla actual no contiene datos o filtros para poder exportar a ' + format.toUpperCase());
+        }
         performExport(processedData, format);
     };
 
     const handleConfirmExport = (filterByDate: boolean) => {
         if (!pendingExportFormat) return;
+
+        // Obtenemos los datos actuales tal cual se ven en la tabla.
+        // Se usa `processedData` si queremos exportar con filtros de texto/columna aplicados, o `data` (crudo global de la vista)
         let dataToExport = [...processedData];
+
+        // Fallback defensivo vital: si processedData en la memoria de React se borró pero aún pasamos prop data (común en cálculos de cliente/frontend sin Supabase), úsalo instanciado para recuperar info.
+        if (dataToExport.length === 0 && data.length > 0) {
+            console.warn('Advertencia interna: processedData dio 0, exportando matriz base (data prop) directamente.');
+            dataToExport = [...data];
+        }
+
         if (filterByDate && exportDateField && exportDateRange.start && exportDateRange.end) {
-            const start = new Date(exportDateRange.start).getTime();
-            const end = new Date(exportDateRange.end).getTime();
-            const endAdjusted = end + (24 * 60 * 60 * 1000) - 1;
+            // Se usa substring de ISO para normalizar fechas cruzadas y evitar `NaN` o discrepancias con zonas UTC/locales 
+            const startRaw = exportDateRange.start;
+            const endRaw = exportDateRange.end;
+
             dataToExport = dataToExport.filter(item => {
                 const val = (item as any)[exportDateField];
                 if (!val) return false;
+
+                // Normalizamos fechas string asegurando comparación string literal tipo YYYY-MM-DD para evitar el parser getTime() si es posible
+                if (typeof val === 'string' && val.length >= 10 && startRaw.length >= 10) {
+                    const truncItem = val.substring(0, 10);
+                    return truncItem >= startRaw && truncItem <= endRaw;
+                }
+
+                // Fallback tradicional timestamp 
                 const itemTime = new Date(val).getTime();
-                return itemTime >= start && itemTime <= endAdjusted;
+                const startTime = new Date(startRaw).getTime();
+                const endTime = new Date(endRaw).getTime() + (24 * 60 * 60 * 1000) - 1; // +1 día para incluirlo
+                if (isNaN(itemTime)) return true; // Ante la duda en parser ISO corrupto, inclúyelo
+                return itemTime >= startTime && itemTime <= endTime;
             });
         }
+
+        if (dataToExport.length === 0) {
+            alert('La exportación de fechas entre ' + (exportDateRange.start || '?') + ' y ' + (exportDateRange.end || '?') + ' generó un archivo sin datos numéricos (0 filas cruzadas entre calendarios). Prueba ampliando el rango o exportando sin filtro.');
+        }
+
         performExport(dataToExport, pendingExportFormat);
         setShowExportModal(false);
         setPendingExportFormat(null);

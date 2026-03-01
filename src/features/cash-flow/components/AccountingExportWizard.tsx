@@ -9,6 +9,7 @@ import { useUI } from '../../../context/UIContext';
 import { ArqueoRecord } from '../../../types';
 import { AccountingConfigModal } from './AccountingConfigModal';
 import { formatDateToDisplay } from '../../../utils/dateUtils';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import * as XLSX from 'xlsx';
 
 interface AccountingExportWizardProps {
@@ -363,20 +364,18 @@ export const AccountingExportWizard: React.FC<AccountingExportWizardProps> = ({ 
                                             <div className="flex gap-2">
                                                 <div className="w-1/2">
                                                     <span className="text-xs text-gray-500 mb-1 block">Desde</span>
-                                                    <input
-                                                        type="date"
+                                                    <DatePicker
                                                         value={dateStart}
-                                                        onChange={(e) => setDateStart(e.target.value)}
-                                                        className="w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 text-sm"
+                                                        onChange={(val) => setDateStart(val)}
+                                                        className="w-full text-sm"
                                                     />
                                                 </div>
                                                 <div className="w-1/2">
                                                     <span className="text-xs text-gray-500 mb-1 block">Hasta</span>
-                                                    <input
-                                                        type="date"
+                                                    <DatePicker
                                                         value={dateEnd}
-                                                        onChange={(e) => setDateEnd(e.target.value)}
-                                                        className="w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 text-sm"
+                                                        onChange={(val) => setDateEnd(val)}
+                                                        className="w-full text-sm"
                                                     />
                                                 </div>
                                             </div>

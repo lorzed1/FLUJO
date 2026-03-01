@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { getLocalDateISO } from '../../../utils/dateUtils';
 import { CalendarDaysIcon } from '../../../components/ui/Icons';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { Button } from '../../../components/ui/Button';
 
 interface ArqueoDateSelectorProps {
@@ -53,13 +54,12 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
                             >
                                 Fecha de Registro
                             </label>
-                            <input
+                            <DatePicker
                                 id="date-selector"
-                                type="date"
-                                required
                                 value={currentDate}
-                                onChange={(e) => onDateChange(e.target.value)}
-                                className="w-full h-9 px-3 text-[13px] rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600 focus:border-purple-600 transition-all"
+                                onChange={(val) => onDateChange(val)}
+                                className="w-full"
+                                required
                             />
                         </div>
                     </div>

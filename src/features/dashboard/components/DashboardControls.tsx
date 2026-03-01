@@ -20,9 +20,9 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
     };
 
     return (
-        <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5">
+        <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5 gap-3">
             <div className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <CalendarIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">Período:</span>
                 <span className="text-sm font-bold text-slate-800 dark:text-slate-200 capitalize">
                     {selectedDate.toLocaleDateString('es-CO', { month: 'long' })}
@@ -33,7 +33,7 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
                 {/* Navegación Mes */}
                 <button
                     onClick={() => handleMonthChange(-1)}
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                    className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Mes anterior"
                 >
                     <ChevronLeftIcon className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
@@ -41,7 +41,7 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
 
                 <button
                     onClick={() => handleMonthChange(1)}
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                    className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Mes siguiente"
                 >
                     <ChevronRightIcon className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
@@ -53,7 +53,7 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
                 <select
                     value={selectedDate.getFullYear()}
                     onChange={(e) => handleYearChange(parseInt(e.target.value))}
-                    className="px-2 py-1 text-sm bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                    className="px-2 py-1 text-sm bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-medium text-slate-700 dark:text-slate-300 hover:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors cursor-pointer"
                 >
                     {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
                         <option key={year} value={year}>{year}</option>
@@ -65,7 +65,7 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
                 {/* Botón Hoy */}
                 <button
                     onClick={() => onDateChange(new Date())}
-                    className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded transition-colors"
+                    className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md transition-colors min-h-[28px]"
                 >
                     Hoy
                 </button>

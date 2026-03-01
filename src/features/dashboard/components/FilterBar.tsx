@@ -4,6 +4,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
+import { DatePicker } from '../../../components/ui/DatePicker';
 import { CalendarDaysIcon, FunnelIcon, ArrowPathIcon } from '../../../components/ui/Icons';
 
 interface FilterBarProps {
@@ -140,18 +141,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
 
                         {filters.periodMode === 'range' && (
                             <div className="flex items-center gap-2">
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={filters.dateRange.start}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, start: e.target.value } }))}
-                                    className="w-32"
+                                    onChange={(val) => setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, start: val } }))}
+                                    className="w-36"
+                                    placeholder="Inicio"
                                 />
                                 <span className="text-slate-400">→</span>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={filters.dateRange.end}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, end: e.target.value } }))}
-                                    className="w-32"
+                                    onChange={(val) => setFilters(prev => ({ ...prev, dateRange: { ...prev.dateRange, end: val } }))}
+                                    className="w-36"
+                                    placeholder="Fin"
                                 />
                             </div>
                         )}

@@ -42,5 +42,5 @@
 
 ## 4. Estándares PostgreSQL
 *   **Nombres:** `snake_case` para tablas y columnas.
-*   **Soft Deletes:** Usar `deleted_at` preferiblemente.
+*   **Borrado:** Todo borrado es físico (Hard Delete). No usar columnas `deleted_at`.
 *   **Migraciones:** Usar `apply_migration` tool. NUNCA modificar esquema manualmente en producción.

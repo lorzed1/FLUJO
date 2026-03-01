@@ -9,6 +9,7 @@ import { cn } from '../../lib/utils';
 import { ArqueoRecord } from '../../types';
 import CashBaseModal from './CashBaseModal';
 import { EyeIcon } from '../../components/ui/Icons';
+import { DatePicker } from '../../components/ui/DatePicker';
 
 interface ArqueosTableProps {
     arqueos: ArqueoRecord[];
@@ -54,6 +55,18 @@ const EditableCell = ({
     const [tempValue, setTempValue] = useState(String(value));
 
     if (isEditing) {
+        if (type === 'date') {
+            return (
+                <div className="absolute left-0 top-0 w-48 z-[60]">
+                    <DatePicker
+                        value={String(value)}
+                        onChange={(val) => onSave(val)}
+                        onBlur={onCancel}
+                        className="w-full"
+                    />
+                </div>
+            );
+        }
         return (
             <input
                 type={type}

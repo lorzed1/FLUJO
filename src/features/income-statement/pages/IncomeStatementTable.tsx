@@ -186,7 +186,7 @@ export const IncomeStatementTable: React.FC = () => {
 
     if (isLoading && data.length === 0) {
         return (
-            <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+            <div className="flex h-screen items-center justify-center bg-transparent dark:bg-slate-950">
                 <div className="flex flex-col items-center gap-6">
                     <div className="relative">
                         <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
@@ -213,7 +213,7 @@ export const IncomeStatementTable: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900/20 overflow-hidden">
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
             <div className="px-6 pt-4 shrink-0">
                 <PageHeader
                     title="BD Estado de resultados"

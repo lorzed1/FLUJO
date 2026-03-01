@@ -20,28 +20,46 @@ export interface CategoryExpenseSummary {
 
 export const dashboardService = {
     /**
-     * Obtiene el resumen financiero mensual utilizando la vista optimizada.
-     * Ideal para gráficos de barras de Ingresos vs Gastos.
+     * Obtiene el resumen financiero de ingresos y egresos del mes.
+     * Basado en arqueos (venta bruta) y pagos efectivos.
      */
-    async getMonthlyFinancialSummary(startMonth?: string, endMonth?: string): Promise<MonthlyFinancialSummary[]> {
-        let query = supabase
-            .from('monthly_financial_summary')
-            .select('*')
-            .order('month_year', { ascending: true });
+    async getMonthlyIncomeAndExpensesKPI(year: number, month: number) {
+        const currentMonthYear = `${year}-${String(month).padStart(2, '0')}`;
 
-        if (startMonth) {
-            query = query.gte('month_year', startMonth);
-        }
-        if (endMonth) {
-            query = query.lte('month_year', endMonth);
+        // 1. Ingresos totales (todos los medios de pago)
+        const { data: salesData, error: salesError } = await supabase
+            .from('view_monthly_sales_summary')
+            .select('venta_bruta')
+            .eq('month_year', currentMonthYear)
+            .single();
+
+        // Si no hay ventas, no lanzamos error, simplemente es 0
+        const totalIncome = salesError ? 0 : Number(salesData?.venta_bruta) || 0;
+
+        // 2. Egresos totales (pagos efectivos / ya saldados de caja)
+        // Definición: compromisos del mes actual que ya están pagados
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+        const { data: egresosData, error: egresosError } = await supabase
+            .from('budget_commitments')
+            .select('amount, status, paid_date')
+            .gte('due_date', startDate)
+            .lte('due_date', endDate)
+            .eq('status', 'paid');
+
+        if (egresosError) {
+            console.error('Error fetching expenses:', egresosError);
+            // No rompemos todo el try catch
         }
 
-        const { data, error } = await query;
-        if (error) {
-            console.error('Error fetching monthly summary:', error);
-            throw error;
-        }
-        return data || [];
+        const totalExpense = (egresosData || []).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+        return {
+            total_income: totalIncome,
+            total_expense: totalExpense
+        };
     },
 
     /**
@@ -468,6 +486,190 @@ export const dashboardService = {
             percentage: currentPercentage,
             change: change,
             isUp: change > 0
+        };
+    },
+
+    /**
+     * KPI: Cumplimiento del presupuesto de compras del mes.
+     * Presupuesto se calcula como el 40% de las ventas brutas del mes anterior. (Convención del negocio)
+     */
+    async getMonthlyPurchasesPerformanceKPI(year: number, month: number) {
+        const currentMonthYear = `${year}-${String(month).padStart(2, '0')}`;
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+        const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+
+        const [purchasesRes, salesRes] = await Promise.all([
+            supabase
+                .from('view_monthly_purchases_summary')
+                .select('*')
+                .eq('month_year', currentMonthYear),
+            supabase
+                .from('view_monthly_sales_summary')
+                .select('*')
+                .eq('month_year', prevMonthYear)
+        ]);
+
+        if (purchasesRes.error) throw purchasesRes.error;
+        if (salesRes.error) throw salesRes.error;
+
+        const currPurchases = Number((purchasesRes.data || [])[0]?.total_debito) || 0;
+        const prevSales = Number((salesRes.data || [])[0]?.venta_bruta) || 0;
+
+        // El presupuesto mensual asignado a compras es el 40% de las ventas del mes anterior
+        const budget = prevSales * 0.40;
+        const percentage = budget > 0 ? (currPurchases / budget) * 100 : 0;
+
+        return {
+            amount: currPurchases,
+            budget: budget,
+            percentage: percentage
+        };
+    },
+
+    /**
+     * KPI: Cumplimiento de la meta de ventas del mes.
+     * Aquí simulamos la meta como el 105% de las ventas brutas del mes pasado,
+     * ya que no tenemos una tabla de metas explícita por ahora.
+     */
+    async getMonthlySalesPerformanceKPI(year: number, month: number) {
+        const currentMonthYear = `${year}-${String(month).padStart(2, '0')}`;
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+        const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+
+        const { data, error } = await supabase
+            .from('view_monthly_sales_summary')
+            .select('*')
+            .in('month_year', [currentMonthYear, prevMonthYear]);
+
+        if (error) throw error;
+
+        const currSales = Number((data || []).find(d => d.month_year === currentMonthYear)?.venta_bruta) || 0;
+        const prevSales = Number((data || []).find(d => d.month_year === prevMonthYear)?.venta_bruta) || 0;
+
+        const goal = prevSales > 0 ? prevSales * 1.05 : currSales > 0 ? currSales * 1.05 : 0;
+        const percentage = goal > 0 ? (currSales / goal) * 100 : 0;
+
+        return {
+            amount: currSales,
+            goal: goal,
+            percentage: percentage
+        };
+    },
+
+    /**
+     * Gráfica de ventas del año (incluye visitas)
+     */
+    async getYearlySalesAndVisits(year: number) {
+        const { data, error } = await supabase
+            .from('view_monthly_sales_summary')
+            .select('*')
+            .gte('month_year', `${year}-01`)
+            .lte('month_year', `${year}-12`)
+            .order('month_year', { ascending: true });
+
+        if (error) throw error;
+
+        const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+        // Ensure we have 12 months
+        return Array.from({ length: 12 }, (_, i) => {
+            const monthStr = String(i + 1).padStart(2, '0');
+            const monthYear = `${year}-${monthStr}`;
+            const monthData = (data || []).find(d => d.month_year === monthYear);
+
+            return {
+                name: months[i],
+                sales: Number(monthData?.venta_bruta) || 0,
+                visits: Number(monthData?.total_visitas) || 0
+            };
+        });
+    },
+
+    /**
+     * Gráfica de ventas por semana del año (incluye visitas)
+     */
+    async getYearlyWeeklySalesAndVisits(year: number) {
+        const startDateStr = `${year}-01-01`;
+        const endDateStr = `${year}-12-31`;
+
+        const { data, error } = await supabase
+            .from('arqueos')
+            .select('parsed_date, venta_pos, ingreso_covers, visitas')
+            .gte('parsed_date', startDateStr)
+            .lte('parsed_date', endDateStr)
+            .order('parsed_date', { ascending: true });
+
+        if (error) throw error;
+
+        const weeklyData: { [key: number]: { sales: number; visits: number } } = {};
+
+        const getISOWeekNumber = (dateString: string) => {
+            const [y, m, d] = dateString.split('-');
+            const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+            const dayNum = date.getUTCDay() || 7;
+            date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+            return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        };
+
+        let maxWeek = 0;
+        (data || []).forEach(item => {
+            if (item.parsed_date) {
+                const weekNum = getISOWeekNumber(item.parsed_date);
+                if (weekNum > maxWeek) maxWeek = weekNum;
+
+                const netSale = (Number(item.venta_pos) || 0) - (Number(item.ingreso_covers) || 0);
+                const visitCount = Number(item.visitas) || 0;
+
+                if (!weeklyData[weekNum]) {
+                    weeklyData[weekNum] = { sales: 0, visits: 0 };
+                }
+                weeklyData[weekNum].sales += netSale;
+                weeklyData[weekNum].visits += visitCount;
+            }
+        });
+
+        const result = [];
+        for (let i = 1; i <= maxWeek; i++) {
+            result.push({
+                week: `Sem ${i}`,
+                sales: weeklyData[i]?.sales || 0,
+                visits: weeklyData[i]?.visits || 0
+            });
+        }
+
+        return result;
+    },
+
+    /**
+     * KPI: Cartera no pagada del mes (compromisos pendientes y vencidos)
+     * Estos son del módulo de Egresos.
+     */
+    async getMonthlyUnpaidCommitmentsKPI(year: number, month: number) {
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+        const { data, error } = await supabase
+            .from('budget_commitments')
+            .select('amount, status')
+            .gte('due_date', startDate)
+            .lte('due_date', endDate)
+            .in('status', ['pending', 'overdue']);
+
+        if (error) {
+            console.error('Error fetching unpaid commitments:', error);
+            throw error;
+        }
+
+        const totalUnpaid = (data || []).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+        return {
+            amount: totalUnpaid
         };
     }
 };

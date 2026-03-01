@@ -9,6 +9,7 @@ import {
 } from '../../../components/ui/Icons';
 import { dashboardService } from '../../../services/dashboardService';
 import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Line, Legend } from 'recharts';
+import { BulletChart, BulletChartItem } from '../components/BulletChart';
 
 const formatCOP = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -17,6 +18,12 @@ const formatCOP = (value: number) => {
         maximumFractionDigits: 0,
         minimumFractionDigits: 0
     }).format(value);
+};
+
+const formatCompact = (value: number) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}k`;
+    return `$${value.toFixed(0)}`;
 };
 
 // Componente para anillo circular de porcentaje
@@ -123,13 +130,14 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
     }
 
     return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* ── KPI Row ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map((kpi, i) => (
                     <div
                         key={i}
-                        className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300"
+                        className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
+                        style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
                     >
                         <div className="flex justify-between items-start mb-2">
                             <div>
@@ -140,7 +148,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                                     {kpi.value}
                                 </h3>
                             </div>
-                            <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                            <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                                 {kpi.icon}
                             </div>
                         </div>
@@ -175,7 +183,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                             Evolución de Compras por Semana
                         </h3>
                     </div>
-                    <div className="w-full h-[300px]">
+                    <div className="w-full h-[280px]">
                         {isMounted && (
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={weeklyPurchases} margin={{ top: 15, right: 10, left: 0, bottom: 0 }}>
@@ -224,31 +232,33 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                     </div>
                 </div>
 
-                {/* Compliance Rings Graph */}
+                {/* Cumplimiento de Presupuesto — Bullet Chart */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                    <div className="mb-4">
+                    <div className="mb-3">
                         <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             Cumplimiento de Presupuesto
                         </h3>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                            Compras reales vs presupuesto (40% de ventas semana anterior)
+                        </p>
                     </div>
-                    <div className="flex-1 flex flex-row flex-wrap justify-around items-center py-2">
-                        {weeklyPurchases.map((weekData, idx) => {
-                            // Evitar división por cero
-                            const percentage = weekData.budget > 0 ? (weekData.amount / weekData.budget) * 100 : 0;
-                            return (
-                                <GaugeRing
-                                    key={idx}
-                                    label={weekData.week}
-                                    percentage={percentage}
-                                />
-                            );
-                        })}
-                        {weeklyPurchases.length === 0 && (
-                            <div className="w-full text-center">
-                                <p className="text-[11px] text-gray-400">No hay datos esta semana.</p>
-                            </div>
-                        )}
-                    </div>
+                    {weeklyPurchases.length > 0 ? (
+                        <BulletChart
+                            items={weeklyPurchases.map((w) => ({
+                                label: w.week,
+                                actual: w.amount,
+                                target: w.budget,
+                            } as BulletChartItem))}
+                            formatValue={(v) => formatCompact(v)}
+                            inverted={true}
+                            actualLabel="Gasto"
+                            targetLabel="Presupuesto"
+                        />
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center py-8">
+                            <p className="text-[11px] text-gray-400">No hay datos esta semana.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

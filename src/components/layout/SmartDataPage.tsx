@@ -340,7 +340,7 @@ export function SmartDataPage<T extends Record<string, any>>({
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900/20 overflow-hidden">
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
             <div className="px-6 pt-4 shrink-0 mb-4">
                 <PageHeader
                     title={title}

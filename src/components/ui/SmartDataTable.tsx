@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
 
 import {
@@ -237,7 +238,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
 
             {/* ─── ZONA SCROLL: contenedor con máscara visual estática (límites naranjas de ref) ─── */}
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden px-8">
-                <div className={cn("flex-1 overflow-auto min-h-0 custom-scrollbar border-y border-gray-100 dark:border-slate-700", props.scrollContainerClassName)}>
+                <div className={cn("flex-1 overflow-auto min-h-0 custom-scrollbar border-t border-gray-100 dark:border-slate-700", props.scrollContainerClassName)}>
                     <div className="min-w-max w-full pb-4 pt-1">
                         {/* --- TABLA --- */}
                         <div className="rounded-none bg-transparent relative">
@@ -515,7 +516,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
             {/* --- EXPORT DATE RANGE MODAL --- fuera del scroll container --- */}
             {table.showExportModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-700 overflow-hidden scale-100 animate-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-gray-100 dark:border-slate-700 overflow-visible scale-100 animate-in zoom-in-95 duration-200">
                         <div className="p-5 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 flex justify-between items-center">
                             <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 flex items-center gap-2">
                                 <ArrowDownTrayIcon className="h-5 w-5 text-indigo-500" />
@@ -535,20 +536,18 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-gray-500 uppercase">Desde</label>
-                                    <input
-                                        type="date"
-                                        className="w-full rounded-lg border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2"
+                                    <DatePicker
                                         value={table.exportDateRange.start}
-                                        onChange={(e) => table.setExportDateRange((prev: any) => ({ ...prev, start: e.target.value }))}
+                                        onChange={(val) => table.setExportDateRange((prev: any) => ({ ...prev, start: val }))}
+                                        className="w-full text-sm"
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-gray-500 uppercase">Hasta</label>
-                                    <input
-                                        type="date"
-                                        className="w-full rounded-lg border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2"
+                                    <DatePicker
                                         value={table.exportDateRange.end}
-                                        onChange={(e) => table.setExportDateRange((prev: any) => ({ ...prev, end: e.target.value }))}
+                                        onChange={(val) => table.setExportDateRange((prev: any) => ({ ...prev, end: val }))}
+                                        className="w-full text-sm"
                                     />
                                 </div>
                             </div>

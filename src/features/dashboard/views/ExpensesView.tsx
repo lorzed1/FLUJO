@@ -6,14 +6,15 @@ import {
     CheckCircleIcon,
     CalendarDaysIcon
 } from '@heroicons/react/24/outline';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO, addDays, differenceInCalendarDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useData } from '../../../context/DataContext';
+import { getCompleteWeeksRange } from '../../../utils/dateUtils';
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const COLORS = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#9333ea', '#ec4899', '#06b6d4', '#84cc16'];
 
 export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) => {
     const { categories, transactions } = useData();
@@ -38,16 +39,21 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
             try {
                 const start = startOfMonth(selectedDate);
                 const end = endOfMonth(selectedDate);
+                const { calendarStart, calendarEnd, startStr, endStr } = getCompleteWeeksRange(selectedDate);
 
-                // 1. Cargar Compromisos (Detalle para lista "Próximos")
+                // 1. Cargar Compromisos (Para el rango completo de las semanas que tocan el mes)
                 const commitmentsData = await budgetService.getCommitments(
-                    format(start, 'yyyy-MM-dd'),
-                    format(end, 'yyyy-MM-dd')
+                    startStr,
+                    endStr
                 );
                 setCommitments(commitmentsData);
 
-                // 2. Calcular KPIs sobre los datos filtrados
-                const currentMonthItems = commitmentsData;
+                // 2. Calcular KPIs sobre los datos filtrados ESTRICTAMENTE AL MES (para no inflar el total mensual)
+                const currentMonthItems = commitmentsData.filter(c => {
+                    const d = parseISO(c.dueDate);
+                    // Aseguramos de setear variables de hora o simplemente > start, < end
+                    return d >= start && d <= end;
+                });
 
                 const totalPending = currentMonthItems
                     .filter(c => c.status === 'pending' || c.status === 'overdue')
@@ -61,12 +67,12 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                     .filter(c => c.status === 'overdue')
                     .reduce((sum, c) => sum + c.amount, 0);
 
-                // 3. Preparar Gráfico Semanal
+                // 3. Preparar Gráfico Semanal (Usando todas las semanas, incluso si pisan otros meses)
                 const weeks: { name: string; amount: number; fullLabel: string }[] = [];
-                let weekStart = startOfWeek(start, { weekStartsOn: 1 });
-                while (weekStart <= end) {
+                let weekStart = new Date(calendarStart);
+                while (weekStart <= calendarEnd) {
                     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-                    const weekTotal = currentMonthItems
+                    const weekTotal = commitmentsData
                         .filter(c => isWithinInterval(parseISO(c.dueDate), { start: weekStart, end: weekEnd }))
                         .reduce((sum, c) => sum + c.amount, 0);
 
@@ -151,7 +157,7 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
         return [
             { name: 'Total Mes', value: summary.totalMes, icon: BanknotesIcon, color: 'text-gray-600', bg: 'bg-gray-100', colorDark: 'dark:text-gray-400', bgDark: 'dark:bg-slate-700/50' },
             { name: 'Pagado', value: summary.pagado, icon: CheckCircleIcon, color: 'text-emerald-600', bg: 'bg-emerald-50', colorDark: 'dark:text-emerald-400', bgDark: 'dark:bg-emerald-900/20' },
-            { name: 'Pendiente', value: summary.pendiente, icon: CurrencyDollarIcon, color: 'text-indigo-600', bg: 'bg-indigo-50', colorDark: 'dark:text-indigo-400', bgDark: 'dark:bg-indigo-900/20' },
+            { name: 'Pendiente', value: summary.pendiente, icon: CurrencyDollarIcon, color: 'text-purple-600', bg: 'bg-purple-50', colorDark: 'dark:text-purple-400', bgDark: 'dark:bg-purple-900/20' },
             {
                 name: overdueStats.count > 0 ? 'Mora Consolidada' : 'Vencido (Mes)',
                 value: overdueStats.count > 0 ? overdueStats.total : summary.vencido,
@@ -187,16 +193,18 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
     );
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
 
             {/* KPI Stats Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat) => (
-                    <div key={stat.name} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all hover:shadow-md">
+                    <div key={stat.name} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-2"
+                        style={{ animationDelay: `${stats.indexOf(stat) * 80}ms`, animationFillMode: 'both' }}
+                    >
                         <div className="flex items-center justify-between">
                             <div className="min-w-0">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
-                                <p className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">{formatCurrency(stat.value)}</p>
+                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight truncate">{formatCurrency(stat.value)}</p>
                             </div>
                             <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.bgDark} shrink-0`}>
                                 <stat.icon className={`w-5 h-5 ${stat.color} ${stat.colorDark}`} />
@@ -266,7 +274,7 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                             <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
                             Próximos Vencimientos
                         </h3>
-                        <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                        <span className="text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full tabular-nums">
                             {upcomingList.length}
                         </span>
                     </div>
@@ -286,8 +294,8 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                                 </thead>
                                 <tbody>
                                     {upcomingList.map((item) => (
-                                        <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/5 transition-colors cursor-pointer group">
-                                            <td className="px-3 py-1 text-[10px] font-bold text-indigo-500 tabular-nums whitespace-nowrap">
+                                        <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-purple-50/30 dark:hover:bg-purple-900/5 transition-colors cursor-pointer group">
+                                            <td className="px-3 py-1 text-[10px] font-bold text-purple-500 tabular-nums whitespace-nowrap">
                                                 {format(parseISO(item.dueDate), 'd MMM', { locale: es })}
                                             </td>
                                             <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[250px] group-hover:text-primary transition-colors">{item.title}</td>
@@ -305,14 +313,14 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                 {/* Evolución Semanal */}
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-3">
                         <div>
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Evolución Semanal</h3>
-                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{format(selectedDate, 'MMMM yyyy', { locale: es })}</p>
+                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Evolución Semanal</h3>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{format(selectedDate, 'MMMM yyyy', { locale: es })}</p>
                         </div>
                     </div>
-                    <div className="h-[260px] w-full">
+                    <div className="h-[220px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -329,42 +337,44 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                                     cursor={{ fill: '#f8fafc' }}
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
                                 />
-                                <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={36} fill="#4f46e5" />
+                                <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={36} fill="#7c3aed" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* Concentración por Categoría */}
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Concentración por Categoría</h3>
-                    <div className="h-[260px] w-full">
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Concentración por Categoría</h3>
+                    <div className="h-[220px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={categoryData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={55}
-                                    outerRadius={90}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
+                            <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                <XAxis
+                                    type="number"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                    tickFormatter={(val) => `$${val / 1000}k`}
+                                />
+                                <YAxis
+                                    type="category"
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }}
+                                    width={100}
+                                />
+                                <Tooltip
+                                    formatter={(value: number) => [formatCurrency(value), 'Monto']}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                                />
+                                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                                     {categoryData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
-                                </Pie>
-                                <Tooltip
-                                    formatter={(value: number) => [formatCurrency(value), 'Monto']}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                                />
-                                <Legend
-                                    layout="vertical"
-                                    verticalAlign="middle"
-                                    align="right"
-                                    formatter={(value) => <span className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{value}</span>}
-                                />
-                            </PieChart>
+                                </Bar>
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>

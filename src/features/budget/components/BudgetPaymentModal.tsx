@@ -5,8 +5,8 @@ import { BudgetCommitment } from '../../../types/budget';
 import { format } from 'date-fns';
 import { XMarkIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
-import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
+import { DatePicker } from '../../../components/ui/DatePicker';
 
 interface BudgetPaymentModalProps {
     isOpen: boolean;
@@ -82,11 +82,11 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4" onClick={onClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md border border-gray-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200"
+                className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md border border-gray-200 dark:border-slate-700 overflow-visible animate-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header Block */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+                <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 rounded-t-lg">
                     <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
                         <BanknotesIcon className="w-5 h-5 text-gray-500" />
                         Confirmación de Pago
@@ -122,19 +122,17 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
                             </div>
                             <div>
                                 <FormLabel>Fecha Valor</FormLabel>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={date}
-                                    onChange={e => setDate(e.target.value)}
+                                    onChange={(val) => setDate(val)}
                                     className="!h-9 text-[13px] font-medium uppercase tracking-tight !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
-                                    required
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Footer Block */}
-                    <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2">
+                    <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2 rounded-b-lg">
                         <Button
                             type="button"
                             variant="secondary"
