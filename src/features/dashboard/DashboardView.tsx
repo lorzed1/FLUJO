@@ -2,12 +2,11 @@ import React from 'react';
 import { DashboardLayout } from './components/DashboardLayout';
 import { OverviewView } from './views/OverviewView';
 import { SalesView } from './views/SalesView';
-import { ProjectionsView } from './views/ProjectionsView';
 import { ExpensesView } from './views/ExpensesView';
 import { PurchasesView } from './views/PurchasesView';
 
 const DashboardView: React.FC = () => {
-  const [currentView, setCurrentView] = React.useState<'overview' | 'sales' | 'projections' | 'expenses' | 'purchases'>('overview');
+  const [currentView, setCurrentView] = React.useState<'overview' | 'sales' | 'expenses' | 'purchases'>('overview');
   const [selectedDate, setSelectedDate] = React.useState(new Date());
 
   const renderContent = () => {
@@ -16,8 +15,6 @@ const DashboardView: React.FC = () => {
         return <OverviewView selectedDate={selectedDate} />;
       case 'sales':
         return <SalesView selectedDate={selectedDate} />;
-      case 'projections':
-        return <ProjectionsView selectedDate={selectedDate} />;
       case 'expenses':
         return <ExpensesView selectedDate={selectedDate} />;
       case 'purchases':
@@ -29,8 +26,8 @@ const DashboardView: React.FC = () => {
 
   return (
     <DashboardLayout
-      currentView={currentView}
-      onViewChange={setCurrentView}
+      currentView={currentView as any}
+      onViewChange={setCurrentView as any}
       selectedDate={selectedDate}
       onDateChange={setSelectedDate}
     >

@@ -3,7 +3,7 @@ import { PageHeader } from '../../../components/layout/PageHeader';
 import { PresentationChartLineIcon, ChartBarIcon, TrendingUpIcon, BanknotesIcon, ShoppingCartIcon } from '../../../components/ui/Icons';
 import { DashboardControls } from './DashboardControls';
 
-type ViewMode = 'overview' | 'sales' | 'projections' | 'expenses' | 'purchases';
+type ViewMode = 'overview' | 'sales' | 'expenses' | 'purchases';
 
 interface DashboardLayoutProps {
     children: ReactNode;
@@ -24,7 +24,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const views = [
         { id: 'overview', label: 'General', icon: PresentationChartLineIcon },
         { id: 'sales', label: 'Ventas', icon: ChartBarIcon },
-        { id: 'projections', label: 'Proyecciones', icon: TrendingUpIcon },
         { id: 'expenses', label: 'Egresos', icon: BanknotesIcon },
         { id: 'purchases', label: 'Compras', icon: ShoppingCartIcon },
     ] as const;

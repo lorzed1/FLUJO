@@ -1,13 +1,19 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useProjections } from '../../projections/hooks/useProjections';
 import { MOCK_SALES_DATA } from '../dashboard-mock-data';
 import {
     ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
-    CartesianGrid, Tooltip, Legend, BarChart,
+    CartesianGrid, Tooltip, Legend
 } from 'recharts';
+import { BulletChart, ProgressBar, BulletChartItem } from '../components/BulletChart';
+import { InfoTooltip } from '../components/InfoTooltip';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, getISOWeek, startOfWeek, endOfWeek } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { getCompleteWeeksRange } from '../../../utils/dateUtils';
 import {
     ArrowTrendingUpIcon, ArrowTrendingDownIcon, CurrencyDollarIcon,
-    ChartBarIcon, UsersIcon, CreditCardIcon,
+    ChartBarIcon, UsersIcon, ScaleIcon, CalendarDaysIcon, CreditCardIcon
 } from '../../../components/ui/Icons';
 import { dashboardService } from '../../../services/dashboardService';
 
@@ -22,59 +28,149 @@ const formatCOP = (value: number) => {
     }).format(value);
 };
 
+const formatCompact = (value: number): string => {
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+    return `$${value.toFixed(0)}`;
+};
+
 export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) => {
+    // ── Hooks de Proyecciones (Contexto Meta vs Real) ──
+    const {
+        currentDate,
+        setCurrentDate,
+        calculatedProjections,
+        realSales,
+        projections: storedProjections,
+        loading: loadingProjections,
+    } = useProjections();
+
+    // ── Estado Operativo de Ventas ──
     const [realTotalSales, setRealTotalSales] = React.useState<number | null>(null);
     const [realTicketAverage, setRealTicketAverage] = React.useState<number | null>(null);
     const [realTotalVisits, setRealTotalVisits] = React.useState<number | null>(null);
     const [realTrends, setRealTrends] = React.useState({ salesTrend: 0, visitsTrend: 0, ticketTrend: 0 });
     const [realDailySales, setRealDailySales] = React.useState<any[]>([]);
-    const [realWeeklySales, setRealWeeklySales] = React.useState<any[]>([]);
     const [realPaymentMethods, setRealPaymentMethods] = React.useState<any[]>([]);
-    const [loading, setLoading] = React.useState(true);
+    const [loadingSales, setLoadingSales] = React.useState(true);
     const [isMounted, setIsMounted] = React.useState(false);
 
+    React.useEffect(() => { setIsMounted(true); }, []);
+
+    // Sincronizar fecha en proyecciones
     React.useEffect(() => {
-        setIsMounted(true);
+        const selM = selectedDate.getMonth();
+        const selY = selectedDate.getFullYear();
+        if (selM !== currentDate.getMonth() || selY !== currentDate.getFullYear()) {
+            setCurrentDate(new Date(selY, selM, 1));
+        }
+    }, [selectedDate]);
+
+    React.useEffect(() => {
         const fetchSales = async () => {
-            setLoading(true);
+            setLoadingSales(true);
             try {
                 const year = selectedDate.getFullYear();
                 const month = selectedDate.getMonth() + 1;
 
-                // Fetch KPI data
+                // KPIs
                 const { totalSales, totalVisits, salesTrend, visitsTrend, ticketTrend } = await dashboardService.getSalesSummary(year, month);
                 setRealTotalSales(totalSales);
                 setRealTotalVisits(totalVisits);
                 setRealTrends({ salesTrend, visitsTrend, ticketTrend });
+                setRealTicketAverage(totalVisits > 0 ? totalSales / totalVisits : 0);
 
-                const ticketAvg = totalVisits > 0 ? totalSales / totalVisits : 0;
-                setRealTicketAverage(ticketAvg);
-
-                // Fetch Daily Data
+                // Diarios
                 const dailyData = await dashboardService.getDailySalesSummary(year, month);
                 setRealDailySales(dailyData);
 
-                // Fetch Payment Methods
+                // Pagos
                 const paymentData = await dashboardService.getPaymentMethodsSummary(year, month);
                 setRealPaymentMethods(paymentData);
-
-                // Fetch Weekly Sales
-                const weeklyData = await dashboardService.getWeeklySalesSummary(year, month);
-                setRealWeeklySales(weeklyData);
             } catch (err) {
-                console.error("Error al cargar datos de ventas:", err);
+                console.error("Error al cargar datos operativos de ventas:", err);
             } finally {
-                setLoading(false);
+                setLoadingSales(false);
             }
         };
         fetchSales();
     }, [selectedDate]);
 
-    if (loading) {
+    // ── Datos Diarios Combinados (Meta + Realidad + Visitas) ──
+    const combinedDailyData = useMemo(() => {
+        const days = eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) });
+
+        // Mapeo rápido de visitas por día devueltos por el service (1, 2, ..., n)
+        const visitsMap = new Map();
+        realDailySales.forEach(d => visitsMap.set(d.day, d.visits));
+
+        return days.map(day => {
+            const ds = format(day, 'yyyy-MM-dd');
+            const dayNum = format(day, 'd');
+            const proj = calculatedProjections[ds];
+            const stored = storedProjections[ds];
+            const real = realSales[ds] || 0;
+            const meta = stored?.amountAdjusted ?? proj?.final ?? 0;
+            const hasReal = realSales[ds] !== undefined;
+            const visits = visitsMap.get(dayNum) || 0;
+
+            return {
+                day: dayNum,
+                real: hasReal ? real : 0,
+                meta,
+                hasReal,
+                visits
+            };
+        });
+    }, [currentDate, calculatedProjections, storedProjections, realSales, realDailySales]);
+
+    // ── Datos Semanales ──
+    const weeklyData = useMemo(() => {
+        const wm = new Map<number, { week: string; real: number; meta: number; days: number; daysWithReal: number }>();
+        const { weekDays } = getCompleteWeeksRange(currentDate);
+
+        weekDays.forEach((dayDate) => {
+            const ds = format(dayDate, 'yyyy-MM-dd');
+            const proj = calculatedProjections[ds];
+            const stored = storedProjections[ds];
+            const real = realSales[ds] || 0;
+            const meta = stored?.amountAdjusted ?? proj?.final ?? 0;
+            const hasReal = realSales[ds] !== undefined;
+
+            const wn = getISOWeek(dayDate);
+            const ws = startOfWeek(dayDate, { weekStartsOn: 1 });
+            const we = endOfWeek(dayDate, { weekStartsOn: 1 });
+
+            if (!wm.has(wn)) {
+                wm.set(wn, {
+                    week: `S${wn} (${format(ws, 'dd/MM')}–${format(we, 'dd/MM')})`,
+                    real: 0, meta: 0, days: 0, daysWithReal: 0,
+                });
+            }
+            const w = wm.get(wn)!;
+            w.meta += meta;
+            w.real += hasReal ? real : 0;
+            w.days += 1;
+            if (hasReal) w.daysWithReal += 1;
+        });
+        return Array.from(wm.values());
+    }, [currentDate, calculatedProjections, storedProjections, realSales]);
+
+    // ── Resumen de Metas ──
+    const summary = useMemo(() => {
+        const totalMeta = combinedDailyData.reduce((s, d) => s + d.meta, 0);
+        const totalReal = combinedDailyData.filter(d => d.hasReal).reduce((s, d) => s + d.real, 0);
+        const compliance = totalMeta > 0 ? ((totalReal / totalMeta) * 100) : 0;
+        const diff = totalReal - totalMeta;
+        return { totalMeta, totalReal, compliance, diff };
+    }, [combinedDailyData]);
+
+
+    if (loadingProjections || loadingSales) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                <span className="ml-3 text-gray-500">Cargando datos reales...</span>
+                <span className="ml-3 text-gray-500">Cargando centro de mando...</span>
             </div>
         );
     }
@@ -82,106 +178,161 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
 
-            {/* ── KPI Row ── */}
+            {/* ── KPI Row Integrada (4 KPIs) ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {MOCK_SALES_DATA.kpis.map((kpi, i) => {
-                    const icons = [
-                        <CurrencyDollarIcon key="ic0" className="w-5 h-5 text-purple-600" />,
-                        <ChartBarIcon key="ic1" className="w-5 h-5 text-indigo-500" />,
-                        <UsersIcon key="ic2" className="w-5 h-5 text-emerald-500" />,
-                        <CreditCardIcon key="ic3" className="w-5 h-5 text-amber-500" />,
-                    ];
-                    return (
-                        <div
-                            key={i}
-                            className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
-                            style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
-                        >
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-                                        {kpi.title}
-                                    </p>
-                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                        {i === 0 && realTotalSales !== null
-                                            ? formatCOP(realTotalSales)
-                                            : i === 1 && realTicketAverage !== null
-                                                ? formatCOP(realTicketAverage)
-                                                : i === 2 && realTotalVisits !== null
-                                                    ? realTotalVisits
-                                                    : kpi.value
-                                        }
-                                    </h3>
-                                </div>
-                                <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                                    {icons[i]}
-                                </div>
+
+                {/* KPI 1: Ventas y Cumplimiento */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <div className="flex items-center gap-1 mb-1">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Ventas & Cumplimiento
+                                </p>
+                                <InfoTooltip
+                                    title="Cumplimiento de Meta"
+                                    description="Ingresos acumulados vs la meta mensual proyectada."
+                                />
                             </div>
-                            <div className="flex items-center gap-2 mt-3">
-                                {(() => {
-                                    let trendVal = 0;
-                                    if (i === 0) trendVal = realTrends.salesTrend;
-                                    else if (i === 1) trendVal = realTrends.ticketTrend;
-                                    else if (i === 2) trendVal = realTrends.visitsTrend;
-
-                                    const isUp = trendVal >= 0;
-                                    const formattedTrend = `${Math.abs(trendVal).toFixed(1)}%`;
-
-                                    // For Conversion (index 3), kept static or need logic
-                                    if (i === 3) return (
-                                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                                            {kpi.change} vs mes anterior
-                                        </span>
-                                    );
-
-                                    return (
-                                        <span
-                                            className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${isUp
-                                                ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                                : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400'
-                                                }`}
-                                        >
-                                            {isUp ? (
-                                                <ArrowTrendingUpIcon className="w-3 h-3" />
-                                            ) : (
-                                                <ArrowTrendingDownIcon className="w-3 h-3" />
-                                            )}
-                                            {formattedTrend}
-                                        </span>
-                                    );
-                                })()}
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
-                                    vs mes anterior
-                                </span>
-                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {formatCOP(summary.totalReal)}
+                            </h3>
                         </div>
-                    );
-                })}
+                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                            <ChartBarIcon className="w-5 h-5 text-emerald-500" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Meta: {formatCompact(summary.totalMeta)}</span>
+                    </div>
+                    <ProgressBar percentage={summary.compliance} className="mt-2" />
+                    <p className="text-[10px] text-right text-gray-400 mt-1 font-semibold">{summary.compliance.toFixed(1)}% Cumplido</p>
+                </div>
+
+                {/* KPI 2: Estado Contra Meta (Diferencia) */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <div className="flex items-center gap-1 mb-1">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Diferencia vs Meta
+                                </p>
+                                <InfoTooltip
+                                    title="Diferencia de Meta"
+                                    description="Indica cuánto falta (Rojo) o cuánto sobra (Verde) comparado con la meta mensual total."
+                                />
+                            </div>
+                            <h3 className={`text-2xl font-bold ${summary.diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {summary.diff >= 0 ? '+' : ''}{formatCOP(Math.abs(summary.diff))}
+                            </h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                            <ScaleIcon className="w-5 h-5 text-amber-500" />
+                        </div>
+                    </div>
+                    <div className="mt-3">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                            {summary.diff >= 0 ? 'Por encima de la proyección' : 'Presupuesto faltante para la meta'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* KPI 3: Visitas Totales */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <div className="flex items-center gap-1 mb-1">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Total Visitas
+                                </p>
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {realTotalVisits !== null ? realTotalVisits : 0}
+                            </h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+                            <UsersIcon className="w-5 h-5 text-indigo-500" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                        <span
+                            className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${realTrends.visitsTrend >= 0
+                                ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400'
+                                }`}
+                        >
+                            {realTrends.visitsTrend >= 0 ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}
+                            {Math.abs(realTrends.visitsTrend).toFixed(1)}%
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">vs mes anterior</span>
+                    </div>
+                </div>
+
+                {/* KPI 4: Ticket Promedio */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <div className="flex items-center gap-1 mb-1">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Ticket Promedio
+                                </p>
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {formatCOP(realTicketAverage || 0)}
+                            </h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                            <CurrencyDollarIcon className="w-5 h-5 text-purple-600" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                        <span
+                            className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${realTrends.ticketTrend >= 0
+                                ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400'
+                                }`}
+                        >
+                            {realTrends.ticketTrend >= 0 ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}
+                            {Math.abs(realTrends.ticketTrend).toFixed(1)}%
+                        </span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">vs mes anterior</span>
+                    </div>
+                </div>
             </div>
 
-            {/* ── Row 2: Ventas Diarias — Full Width ── */}
+            {/* ── Gráfica Diaria Consolidada ── */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="mb-3 flex justify-between items-center">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                        Ventas Diarias
-                    </h3>
-                    <div className="flex gap-3">
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
-                            <span className="text-[10px] text-gray-500">Ventas</span>
+                <div className="mb-2 flex justify-between items-center">
+                    <div className="flex items-center gap-1">
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            Rendimiento Diario (Ingresos vs Meta vs Visitas)
+                        </h3>
+                        <InfoTooltip
+                            title="Rendimiento Integrado"
+                            description="Combina la venta real contra la meta proyectada, y muestra la afluencia de visitas diaria para correlacionar picos de ingresos con volumen de clientes."
+                        />
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">Venta Real</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] text-gray-500">Visitas</span>
+                        <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
+                            <span className="w-2 h-2 rounded-full bg-purple-500/40 border border-purple-500" />
+                            <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">Meta Diaria</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
+                            <div className="w-3 h-0.5 bg-blue-500 rounded-full" />
+                            <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">Visitas</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="h-[220px] w-full">
+                <div className="h-[280px] w-full mt-4">
                     {isMounted && (
                         <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart
-                                data={realDailySales}
+                                data={combinedDailyData}
                                 margin={{ top: 15, right: 10, left: 0, bottom: 0 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
@@ -189,54 +340,65 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                                     dataKey="day"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#9ca3af', fontSize: 9 }}
-                                    dy={0}
-                                    padding={{ left: 10, right: 10 }}
+                                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                                    interval={0}
+                                    padding={{ left: 5, right: 5 }}
                                 />
                                 <YAxis
                                     yAxisId="left"
                                     axisLine={false}
                                     tickLine={false}
                                     tick={{ fill: '#9ca3af', fontSize: 10 }}
-                                    tickFormatter={formatCOP}
-                                    width={80}
+                                    tickFormatter={formatCompact}
+                                    width={60}
                                 />
                                 <YAxis
                                     yAxisId="right"
                                     orientation="right"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={false}
-                                    width={5}
+                                    tick={{ fill: '#9ca3af', fontSize: 10 }}
+                                    width={30}
                                 />
                                 <Tooltip
                                     formatter={(value: number, name: string) => {
-                                        if (name === 'Ventas') return formatCOP(value);
-                                        return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(value);
+                                        if (name === 'Visitas') return [new Intl.NumberFormat('es-CO').format(value), 'Visitas'];
+                                        return [formatCOP(value), name];
                                     }}
                                     contentStyle={{
                                         borderRadius: '8px',
                                         border: '1px solid #e5e7eb',
                                         boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                     }}
                                     labelStyle={{ fontWeight: 600, color: '#1f2937' }}
                                 />
                                 <Bar
                                     yAxisId="left"
-                                    dataKey="sales"
-                                    name="Ventas"
-                                    fill="#7c3aed"
+                                    dataKey="meta"
+                                    name="Meta"
+                                    fill="#a855f7"
                                     radius={[2, 2, 0, 0]}
-                                    barSize={15}
+                                    barSize={12}
+                                    fillOpacity={0.2}
+                                />
+                                <Bar
+                                    yAxisId="left"
+                                    dataKey="real"
+                                    name="Venta Real"
+                                    fill="#10b981"
+                                    radius={[2, 2, 0, 0]}
+                                    barSize={12}
                                 />
                                 <Line
                                     yAxisId="right"
                                     type="monotone"
                                     dataKey="visits"
                                     name="Visitas"
-                                    stroke="#059669"
-                                    strokeWidth={1.5}
-                                    dot={{ r: 2, fill: '#059669' }}
+                                    stroke="#3b82f6"
+                                    strokeWidth={2}
+                                    dot={{ r: 2.5, fill: '#3b82f6', strokeWidth: 1, stroke: '#fff' }}
+                                    activeDot={{ r: 4 }}
                                 />
                             </ComposedChart>
                         </ResponsiveContainer>
@@ -244,83 +406,35 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                 </div>
             </div>
 
-            {/* ── Row 3: Resumen Semanal (2/3) + Mix Pagos compacto (1/3) ── */}
+            {/* ── Row 3: Cumplimiento Semanal + Mix de Pagos ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                {/* Weekly Sales vs Target */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
-                        Resumen Semanal
-                    </h3>
+                {/* Cumplimiento Semanal — Bullet Chart */}
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                    <div className="mb-3 flex justify-between items-center">
+                        <div>
+                            <div className="flex items-center gap-1">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                    Cumplimiento Semanal
+                                </h3>
+                                <InfoTooltip
+                                    title="Progreso Semanal"
+                                    description="Barras de progreso de ventas reales contra la meta sumada de la semana completa. Ayuda a notar retrasos en llegar al objetivo."
+                                />
+                            </div>
+                        </div>
+                    </div>
 
-                    <div className="h-[220px] w-full">
-                        {isMounted && (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={realWeeklySales} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                                    <CartesianGrid
-                                        strokeDasharray="3 3"
-                                        vertical={false}
-                                        stroke="#f3f4f6"
-                                    />
-                                    <XAxis
-                                        dataKey="week"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#6b7280', fontSize: 10 }}
-                                    />
-                                    <YAxis
-                                        yAxisId="left"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#9ca3af', fontSize: 9 }}
-                                        tickFormatter={formatCOP}
-                                        width={80}
-                                    />
-                                    <YAxis
-                                        yAxisId="right"
-                                        orientation="right"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#9ca3af', fontSize: 9 }}
-                                        width={30}
-                                    />
-                                    <Tooltip
-                                        formatter={(value: number, name: string) => {
-                                            if (name === 'Ventas') return formatCOP(value);
-                                            return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(value);
-                                        }}
-                                        contentStyle={{
-                                            borderRadius: '8px',
-                                            border: '1px solid #e5e7eb',
-                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                        }}
-                                        labelStyle={{ fontWeight: 600, color: '#1f2937' }}
-                                    />
-                                    <Legend
-                                        iconType="circle"
-                                        iconSize={8}
-                                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-                                    />
-                                    <Bar
-                                        yAxisId="left"
-                                        name="Ventas"
-                                        dataKey="sales"
-                                        fill="#7c3aed"
-                                        radius={[4, 4, 0, 0]}
-                                        barSize={20}
-                                    />
-                                    <Line
-                                        yAxisId="right"
-                                        type="monotone"
-                                        dataKey="visits"
-                                        name="Visitas"
-                                        stroke="#059669"
-                                        strokeWidth={2}
-                                        dot={{ r: 3, fill: '#059669' }}
-                                    />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        )}
+                    <div className="flex-1 mt-2">
+                        <BulletChart
+                            items={weeklyData.map((w: any) => ({
+                                label: w.week,
+                                actual: w.real || 0,
+                                target: w.meta || 0,
+                                subtitle: `${w.daysWithReal || 0}/${w.days || 7} días`,
+                            } as BulletChartItem))}
+                            formatValue={(v) => formatCompact(v)}
+                        />
                     </div>
                 </div>
 
@@ -330,7 +444,6 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         Mix de Pagos
                     </h3>
 
-                    {/* Stacked 100% Bar */}
                     {realPaymentMethods.length > 0 ? (
                         <>
                             <div className="w-full h-6 rounded-md overflow-hidden flex" title="Distribución de métodos de pago">
@@ -344,23 +457,14 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                                             minWidth: pm.percentage > 0 ? '4px' : '0',
                                         }}
                                     >
-                                        {/* Tooltip on hover */}
                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded-md whitespace-nowrap opacity-0 group-hover/seg:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
                                             <div className="font-bold">{pm.method}</div>
                                             <div>{formatCOP(pm.amount)} · {pm.percentage.toFixed(1)}%</div>
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
                                         </div>
-                                        {/* Percentage label if segment is wide enough */}
-                                        {pm.percentage >= 15 && (
-                                            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white drop-shadow-sm">
-                                                {pm.percentage.toFixed(0)}%
-                                            </span>
-                                        )}
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Total */}
                             <div className="flex justify-between items-center mt-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
                                 <span className="text-[10px] font-medium text-gray-400">Total</span>
                                 <span className="text-sm font-bold text-gray-800 dark:text-white">
@@ -368,26 +472,13 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                                 </span>
                             </div>
 
-                            {/* Detail List */}
-                            <div className="space-y-2.5 flex-1">
+                            <div className="space-y-2.5 flex-1 overflow-auto max-h-[160px] pr-2 custom-scrollbar">
                                 {realPaymentMethods.map((pm, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="flex items-center gap-2 group cursor-default"
-                                    >
-                                        <div
-                                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                                            style={{ backgroundColor: PAYMENT_COLORS[idx % PAYMENT_COLORS.length] }}
-                                        />
-                                        <span className="text-xs text-gray-600 dark:text-gray-300 flex-1 truncate">
-                                            {pm.method}
-                                        </span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">
-                                            {formatCOP(pm.amount)}
-                                        </span>
-                                        <span className="text-[10px] text-gray-400 tabular-nums w-10 text-right">
-                                            {pm.percentage.toFixed(1)}%
-                                        </span>
+                                    <div key={idx} className="flex items-center gap-2 group cursor-default">
+                                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PAYMENT_COLORS[idx % PAYMENT_COLORS.length] }} />
+                                        <span className="text-xs text-gray-600 dark:text-gray-300 flex-1 truncate">{pm.method}</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{formatCOP(pm.amount)}</span>
+                                        <span className="text-[10px] text-gray-400 tabular-nums w-10 text-right">{pm.percentage.toFixed(1)}%</span>
                                     </div>
                                 ))}
                             </div>
@@ -403,54 +494,31 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
             {/* Top Products Table */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
                 <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
-                    Productos Más Vendidos
+                    Estadísticas - Productos Más Vendidos
                 </h3>
 
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="border-b border-gray-100 dark:border-gray-700">
-                                <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                    Producto
-                                </th>
-                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                    Cant.
-                                </th>
-                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                    Ingresos
-                                </th>
-                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">
-                                    Participación
-                                </th>
+                                <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Producto</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Cant.</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Ingresos</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3 w-[120px]">Participación</th>
                             </tr>
                         </thead>
                         <tbody>
                             {MOCK_SALES_DATA.topProducts.map((prod, idx) => (
-                                <tr
-                                    key={idx}
-                                    className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                                >
-                                    <td className="px-4 py-3.5 text-[13px] font-medium text-gray-900 dark:text-gray-100">
-                                        {prod.product}
-                                    </td>
-                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">
-                                        {prod.quantity.toLocaleString()}
-                                    </td>
-                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">
-                                        {formatCOP(prod.revenue)}
-                                    </td>
+                                <tr key={idx} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td className="px-4 py-3.5 text-[13px] font-medium text-gray-900 dark:text-gray-100">{prod.product}</td>
+                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">{prod.quantity.toLocaleString()}</td>
+                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">{formatCOP(prod.revenue)}</td>
                                     <td className="px-4 py-3.5 text-right">
-                                        {/* Mini bar indicator */}
-                                        <div className="inline-flex items-center gap-2">
-                                            <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                                                <div
-                                                    className="bg-purple-600 h-1.5 rounded-full"
-                                                    style={{ width: `${prod.share}%` }}
-                                                />
+                                        <div className="inline-flex items-center gap-2 justify-end">
+                                            <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                                <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${prod.share}%` }} />
                                             </div>
-                                            <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">
-                                                {prod.share}%
-                                            </span>
+                                            <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 inline-block w-8 text-right">{prod.share}%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -462,3 +530,4 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
         </div>
     );
 };
+
