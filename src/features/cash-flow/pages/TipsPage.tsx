@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { Column } from '../../../components/ui/SmartDataTable';
 import { TipRecord, tipsService } from '../../../services/tipsService';
-import { TableCellsIcon } from '../../../components/ui/Icons';
+import { TableCellsIcon, ArrowPathIcon } from '../../../components/ui/Icons';
 import { TipsFormModal } from '../components/TipsFormModal';
 import { calculateTipDistribution } from '../../../utils/tipCalculations';
+import { fetchShiftsCountPorFecha } from '../../../services/firebaseTurnosService';
+import { Button } from '../../../components/ui/Button';
+import { useUI } from '../../../context/UIContext';
 
 const EditableCell = ({
     value,
@@ -52,6 +55,58 @@ const EditableCell = ({
 
 export const TipsPage: React.FC = () => {
     const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const { setAlertModal } = useUI();
+
+    const handleSyncDivisions = async () => {
+        setIsSyncing(true);
+        try {
+            const tips = await tipsService.getTips();
+            if (tips.length === 0) {
+                setAlertModal({ isOpen: true, type: 'info', title: 'Aviso', message: 'No hay propinas registradas para sincronizar.' });
+                return;
+            }
+
+            const dates = tips.map(t => t.fecha).sort();
+            const minDate = dates[0];
+            const maxDate = dates[dates.length - 1];
+
+            const turnosPorFecha = await fetchShiftsCountPorFecha(minDate, maxDate);
+
+            let updatedCount = 0;
+            for (const tip of tips) {
+                const divisionCorrecta = turnosPorFecha[tip.fecha] || 1;
+                if (tip.division !== divisionCorrecta) {
+                    const { comisionMediosElectronicos, basePropinas, totalPersona, unp } = calculateTipDistribution(Number(tip.total_propinas) || 0, divisionCorrecta);
+                    await tipsService.updateTip(tip.id, {
+                        division: divisionCorrecta,
+                        comision_medios_electronicos: comisionMediosElectronicos,
+                        base_propinas: basePropinas,
+                        total_persona: totalPersona,
+                        unp: unp
+                    });
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0) {
+                setAlertModal({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'Sincronización Completada',
+                    message: `Se actualizaron ${updatedCount} registros de propinas.`,
+                    onConfirm: () => window.location.reload()
+                });
+            } else {
+                setAlertModal({ isOpen: true, type: 'success', title: 'Al Día', message: 'Todas las divisiones ya están sincronizadas.' });
+            }
+        } catch (error) {
+            console.error("Error sincronizando divisiones:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Hubo un error al sincronizar con Turnos App.' });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const handleUpdateDivision = async (item: TipRecord, newVal: string) => {
         setEditingCell(null);
@@ -183,6 +238,17 @@ export const TipsPage: React.FC = () => {
             dateField="fecha"
             enableAdd={true}
             searchPlaceholder="Buscar por fecha..."
+            customActions={
+                <Button
+                    variant="secondary"
+                    className="gap-2 border-purple-500/30 text-purple-600 hover:bg-purple-500/10 dark:text-purple-400 dark:hover:bg-purple-500/20"
+                    onClick={handleSyncDivisions}
+                    disabled={isSyncing}
+                >
+                    <ArrowPathIcon className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar Turnos'}</span>
+                </Button>
+            }
             infoDefinitions={[
                 {
                     label: 'Fecha',

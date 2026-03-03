@@ -47,12 +47,17 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
                 if (!rule.active) continue;
 
                 let nextDate = parseISO(rule.startDate);
+                if (!nextDate || isNaN(nextDate.getTime())) continue;
 
-                while (isBefore(nextDate, start)) {
+                let safety1 = 0;
+                while (isBefore(nextDate, start) && safety1 < 1000) {
                     nextDate = getNextDate(nextDate, rule.frequency, rule.interval);
+                    safety1++;
                 }
 
-                while (isBefore(nextDate, end) || isSameDay(nextDate, end)) {
+                let safety2 = 0;
+                while ((isBefore(nextDate, end) || isSameDay(nextDate, end)) && safety2 < 1000) {
+                    safety2++;
                     const targetDay = Number(rule.dayToSend);
 
                     if (!isNaN(targetDay)) {

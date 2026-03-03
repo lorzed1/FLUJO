@@ -10,17 +10,12 @@ import { useUI } from '../../../context/UIContext';
 export const BudgetPurchases: React.FC = () => {
     const { setAlertModal } = useUI();
     // --- MAIN VIEW STATE ---
-    const [isImporting, setIsImporting] = useState(false);
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    // --- WIZARD STATES ---
-    const existingIds = useMemo(() => new Set(purchases.map(p => p.id)), [purchases]);
-
     // --- LOAD MAIN DATA ---
     const loadData = useCallback(async () => {
-        if (isImporting) return;
         setLoading(true);
         try {
             // Traer un rango amplio de datos
@@ -35,7 +30,7 @@ export const BudgetPurchases: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [isImporting]);
+    }, []);
 
     const handleAddPurchase = async (data: any) => {
         try {
@@ -50,92 +45,6 @@ export const BudgetPurchases: React.FC = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
-
-
-    // --- WIZARD ID GENERATION ---
-    const generateId = (row: Record<string, any>) => {
-        const extractVal = (names: string[]) => {
-            for (const [key, value] of Object.entries(row)) {
-                const nk = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\s_]/g, "");
-                if (names.some(n => nk.includes(n)) && value) return String(value).trim().toLowerCase();
-            }
-            return '0';
-        };
-
-        const coreFecha = extractVal(['fecha', 'date']);
-        const coreDoc = extractVal(['documento', 'factura', 'invoice']);
-        const coreProv = extractVal(['identificacion', 'nit', 'cedula', 'proveedor', 'contacto']);
-        const coreCuenta = extractVal(['cuenta', 'rubro']);
-        const coreMonto = extractVal(['base', 'debito', 'credito', 'total', 'valor', 'monto']);
-
-        const keyString = `${coreFecha}-${coreDoc}-${coreProv}-${coreCuenta}-${coreMonto}`;
-
-        let hash1 = 5381;
-        let hash2 = 52711;
-        for (let i = 0; i < keyString.length; i++) {
-            const char = keyString.charCodeAt(i);
-            hash1 = ((hash1 << 5) + hash1) ^ char;
-            hash2 = ((hash2 << 5) + hash2) ^ char;
-        }
-
-        const h1 = Math.abs(hash1).toString(16).padStart(8, '0');
-        const h2 = Math.abs(hash2).toString(16).padStart(4, '0');
-        const h3 = "4" + Math.abs(hash1 ^ hash2).toString(16).padStart(3, '0');
-        const h4 = "a" + Math.abs(hash2).toString(16).padStart(3, '0');
-        const h5 = Math.abs(hash1 * hash2).toString(16).padStart(12, '0');
-
-        return `${h1}-${h2}-${h3}-${h4}-${h5}`.substring(0, 36);
-    };
-
-    // --- WIZARD IMPORT HANDLING ---
-    const handleFinalizeImport = async (rowsToImport: any[]) => {
-        try {
-            // Mapeamos los datos de la tabla dinámica a la interfaz Purchase esperada por el servicio
-            const purchasesToImport = rowsToImport.map(row => {
-                const getField = (possibleNames: string[]) => {
-                    for (const key of Object.keys(row)) {
-                        if (possibleNames.some(name => key.toLowerCase().includes(name))) return row[key];
-                    }
-                    return null;
-                };
-
-                const date = getField(['date', 'fecha', 'dia']) || new Date().toISOString().split('T')[0];
-                const provider = getField(['provider', 'proveedor', 'tercero']) || 'Proveedor Desconocido';
-                const description = getField(['description', 'descripción', 'detalle', 'concepto']) || 'Importación Múltiple';
-                const amount = Number(getField(['amount', 'monto', 'total', 'valor', 'precio'])) || 0;
-                const category = getField(['category', 'categoria', 'categoría', 'rubro']) || 'General';
-                const invoiceNumber = getField(['invoice', 'factura', 'numero', 'ref']) || '';
-                const statusStr = getField(['status', 'estado', 'pagado']);
-
-                let isPaid = false;
-                if (typeof statusStr === 'boolean') isPaid = statusStr;
-                else if (typeof statusStr === 'string') isPaid = statusStr.toLowerCase().includes('pagado') || statusStr.toLowerCase() === 'sí';
-
-                return {
-                    id: row.id,
-                    date,
-                    provider,
-                    description,
-                    amount,
-                    category,
-                    invoiceNumber,
-                    status: isPaid ? 'paid' : 'pending',
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                    ...row,
-                } as any;
-            });
-
-            await purchaseService.batchImport(purchasesToImport);
-
-            setAlertModal({ isOpen: true, type: 'success', title: '¡Éxito!', message: 'Se han importado / actualizado los registros correctamente.' });
-            setIsImporting(false);
-            loadData();
-        } catch (error: any) {
-            console.error("Error al importar: ", error);
-            setAlertModal({ isOpen: true, type: 'error', title: 'Error de Importación', message: `Error durante la importación: ${error.message || 'Desconocido'}` });
-        }
-    };
 
 
     // --- BULK DELETE ---
@@ -278,7 +187,7 @@ export const BudgetPurchases: React.FC = () => {
                 { label: 'Egresos', href: '/budget' },
                 { label: 'Compras' }
             ]}
-            supabaseTableName="purchases"
+            supabaseTableName="budget_purchases"
             fetchData={async () => {
                 const start = '2020-01-01';
                 const end = '2030-12-31';
@@ -287,6 +196,42 @@ export const BudgetPurchases: React.FC = () => {
             columns={mainColumns}
             enableAdd={true}
             onAdd={() => setIsFormOpen(true)}
+            importMatchFields={['cuenta', 'contacto', 'documento', 'base']} // Detección de duplicados EXACTA con base de datos
+            mapImportRow={(row) => {
+                const getField = (possibleNames: string[]) => {
+                    for (const key of Object.keys(row)) {
+                        if (possibleNames.some(name => key.toLowerCase().includes(name))) return row[key];
+                    }
+                    return null;
+                };
+
+                let fecha = getField(['fecha', 'date', 'dia']) || new Date().toISOString().split('T')[0];
+                if (typeof fecha === 'number' || !isNaN(Number(fecha))) {
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const dateObj = new Date(excelEpoch.getTime() + Number(fecha) * 86400000);
+                    fecha = dateObj.toISOString().split('T')[0];
+                } else if (fecha instanceof Date) {
+                    fecha = fecha.toISOString().split('T')[0];
+                }
+
+                return {
+                    cuenta: String(getField(['cuenta', 'rubro']) || ''),
+                    nombre_cuenta: String(getField(['nombre_cuenta', 'nombre de cuenta']) || ''),
+                    contacto: String(getField(['contacto', 'proveedor', 'tercero']) || ''),
+                    identificacion: String(getField(['identificacion', 'identificación', 'nit', 'cedula']) || ''),
+                    centro_costo: String(getField(['centro_costo', 'centro de costo']) || ''),
+                    documento: String(getField(['documento', 'factura', 'invoice', 'ref', 'numero']) || ''),
+                    fecha: String(fecha),
+                    descripcion: String(getField(['descripcion', 'descripción', 'detalle', 'concepto']) || ''),
+                    descripcion_movimiento: String(getField(['descripcion_movimiento', 'descripción del movimiento']) || ''),
+                    base: Number(getField(['base'])) || 0,
+                    saldo_inicial: Number(getField(['saldo_inicial', 'saldo inicial'])) || 0,
+                    debito: Number(getField(['debito', 'débito'])) || 0,
+                    credito: Number(getField(['credito', 'crédito'])) || 0,
+                    saldo_final: Number(getField(['saldo_final', 'saldo final'])) || 0,
+                    metadata: row
+                } as Partial<Purchase>;
+            }}
             searchPlaceholder="Buscar por cuenta, contacto o documento..."
             infoDefinitions={[
                 {

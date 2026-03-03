@@ -17,6 +17,7 @@ export interface SmartDataPageProps<T extends Record<string, any>> {
     supabaseTableName: string;
     columns: Column<T>[];
     mapImportRow?: (row: Record<string, any>) => Partial<T>;
+    importMatchFields?: string[]; // Arrays of keys to build unique hash against existing DB
     enableMonthDelete?: boolean;
     dateFieldMode?: 'year-month' | 'date' | 'none'; // Defines how to handle bulk deletes
     yearField?: string; // e.g. 'year'
@@ -29,8 +30,11 @@ export interface SmartDataPageProps<T extends Record<string, any>> {
     fetchData?: () => Promise<T[]>;
     onAdd?: () => void;
     onEdit?: (item: T) => void;
+    onDelete?: (item: T) => Promise<void>;
+    onBulkDelete?: (ids: Set<string>) => Promise<void>;
     renderForm?: (isOpen: boolean, onClose: () => void, onSubmit: (data: Partial<T>) => Promise<void>, item?: T) => React.ReactNode;
     infoDefinitions?: { label: string; description: string; origin?: string; calculation?: string; }[];
+    customActions?: React.ReactNode;
 }
 
 export function SmartDataPage<T extends Record<string, any>>({
@@ -40,6 +44,7 @@ export function SmartDataPage<T extends Record<string, any>>({
     supabaseTableName,
     columns,
     mapImportRow,
+    importMatchFields,
     enableMonthDelete = false,
     dateFieldMode = 'none',
     yearField = 'year',
@@ -51,9 +56,12 @@ export function SmartDataPage<T extends Record<string, any>>({
     enableAdd = false,
     onAdd,
     onEdit,
+    onDelete,
+    onBulkDelete,
     fetchData,
     renderForm,
-    infoDefinitions
+    infoDefinitions,
+    customActions
 }: SmartDataPageProps<T>) {
     const [data, setData] = useState<T[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -138,17 +146,29 @@ export function SmartDataPage<T extends Record<string, any>>({
     const handleImportData = async (importedData: ParsedRow[]) => {
         setIsLoading(true);
         try {
-            const recordsToInsert = importedData.map(row => {
+            const recordsToUpsert = importedData.map(row => {
                 const mappedBase = mapImportRow ? mapImportRow(row) : row;
-                return {
-                    ...mappedBase,
-                    import_id: `imp-${Date.now()}`
+                const finalRow: any = {
+                    ...mappedBase
                 };
+
+                // Si la fila viene con un ID real (transferido desde la detección de duplicados)
+                if (row.id && !String(row.id).startsWith('imported-') && !String(row.id).startsWith('uni-')) {
+                    finalRow.id = row.id;
+                } else {
+                    // Si es nueva, debemos proveerle un UUID válido a Supabase, 
+                    // ya que el UPSERT masivo exige que todos los objetos tengan las mismas llaves 
+                    // y no le asigne "null" al id de los nuevos.
+                    finalRow.id = crypto.randomUUID();
+                }
+
+                return finalRow;
             });
 
+            // Upsert actualiza los registros que tengan un ID (Duplicados), o inserta si no lo tienen o no colisiona
             const { error } = await supabase
                 .from(supabaseTableName)
-                .insert(recordsToInsert);
+                .upsert(recordsToUpsert, { onConflict: 'id' });
 
             if (error) throw error;
 
@@ -267,11 +287,11 @@ export function SmartDataPage<T extends Record<string, any>>({
         });
     };
 
-    // Calculate generic Header actions
     let headerActions = null;
-    if (onAdd || enableAdd) {
+    if (onAdd || enableAdd || customActions) {
         headerActions = (
             <div className="flex items-center gap-3">
+                {customActions}
                 {(onAdd || enableAdd) && (
                     <Button variant="primary" className="gap-2" onClick={onAdd ? onAdd : () => setIsAddOpen(true)}>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -316,7 +336,7 @@ export function SmartDataPage<T extends Record<string, any>>({
         }
     };
 
-    const handleBulkDelete = async (ids: Set<string>) => {
+    const handleBulkDeleteInternal = async (ids: Set<string>) => {
         setAlertModal({
             isOpen: true,
             type: 'error',
@@ -362,9 +382,9 @@ export function SmartDataPage<T extends Record<string, any>>({
                         enableColumnConfig={true}
                         enableSelection={enableSelection}
                         onImport={mapImportRow ? () => setImportOpen(true) : undefined}
-                        onDelete={handleDeleteRow}
+                        onDelete={onDelete || handleDeleteRow}
                         onEdit={handleEditRow}
-                        onBulkDelete={handleBulkDelete}
+                        onBulkDelete={onBulkDelete || handleBulkDeleteInternal}
                         onInfoClick={infoDefinitions ? () => setIsInfoOpen(true) : undefined}
                         id={supabaseTableName}
                         containerClassName="h-full flex flex-col border-none"
@@ -409,6 +429,25 @@ export function SmartDataPage<T extends Record<string, any>>({
                     isOpen={isImportOpen}
                     onClose={() => setImportOpen(false)}
                     onImport={handleImportData}
+                    onCheckDuplicate={
+                        importMatchFields && mapImportRow && data
+                            ? (row) => {
+                                const mapped = mapImportRow(row);
+                                const hash = importMatchFields.map(f => String((mapped as any)[f] || '').trim().toLowerCase()).join('|');
+
+                                // Buscar si en nuestra base actual existe algún registro con estos mismos campos clave
+                                const existingItem = data.find(item => {
+                                    const itemHash = importMatchFields.map(f => String((item as any)[f] || '').trim().toLowerCase()).join('|');
+                                    return itemHash === hash;
+                                });
+
+                                return {
+                                    isDuplicate: !!existingItem,
+                                    existingId: existingItem?.id // Pasar el UUID real a DataImportWizard
+                                };
+                            }
+                            : undefined
+                    }
                     title={`Importar a ${title}`}
                 />
             )}

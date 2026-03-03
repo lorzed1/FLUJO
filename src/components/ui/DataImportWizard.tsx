@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, CogIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, CogIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import * as XLSX from 'xlsx';
 import { SmartDataTable, Column } from './SmartDataTable';
 import { Button } from './Button';
@@ -21,8 +21,7 @@ export interface DataImportWizardProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (data: ParsedRow[]) => Promise<void>;
-    existingIds?: Set<string>;
-    generateId?: (row: Record<string, any>) => string;
+    onCheckDuplicate?: (row: Record<string, any>) => { isDuplicate: boolean; existingId?: string };
     title?: string;
 }
 
@@ -30,8 +29,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
     isOpen,
     onClose,
     onImport,
-    existingIds = new Set<string>(),
-    generateId,
+    onCheckDuplicate,
     title = "Importar datos"
 }) => {
     // --- WIZARD STATE ---
@@ -42,8 +40,27 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
     const [finalData, setFinalData] = useState<ParsedRow[]>([]);
     const [importDuplicates, setImportDuplicates] = useState<Set<string>>(new Set());
     const [importSelection, setImportSelection] = useState<Set<string>>(new Set());
+    // UX States
+    const [isProcessing, setIsProcessing] = useState<boolean>(false);
+    const [isDragging, setIsDragging] = useState<boolean>(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // --- LOCAL STORAGE CACHE LOGIC ---
+    const getStorageKey = () => `data_wizard_formats_${title?.replace(/\s+/g, '_').toLowerCase() || 'default'}`;
+
+    const loadSavedFormats = (): Record<string, DataType> => {
+        try {
+            const saved = localStorage.getItem(getStorageKey());
+            return saved ? JSON.parse(saved) : {};
+        } catch { return {}; }
+    };
+
+    const saveFormats = (formats: Record<string, DataType>) => {
+        try {
+            localStorage.setItem(getStorageKey(), JSON.stringify(formats));
+        } catch { }
+    };
 
     // Default UUID generator based on simple string hashing
     const defaultGenerateId = (row: Record<string, any>) => {
@@ -55,77 +72,142 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
         return `imported-${Math.abs(hash).toString(16)}`;
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
+    const processFile = (file: File) => {
+        setIsProcessing(true);
         const reader = new FileReader();
         reader.onload = (evt) => {
-            const bstr = evt.target?.result;
-            const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
+            try {
+                const dataBuffer = new Uint8Array(evt.target?.result as ArrayBuffer);
+                const wb = XLSX.read(dataBuffer, { type: 'array', cellDates: true });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
 
-            const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-
-            // Detect header row (within first 10 rows limit)
-            let maxCols = 0;
-            let likelyHeaderIdx = 0;
-            const maxSearchDepth = Math.min(10, data.length);
-            for (let i = 0; i < maxSearchDepth; i++) {
-                const row = data[i] || [];
-                const nonNullCount = row.filter(cell => cell !== undefined && cell !== null && cell !== '').length;
-                if (nonNullCount > maxCols) {
-                    maxCols = nonNullCount;
-                    likelyHeaderIdx = i;
+                // Reparación del rango !ref por fallos en archivos exportados de ERP's
+                let maxRow = 0;
+                let maxCol = 0;
+                for (const key in ws) {
+                    if (key[0] === '!') continue;
+                    const cellRef = XLSX.utils.decode_cell(key);
+                    if (cellRef.r > maxRow) maxRow = cellRef.r;
+                    if (cellRef.c > maxCol) maxCol = cellRef.c;
                 }
-            }
+                const oldRange = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : { s: { c: 0, r: 0 }, e: { c: maxCol, r: maxRow } };
+                if (oldRange.e.r < maxRow || oldRange.e.c < maxCol) {
+                    const newRange = { s: oldRange.s, e: { c: Math.max(oldRange.e.c, maxCol), r: Math.max(oldRange.e.r, maxRow) } };
+                    ws['!ref'] = XLSX.utils.encode_range(newRange);
+                }
 
-            setHeaderRowIndex(likelyHeaderIdx);
-            setOriginalData(data);
+                const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
-            const headers = data[likelyHeaderIdx] || [];
-            const sampleData = data.slice(likelyHeaderIdx + 1, likelyHeaderIdx + 11);
-
-            const initialConfig: ColumnConfig[] = headers.map((header, colIndex) => {
-                let hStr = String(header || `Columna ${colIndex + 1}`).trim();
-                const isDuplicate = headers.findIndex((h, idx) => idx < colIndex && String(h || `Columna ${idx + 1}`).trim() === hStr) !== -1;
-                if (isDuplicate) hStr = `${hStr}_${colIndex}`;
-
-                let type: DataType = 'string';
-                for (let row of sampleData) {
-                    const val = row[colIndex];
-                    if (val !== undefined && val !== null && val !== '') {
-                        if (val instanceof Date) type = 'date';
-                        else if (typeof val === 'number') type = 'number';
-                        else if (typeof val === 'boolean') type = 'boolean';
-                        else if (!isNaN(Number(val))) type = 'number';
-                        else if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/)) type = 'date';
-                        break;
+                // Detect header row (within first 10 rows limit)
+                let maxCols = 0;
+                let likelyHeaderIdx = 0;
+                const maxSearchDepth = Math.min(10, data.length);
+                for (let i = 0; i < maxSearchDepth; i++) {
+                    const row = data[i] || [];
+                    const nonNullCount = row.filter(cell => cell !== undefined && cell !== null && cell !== '').length;
+                    if (nonNullCount > maxCols) {
+                        maxCols = nonNullCount;
+                        likelyHeaderIdx = i;
                     }
                 }
-                return { key: hStr, label: hStr, type };
-            });
 
-            setColumnsConfig(initialConfig);
-            setStep(2);
+                setHeaderRowIndex(likelyHeaderIdx);
+                setOriginalData(data);
+
+                const headers = data[likelyHeaderIdx] || [];
+                const sampleData = data.slice(likelyHeaderIdx + 1, likelyHeaderIdx + 11);
+
+                const savedFormats = loadSavedFormats();
+
+                const initialConfig: ColumnConfig[] = headers.map((header, colIndex) => {
+                    let hStr = String(header || `Columna ${colIndex + 1}`).trim();
+                    const isDuplicate = headers.findIndex((h, idx) => idx < colIndex && String(h || `Columna ${idx + 1}`).trim() === hStr) !== -1;
+                    if (isDuplicate) hStr = `${hStr}_${colIndex}`;
+
+                    let type: DataType = 'string';
+
+                    // 1. Usar memoria caché de localStorage si esta columna ya ha sido formateada antes para este tipo de importador
+                    if (savedFormats[hStr]) {
+                        type = savedFormats[hStr];
+                    } else {
+                        // 2. Fallback de detección heurística rápida
+                        for (let row of sampleData) {
+                            const val = row[colIndex];
+                            if (val !== undefined && val !== null && val !== '') {
+                                if (val instanceof Date) type = 'date';
+                                else if (typeof val === 'number') type = 'number';
+                                else if (typeof val === 'boolean') type = 'boolean';
+                                else if (!isNaN(Number(val))) type = 'number';
+                                else if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/)) type = 'date';
+                                break;
+                            }
+                        }
+                    }
+                    return { key: hStr, label: hStr, type };
+                });
+
+                setColumnsConfig(initialConfig);
+                setStep(2);
+            } catch (error) {
+                console.error("Error leyendo archivo:", error);
+                alert("Hubo un error al leer el archivo. Asegúrate de que no esté dañado.");
+            } finally {
+                setIsProcessing(false);
+            }
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) processFile(file);
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            // Validate extension mildly
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
+                processFile(file);
+            } else {
+                alert("Formato no válido. Sube un archivo de Excel (.xlsx, .xls) o CSV.");
+            }
+        }
     };
 
     const handleFormatChange = (index: number, newType: DataType) => {
         const newConfig = [...columnsConfig];
         newConfig[index].type = newType;
         setColumnsConfig(newConfig);
+
+        // Guardar sutilmente la configuración en LocalStorage asociando nombreColumna -> Formato
+        const savedFormats = loadSavedFormats();
+        savedFormats[newConfig[index].key] = newType;
+        saveFormats(savedFormats);
     };
 
     const processData = () => {
         const result: ParsedRow[] = [];
         const duplicates = new Set<string>();
         const selection = new Set<string>();
-
-        const idGenerator = generateId || defaultGenerateId;
 
         for (let i = headerRowIndex + 1; i < originalData.length; i++) {
             const row = originalData[i];
@@ -165,7 +247,19 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
             });
 
             if (hasData) {
-                const uniqueId = idGenerator(cleanRowContent);
+                // Generar ID por defecto
+                let uniqueId = defaultGenerateId({ ...cleanRowContent, _rowIdx: i });
+                let isDup = false;
+
+                if (onCheckDuplicate) {
+                    const dupInfo = onCheckDuplicate(cleanRowContent);
+                    if (dupInfo?.isDuplicate) {
+                        isDup = true;
+                        if (dupInfo.existingId) {
+                            uniqueId = dupInfo.existingId; // Transfiere el UUID real de la DB a la tabla temporal
+                        }
+                    }
+                }
 
                 const parsedRow: ParsedRow = {
                     id: uniqueId,
@@ -174,11 +268,17 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                 result.push(parsedRow);
                 selection.add(uniqueId);
 
-                if (existingIds.has(uniqueId)) {
+                if (isDup) {
                     duplicates.add(uniqueId);
                 }
             }
         }
+
+        if (result.length === 0) {
+            alert(`No se detectaron datos válidos después de la fila de encabezados.\nTotal de filas analizadas en el archivo: ${originalData.length}.\nSi tu archivo tiene datos, asegúrate de que no haya filas totalmente en blanco entre los encabezados y la información.`);
+            return;
+        }
+
         setImportDuplicates(duplicates);
         setImportSelection(selection);
         setFinalData(result);
@@ -206,6 +306,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
             return;
         }
 
+        setIsProcessing(true);
         try {
             await onImport(rowsToImport);
             resetWizard();
@@ -213,6 +314,8 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
         } catch (error: any) {
             console.error("Error al importar: ", error);
             alert(`Error durante la importación: ${error?.message || 'Desconocido'}`);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -250,7 +353,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
     return (
         <div className="fixed inset-0 z-[200] flex bg-black/60 backdrop-blur-[2px] items-center justify-center p-4 md:p-8 overflow-hidden pointer-events-auto" onClick={handleClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 w-full xl:w-[85%] 2xl:w-[70%] h-full max-h-[90vh]"
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 w-full xl:w-[85%] 2xl:w-[70%] h-full max-h-[90vh] min-h-[550px]"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Stepper Header */}
@@ -271,21 +374,33 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                             &larr; Volver
                         </Button>
                     )}
-                    <div className={`flex-1 py-5 text-center text-sm font-semibold border-b-2 transition-colors ${step >= 1 ? 'border-[#7511E5] text-[#7511E5]' : 'border-transparent text-gray-400'}`}>
-                        1. Cargar Archivo
-                    </div>
-                    <div className={`flex-1 py-5 text-center text-sm font-semibold border-b-2 transition-colors ${step >= 2 ? 'border-[#7511E5] text-[#7511E5]' : 'border-transparent text-gray-400'}`}>
-                        2. Configurar Columnas
-                    </div>
-                    <div className={`flex-1 py-5 text-center text-sm font-semibold border-b-2 transition-colors ${step >= 3 ? 'border-[#7511E5] text-[#7511E5]' : 'border-transparent text-gray-400'}`}>
-                        3. Previsualizar
+                    <div className="flex-1 relative flex items-center">
+                        <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gray-200 dark:bg-slate-700"></div>
+                        <div
+                            className="absolute bottom-0 left-0 h-[3px] bg-[#7511E5] transition-all duration-500 ease-in-out"
+                            style={{ width: `${(step / 3) * 100}%` }}
+                        ></div>
+                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 1 ? 'text-[#7511E5]' : 'text-gray-400'}`}>
+                            1. Cargar Archivo
+                        </div>
+                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 2 ? 'text-[#7511E5]' : 'text-gray-400'}`}>
+                            2. Configurar Columnas
+                        </div>
+                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 3 ? 'text-[#7511E5]' : 'text-gray-400'}`}>
+                            3. Previsualizar
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col overflow-hidden relative">
                     {/* STEP 1 */}
-                    <div className={`absolute inset-0 px-8 py-10 transition-transform duration-300 flex flex-col ${step === 1 ? 'translate-x-0 opacity-100 pointer-events-auto overflow-y-auto' : '-translate-x-full opacity-0 pointer-events-none'}`}>
-                        <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center">
+                    <div
+                        className={`absolute inset-0 p-8 transition-transform duration-300 flex flex-col ${step === 1 ? 'translate-x-0 opacity-100 pointer-events-auto overflow-y-auto' : '-translate-x-full opacity-0 pointer-events-none'}`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        <div className={`flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center border-2 border-dashed rounded-3xl transition-all duration-300 ${isDragging ? 'border-[#7511E5] bg-[#7511E5]/5 scale-[1.02]' : 'border-gray-200 dark:border-slate-700 bg-transparent'}`}>
                             <div className="p-4 bg-[#7511E5]/10 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
                                 <ArrowUpTrayIcon className="w-10 h-10 text-[#7511E5]" />
                             </div>
@@ -293,7 +408,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                                 {title}
                             </h2>
                             <p className="text-base text-gray-500 dark:text-gray-400 mb-8 max-w-md">
-                                Selecciona un archivo de Excel (.xlsx, .xls) o CSV. Detectaremos automáticamente los encabezados y organizaremos los datos para su revisión.
+                                Arrastra y suelta tu archivo Excel (.xlsx, .xls) o CSV aquí, o haz clic en el botón inferior para explorar.
                             </p>
 
                             <input
@@ -302,14 +417,25 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                                 className="hidden"
                                 ref={fileInputRef}
                                 onChange={handleFileUpload}
+                                disabled={isProcessing}
                             />
 
                             <Button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="bg-[#7511E5] hover:bg-[#5b0cb5] text-white px-10 py-5 h-auto text-lg rounded-full shadow-xl shadow-[#7511E5]/20 gap-3 font-semibold transition-transform active:scale-95"
+                                disabled={isProcessing}
+                                className="bg-[#7511E5] hover:bg-[#5b0cb5] text-white px-10 py-5 h-auto text-lg rounded-full shadow-xl shadow-[#7511E5]/20 gap-3 font-semibold transition-transform active:scale-95 z-10"
                             >
-                                <DocumentTextIcon className="w-6 h-6" />
-                                Buscar Archivo
+                                {isProcessing ? (
+                                    <>
+                                        <ArrowPathIcon className="w-6 h-6 animate-spin" />
+                                        <span>Procesando archivo...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <DocumentTextIcon className="w-6 h-6" />
+                                        <span>Buscar Archivo</span>
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
@@ -346,7 +472,17 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700/50">
                                     {columnsConfig.map((col, index) => {
-                                        const rawVal = originalData[headerRowIndex + 1]?.[index];
+                                        // Buscar la primera fila con datos para mostrar una previsualización real
+                                        let rawVal = originalData[headerRowIndex + 1]?.[index];
+                                        if ((rawVal === undefined || rawVal === null || rawVal === '') && originalData.length > headerRowIndex + 2) {
+                                            for (let i = headerRowIndex + 2; i < Math.min(originalData.length, headerRowIndex + 10); i++) {
+                                                if (originalData[i]?.[index] !== undefined && originalData[i]?.[index] !== '') {
+                                                    rawVal = originalData[i][index];
+                                                    break;
+                                                }
+                                            }
+                                        }
+
                                         let preview = '-';
 
                                         if (rawVal !== undefined && rawVal !== null && rawVal !== '') {
@@ -425,9 +561,19 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                             <Button
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-lg shadow-emerald-600/20 px-6 h-10 rounded-lg text-sm font-semibold transition-transform active:scale-95 sm:w-auto w-full"
                                 onClick={handleFinalizeImport}
+                                disabled={isProcessing}
                             >
-                                <ArrowUpTrayIcon className="w-4 h-4" />
-                                Importar Datos Confirmados
+                                {isProcessing ? (
+                                    <>
+                                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                        Guardando datos...
+                                    </>
+                                ) : (
+                                    <>
+                                        <ArrowUpTrayIcon className="w-4 h-4" />
+                                        Importar Datos Confirmados
+                                    </>
+                                )}
                             </Button>
                         </div>
 

@@ -16,7 +16,6 @@ export interface ArqueoData {
     ingresoCovers: number;
     cajero: string;
     visitas: number;
-    noTrabajadores: number;
     [key: string]: any; // Permitir columnas extra
 }
 
@@ -232,7 +231,7 @@ export function parseExcelRows(
             // Asegurar que campos requeridos de ArqueoData tengan valor (default 0 para números)
             const numericFields: (keyof ArqueoData)[] = [
                 'ventaPos', 'propina', 'efectivo', 'datafonoDavid', 'datafonoJulian',
-                'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas', 'noTrabajadores'
+                'transfBancolombia', 'nequi', 'rappi', 'ingresoCovers', 'visitas'
             ];
             numericFields.forEach(f => {
                 if ((data as any)[f] === undefined) (data as any)[f] = 0;

@@ -16,26 +16,19 @@ export const BudgetTable: React.FC = () => {
     const { setAlertModal } = useUI();
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
     const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; item: BudgetCommitment | null }>({ isOpen: false, item: null });
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [loading, setLoading] = useState(true);
-
     const loadData = useCallback(async () => {
-        setLoading(true);
         try {
             const start = format(startOfYear(new Date()), 'yyyy-MM-dd');
             const end = format(endOfYear(new Date()), 'yyyy-MM-dd');
             const data = await budgetService.getCommitments(start, end);
-            setCommitments(data.map(d => ({ ...d, id: d.id || Math.random().toString() })));
+            const mapped = data.map(d => ({ ...d, id: d.id || Math.random().toString() }));
+            setCommitments(mapped);
+            return mapped;
         } catch (error) {
             console.error("Error loading commitments:", error);
-        } finally {
-            setLoading(false);
+            throw error;
         }
     }, []);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData, refreshTrigger]);
 
     const handleEdit = (item: BudgetCommitment) => {
         openForm(undefined, item);
@@ -163,7 +156,6 @@ export const BudgetTable: React.FC = () => {
                     });
                     await Promise.all(promises);
                     loadData();
-                    setSelectedIds(new Set());
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Elementos eliminados correctamente.' });
                 } catch (error) {
                     console.error("Error deleting commitments:", error);
@@ -278,21 +270,13 @@ export const BudgetTable: React.FC = () => {
         }
     ], [openForm, loadData]);
 
-    if (loading) {
-        return (
-            <div className="flex h-full items-center justify-center text-slate-400">
-                <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                    <span className="text-sm font-medium">Cargando presupuesto...</span>
-                </div>
-            </div>
-        );
-    }
+
 
     // --- RENDER ---
     return (
         <>
             <SmartDataPage<BudgetCommitment>
+                key={refreshTrigger}
                 title="BD de gastos"
                 icon={<TableCellsIcon className="h-6 w-6 text-purple-600" />}
                 breadcrumbs={[
@@ -300,11 +284,13 @@ export const BudgetTable: React.FC = () => {
                     { label: 'Tabla' }
                 ]}
                 supabaseTableName="budget_commitments"
-                fetchData={loadData as any} // Use internal loader for custom date ranges
+                fetchData={loadData as any}
                 columns={columns}
                 enableAdd={true}
                 onAdd={() => openForm()}
                 onEdit={handleEdit}
+                onDelete={(item) => handleDelete(item.id)}
+                onBulkDelete={handleBulkDelete}
                 searchPlaceholder="Buscar por proveedor, categoría..."
                 infoDefinitions={[
                     {

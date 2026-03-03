@@ -31,7 +31,7 @@ export function mapRuleFromRow(row: any): RecurrenceRule {
         title: row.title,
         amount: Number(row.amount),
         frequency: row.frequency,
-        interval: row.interval_count,
+        interval: Math.max(1, Number(row.interval_count) || 1),
         dayToSend: row.day_to_send,
         startDate: row.start_date,
         endDate: row.end_date,

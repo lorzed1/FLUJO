@@ -209,7 +209,7 @@ const ArqueoPreview: React.FC = () => {
                     }
 
                     try {
-                        const division = Number(form.formData.noTrabajadores) || 0;
+                        const division = 0;
                         const totalPropinas = Number(form.formData.propina) || 0;
                         const existingTips = await tipsService.getTips(date, date);
 
@@ -455,13 +455,6 @@ const ArqueoPreview: React.FC = () => {
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Total Visitas</label>
                                                 <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
-                                                    className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                                    placeholder="0" />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">No Trabajadores</label>
-                                                <input type="number" name="noTrabajadores" value={form.formData.noTrabajadores || ''} onChange={form.handleSimpleChange}
                                                     className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                                                     placeholder="0" />
                                             </div>

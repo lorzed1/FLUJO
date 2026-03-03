@@ -35,6 +35,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
         enableSearch = true,
         enableSelection = true,
         enableExport = true,
+        enableImport = true,
         enableColumnConfig = true,
         onImport,
         onImportFile,
@@ -129,7 +130,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                     {renderExtraFilters?.()}
 
                     {/* 2. Botón de Importar */}
-                    {(onImport || onImportFile) && (
+                    {enableImport && (
                         <>
                             <Button
                                 variant="secondary"
@@ -140,6 +141,13 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                         table.fileInputRef.current.click();
                                     } else if (onImport) {
                                         onImport();
+                                    } else {
+                                        setAlertModal({
+                                            isOpen: true,
+                                            title: 'Importación',
+                                            message: 'La función de importación no está configurada o disponible de manera automatizada para esta vista.',
+                                            type: 'info'
+                                        });
                                     }
                                 }}
                             >

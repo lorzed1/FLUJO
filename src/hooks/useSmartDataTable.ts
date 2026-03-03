@@ -29,6 +29,7 @@ export interface SmartDataTableProps<T extends Record<string, any>> {
     enableSearch?: boolean;
     enableSelection?: boolean;
     enableExport?: boolean;
+    enableImport?: boolean;
     enableColumnConfig?: boolean;
     onImport?: () => void;
     onImportFile?: (file: File) => void;
