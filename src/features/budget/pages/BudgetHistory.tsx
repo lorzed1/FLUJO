@@ -8,6 +8,7 @@ import { BudgetExecutionLog } from '../../../types/budget';
 import { budgetService } from '../../../services/budget';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
 import { useUI } from '../../../context/UIContext';
 
@@ -144,13 +145,15 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
             width: 'w-16',
             filterable: false,
             render: (_, item) => (
-                <button
+                <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setDetailLog(item)}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-purple-600 dark:text-purple-400 group"
+                    className="p-1 h-6 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-purple-600 dark:text-purple-400 group"
                     title="Ver saldos iniciales"
                 >
                     <ClockIcon className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                </button>
+                </Button>
             )
         }
     ];
@@ -188,7 +191,7 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
                 />
             )}
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden flex-1 relative flex flex-col">
+            <Card className="overflow-hidden flex-1 relative flex flex-col" noPadding>
                 {loading && (
                     <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex justify-center items-center z-20 backdrop-blur-sm">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -205,20 +208,20 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
                     containerClassName="border-none shadow-none"
                     id="budget-history-table"
                 />
-            </div>
+            </Card>
 
             {/* Modal de Detalle Manual */}
             {detailLog && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                    <Card className="w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl" noPadding>
                         <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
                             <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 uppercase tracking-wide">
                                 <ClockIcon className="h-5 w-5 text-purple-600" />
                                 Saldos Iniciales
                             </h3>
-                            <button onClick={() => setDetailLog(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+                            <Button variant="ghost" size="sm" onClick={() => setDetailLog(null)} className="p-1 h-6 w-6 text-gray-400 rounded-full">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </Button>
                         </div>
 
                         <div className="p-6 space-y-3">
@@ -254,7 +257,7 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
                                 Cerrar
                             </Button>
                         </div>
-                    </div>
+                    </Card>
                 </div>
             )}
         </div>

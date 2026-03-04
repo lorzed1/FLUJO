@@ -23,6 +23,7 @@ import { budgetService } from '../../../services/budget';
 import { useUI } from '../../../context/UIContext';
 import { BudgetContextType } from '../layouts/BudgetLayout';
 import { PageHeader } from '../../../components/layout/PageHeader';
+import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { BudgetHistory } from './BudgetHistory';
@@ -298,7 +299,7 @@ const BudgetExecutionContent: React.FC = () => {
             </div>
 
             {/* ── Disponibilidad (Tank) ─ Card Aliaddo ── */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
+            <Card className="p-5" noPadding>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-end">
                     <div>
                         <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Corriente</label>
@@ -333,13 +334,13 @@ const BudgetExecutionContent: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </Card>
 
             {/* ── Main Content: Table (2/3) + Summary Panel (1/3) ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
 
                 {/* ── Tabla de Compromisos ── */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                <Card className="lg:col-span-2 overflow-hidden flex flex-col" noPadding>
                     {/* Card Header (Section 5 / Aliaddo) */}
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 flex justify-between items-center">
                         <h3 className="text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-white">
@@ -471,11 +472,11 @@ const BudgetExecutionContent: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </Card>
 
                 {/* ── Panel Resumen (Sticky) ── */}
                 <div className="lg:col-span-1">
-                    <div className="sticky top-6 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 p-6">
+                    <Card className="sticky top-6 p-6 shadow-lg" noPadding>
                         <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.1em] mb-6 flex items-center gap-2">
                             <CurrencyDollarIcon className="h-4 w-4" />
                             Resumen de Operación
@@ -541,7 +542,7 @@ const BudgetExecutionContent: React.FC = () => {
                         <p className="text-[11px] text-center text-gray-400 mt-4 leading-relaxed italic">
                             Al confirmar, los registros se actualizarán en el historial permanente.
                         </p>
-                    </div>
+                    </Card>
                 </div>
             </div>
         </div>

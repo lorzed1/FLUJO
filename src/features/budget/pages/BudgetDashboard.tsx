@@ -18,6 +18,7 @@ import { PresentationChartLineIcon, PlusIcon } from '../../../components/ui/Icon
 import { DateNavigator } from '../../../components/ui/DateNavigator';
 import { GhostBuster } from '../components/GhostBuster';
 import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
@@ -237,7 +238,7 @@ export const BudgetDashboard: React.FC = () => {
                 <div className="lg:col-span-12">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {stats.map((stat) => (
-                            <div key={stat.name} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all hover:shadow-md">
+                            <Card key={stat.name} className="p-5 transition-all hover:shadow-md" noPadding>
                                 <div className="flex items-center justify-between">
                                     <div className="min-w-0">
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
@@ -247,7 +248,7 @@ export const BudgetDashboard: React.FC = () => {
                                         <stat.icon className={`w-5 h-5 ${stat.color} ${stat.colorDark}`} />
                                     </div>
                                 </div>
-                            </div>
+                            </Card>
                         ))}
                     </div>
                 </div>
@@ -255,7 +256,7 @@ export const BudgetDashboard: React.FC = () => {
                 {/* Main Content Area */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
                     {/* Weekly Bar Chart */}
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                    <Card>
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Evolución Semanal</h3>
@@ -283,10 +284,10 @@ export const BudgetDashboard: React.FC = () => {
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Category Distribution */}
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                    <Card>
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6">Concentración por Categoría</h3>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
@@ -317,7 +318,7 @@ export const BudgetDashboard: React.FC = () => {
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-                    </div>
+                    </Card>
                 </div>
 
                 {/* Right Column: Tables */}
@@ -325,7 +326,7 @@ export const BudgetDashboard: React.FC = () => {
 
                     {/* ── Cartera en Mora ── */}
                     {overdueStats.count > 0 && (
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                        <Card className="overflow-hidden" noPadding>
                             <div className="flex items-center justify-between px-4 py-2.5 border-b border-rose-100 dark:border-rose-900/30 bg-rose-50/60 dark:bg-rose-900/10">
                                 <h3 className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] flex items-center gap-1.5">
                                     <ExclamationCircleIcon className="w-3.5 h-3.5" />
@@ -366,11 +367,11 @@ export const BudgetDashboard: React.FC = () => {
                                     </tfoot>
                                 </table>
                             </div>
-                        </div>
+                        </Card>
                     )}
 
                     {/* ── Próximos Vencimientos ── */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                    <Card className="overflow-hidden" noPadding>
                         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-700/30">
                             <h3 className="text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-[0.15em] flex items-center gap-1.5">
                                 <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
@@ -408,7 +409,7 @@ export const BudgetDashboard: React.FC = () => {
                                 </table>
                             </div>
                         )}
-                    </div>
+                    </Card>
 
                     {/* Diagnostic Tool */}
                     <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 border-dashed">
