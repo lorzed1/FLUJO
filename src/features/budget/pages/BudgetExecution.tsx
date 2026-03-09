@@ -8,7 +8,8 @@ import {
     subWeeks,
     parseISO,
     isBefore,
-    startOfDay
+    startOfDay,
+    differenceInDays
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -43,6 +44,7 @@ const BudgetExecutionContent: React.FC = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
     const [loading, setLoading] = useState(false);
+    const [groupOverdue, setGroupOverdue] = useState(false);
 
     const [ctaCorriente, setCtaCorriente] = useState<string>('');
     const [ctaAhorrosJ, setCtaAhorrosJ] = useState<string>('');
@@ -176,6 +178,17 @@ const BudgetExecutionContent: React.FC = () => {
         if (status !== 'pending') return;
         const next = new Set(selectedIds);
         next.has(id) ? next.delete(id) : next.add(id);
+        setSelectedIds(next);
+    };
+
+    const toggleOverdueGroup = () => {
+        const next = new Set(selectedIds);
+        const allOverdueSelected = overdue.length > 0 && overdue.every(c => selectedIds.has(c.id));
+        if (allOverdueSelected) {
+            overdue.forEach(c => next.delete(c.id));
+        } else {
+            overdue.forEach(c => next.add(c.id));
+        }
         setSelectedIds(next);
     };
 
@@ -347,10 +360,21 @@ const BudgetExecutionContent: React.FC = () => {
                         <h3 className="text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-white">
                             Compromisos Pendientes
                         </h3>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                            {pending.length} por pagar
-                        </span>
+                        <div className="flex items-center gap-3">
+                            {overdue.length > 0 && (
+                                <Button
+                                    variant="secondary"
+                                    size="xs"
+                                    onClick={() => setGroupOverdue(!groupOverdue)}
+                                >
+                                    {groupOverdue ? 'Desagrupar Vencidos' : 'Agrupar Vencidos'}
+                                </Button>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                {pending.length} por pagar
+                            </span>
+                        </div>
                     </div>
 
                     {/* Table (Section 6 / Aliaddo) */}
@@ -385,9 +409,58 @@ const BudgetExecutionContent: React.FC = () => {
                                     </tr>
                                 )}
 
-                                {!loading && [...overdue, ...upcoming].map(c => {
+                                {!loading && groupOverdue && overdue.length > 0 && (
+                                    <tr
+                                        className={`
+                                            cursor-pointer transition-colors border-b border-gray-50 dark:border-slate-800
+                                            ${(overdue.length > 0 && overdue.every(c => selectedIds.has(c.id)))
+                                                ? 'bg-purple-50/70 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/15'
+                                                : 'bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                            }
+                                        `}
+                                        onClick={toggleOverdueGroup}
+                                    >
+                                        <td className="px-4 py-3.5">
+                                            <div className={`
+                                                h-4 w-4 rounded border flex items-center justify-center transition-colors
+                                                ${(overdue.length > 0 && overdue.every(c => selectedIds.has(c.id))) ? 'bg-purple-600 border-purple-600' :
+                                                    (overdue.some(c => selectedIds.has(c.id))) ? 'bg-purple-400 border-purple-400' :
+                                                        'border-red-300 dark:border-red-600 bg-white dark:bg-slate-900'}
+                                            `}>
+                                                {((overdue.some(c => selectedIds.has(c.id)))) && (
+                                                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                        {(overdue.length > 0 && overdue.every(c => selectedIds.has(c.id))) ? (
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                        ) : (
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+                                                        )}
+                                                    </svg>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3.5" colSpan={2}>
+                                            <span className={`text-sm- font-bold ${(overdue.length > 0 && overdue.every(c => selectedIds.has(c.id))) ? 'text-purple-800' : 'text-red-700 dark:text-red-400'}`}>
+                                                {overdue.length} Compromisos Vencidos Agrupados
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border bg-white text-xs2 font-semibold border-red-200 text-red-600">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                                Múltiples Vencidos
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-right">
+                                            <span className={`text-sm- font-bold ${(overdue.length > 0 && overdue.every(c => selectedIds.has(c.id))) ? 'text-purple-700' : 'text-red-700 dark:text-red-400'}`}>
+                                                {fmt(overdue.reduce((s, c) => s + c.amount, 0))}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {!loading && (!groupOverdue ? [...overdue, ...upcoming] : upcoming).map(c => {
                                     const sel = selectedIds.has(c.id);
                                     const late = isBefore(parseISO(c.dueDate), startOfDay(new Date()));
+                                    const daysLate = late ? differenceInDays(startOfDay(new Date()), parseISO(c.dueDate)) : 0;
                                     return (
                                         <tr
                                             key={c.id}
@@ -425,11 +498,11 @@ const BudgetExecutionContent: React.FC = () => {
                                             </td>
                                             {/* Vencimiento */}
                                             <td className="px-4 py-3.5 text-center">
-                                                <div className="flex items-center justify-center gap-1.5">
+                                                <div className="flex flex-col items-center justify-center gap-0.5">
                                                     {late && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border bg-white text-xs2 font-semibold border-red-200 text-red-600">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border bg-white text-xs2 font-semibold border-red-200 text-red-600 mb-0.5">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                                            Vencido
+                                                            Vencido ({daysLate} {daysLate === 1 ? 'día' : 'días'})
                                                         </span>
                                                     )}
                                                     <span className={`text-sm- font-medium ${late ? 'text-red-500' : 'text-gray-600'}`}>

@@ -408,5 +408,6 @@ export {
   ArrowUpIcon,
   ArrowDownIcon,
   DocumentDuplicateIcon,
+  SwatchIcon,
   CreditCardIcon as HeroCreditCardIcon,
 } from '@heroicons/react/24/outline';

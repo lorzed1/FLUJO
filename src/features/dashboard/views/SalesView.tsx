@@ -114,13 +114,15 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
             const meta = stored?.amountAdjusted ?? proj?.final ?? 0;
             const hasReal = realSales[ds] !== undefined;
             const visits = visitsMap.get(dayNum) || 0;
+            const projectedVisits = proj?.traffic?.projectedVisits || 0;
 
             return {
                 day: dayNum,
                 real: hasReal ? real : 0,
                 meta,
                 hasReal,
-                visits
+                visits,
+                projectedVisits
             };
         });
     }, [currentDate, calculatedProjections, storedProjections, realSales, realDailySales]);
@@ -163,8 +165,42 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
         const totalReal = combinedDailyData.filter(d => d.hasReal).reduce((s, d) => s + d.real, 0);
         const compliance = totalMeta > 0 ? ((totalReal / totalMeta) * 100) : 0;
         const diff = totalReal - totalMeta;
-        return { totalMeta, totalReal, compliance, diff };
-    }, [combinedDailyData]);
+
+        const today = new Date();
+        const isCurrentMonth = currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
+
+        let metaToDate = 0;
+        let metaVisitsToDate = 0;
+        const totalMetaVisits = combinedDailyData.reduce((s, d) => s + d.projectedVisits, 0);
+
+        if (isCurrentMonth) {
+            const currentDay = today.getDate();
+            metaToDate = combinedDailyData.filter(d => Number(d.day) <= currentDay).reduce((s, d) => s + d.meta, 0);
+            metaVisitsToDate = combinedDailyData.filter(d => Number(d.day) <= currentDay).reduce((s, d) => s + d.projectedVisits, 0);
+        } else if (currentDate < today) {
+            metaToDate = totalMeta;
+            metaVisitsToDate = totalMetaVisits;
+        }
+
+        const complianceToDate = metaToDate > 0 ? ((totalReal / metaToDate) * 100) : 0;
+        const diffToDate = totalReal - metaToDate;
+
+        // Cálculos de Ticket Promedio para comparar vs Meta Proyectada
+        const realVisitsToDate = combinedDailyData.filter(d => d.hasReal).reduce((s, d) => s + d.visits, 0);
+        const realTicketToDate = realVisitsToDate > 0 ? totalReal / realVisitsToDate : 0;
+
+        const totalMetaTicket = totalMetaVisits > 0 ? totalMeta / totalMetaVisits : 0;
+        const metaTicketToDate = metaVisitsToDate > 0 ? metaToDate / metaVisitsToDate : 0;
+
+        const ticketCompliance = totalMetaTicket > 0 ? (realTicketToDate / totalMetaTicket) * 100 : 0;
+        const ticketComplianceToDate = metaTicketToDate > 0 ? (realTicketToDate / metaTicketToDate) * 100 : 0;
+
+        return {
+            totalMeta, totalReal, compliance, diff,
+            metaToDate, complianceToDate, diffToDate, isCurrentMonth,
+            totalMetaTicket, metaTicketToDate, ticketCompliance, ticketComplianceToDate, totalMetaVisits, metaVisitsToDate
+        };
+    }, [combinedDailyData, currentDate]);
 
 
     if (loadingProjections || loadingSales) {
@@ -203,11 +239,21 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                             <ChartBarIcon className="w-5 h-5 text-emerald-500" />
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-3">
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Meta: {formatCompact(summary.totalMeta)}</span>
+                    <div className="flex items-center justify-between mt-3">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Meta Mes: {formatCompact(summary.totalMeta)}</span>
+                        {summary.isCurrentMonth && (
+                            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                                Meta Hoy: {formatCompact(summary.metaToDate)}
+                            </span>
+                        )}
                     </div>
-                    <ProgressBar percentage={summary.compliance} className="mt-2" />
-                    <p className="text-xs2 text-right text-gray-400 mt-1 font-semibold">{summary.compliance.toFixed(1)}% Cumplido</p>
+                    <ProgressBar percentage={summary.isCurrentMonth ? summary.complianceToDate : summary.compliance} className="mt-2" />
+                    <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs2 text-gray-400">{summary.isCurrentMonth ? 'Cumplimiento a la fecha' : 'Cumplimiento final'}</span>
+                        <span className="text-xs2 font-bold text-gray-700 dark:text-gray-300">
+                            {summary.isCurrentMonth ? summary.complianceToDate.toFixed(1) : summary.compliance.toFixed(1)}%
+                        </span>
+                    </div>
                 </Card>
 
                 {/* KPI 2: Estado Contra Meta (Diferencia) */}
@@ -216,15 +262,15 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         <div>
                             <div className="flex items-center gap-1 mb-1">
                                 <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Diferencia vs Meta
+                                    Diferencia vs {summary.isCurrentMonth ? 'Fecha' : 'Meta'}
                                 </p>
                                 <InfoTooltip
                                     title="Diferencia de Meta"
-                                    description="Indica cuánto falta (Rojo) o cuánto sobra (Verde) comparado con la meta mensual total."
+                                    description={summary.isCurrentMonth ? "Indica cuánto falta (Rojo) o cuánto sobra (Verde) comparado con la meta acumulada hasta el día de hoy." : "Indica cuánto falta (Rojo) o cuánto sobra (Verde) comparado con la meta mensual total."}
                                 />
                             </div>
-                            <h3 className={`text-2xl font-bold ${summary.diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {summary.diff >= 0 ? '+' : ''}{formatCOP(Math.abs(summary.diff))}
+                            <h3 className={`text-2xl font-bold ${summary.isCurrentMonth ? (summary.diffToDate >= 0 ? 'text-emerald-600' : 'text-rose-600') : (summary.diff >= 0 ? 'text-emerald-600' : 'text-rose-600')}`}>
+                                {summary.isCurrentMonth ? (summary.diffToDate >= 0 ? '+' : '') + formatCOP(Math.abs(summary.diffToDate)) : (summary.diff >= 0 ? '+' : '') + formatCOP(Math.abs(summary.diff))}
                             </h3>
                         </div>
                         <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
@@ -233,7 +279,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     </div>
                     <div className="mt-3">
                         <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {summary.diff >= 0 ? 'Por encima de la proyección' : 'Presupuesto faltante para la meta'}
+                            {summary.isCurrentMonth ? (summary.diffToDate >= 0 ? 'Por encima de la proyección a HOY' : 'Faltante para la proyección a HOY') : (summary.diff >= 0 ? 'Por encima de la proyección total' : 'Presupuesto faltante para la meta total')}
                         </span>
                     </div>
                 </Card>
@@ -286,17 +332,21 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                             <CurrencyDollarIcon className="w-5 h-5 text-purple-600" />
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-3">
-                        <span
-                            className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${realTrends.ticketTrend >= 0
-                                ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400'
-                                }`}
-                        >
-                            {realTrends.ticketTrend >= 0 ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}
-                            {Math.abs(realTrends.ticketTrend).toFixed(1)}%
+
+                    <div className="flex items-center justify-between mt-3 flex-wrap">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Meta Mes: {formatCOP(summary.totalMetaTicket)}</span>
+                        {summary.isCurrentMonth && (
+                            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                                Meta Hoy: {formatCOP(summary.metaTicketToDate)}
+                            </span>
+                        )}
+                    </div>
+                    <ProgressBar percentage={summary.isCurrentMonth ? summary.ticketComplianceToDate : summary.ticketCompliance} className="mt-2" />
+                    <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs2 text-gray-400">{summary.isCurrentMonth ? 'Cumplimiento a la fecha' : 'Cumplimiento final'}</span>
+                        <span className="text-xs2 font-bold text-gray-700 dark:text-gray-300">
+                            {summary.isCurrentMonth ? summary.ticketComplianceToDate.toFixed(1) : summary.ticketCompliance.toFixed(1)}%
                         </span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500">vs mes anterior</span>
                     </div>
                 </Card>
             </div>

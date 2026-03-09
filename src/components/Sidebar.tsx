@@ -23,7 +23,8 @@ import {
   PlusIcon,
   MinusIcon,
   ChevronDownIcon,
-  WalletIcon
+  WalletIcon,
+  SwatchIcon
 } from './ui/Icons';
 import { useUI } from '../context/UIContext';
 import { useSidebarLabels } from '../context/SidebarLabelsContext';
@@ -339,6 +340,15 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
           {userRole === 'admin' && (
             <div className="pt-6 pb-2">
               {!isCollapsed && <p className="px-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Sistema</p>}
+
+              <button
+                onClick={() => handleNavigation('/design-playground', 'design-playground')}
+                className={`flex items-center w-full px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+                title="Design Playground"
+              >
+                <SwatchIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
+                <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Design Playground</span>
+              </button>
 
               <button
                 onClick={onExport}
