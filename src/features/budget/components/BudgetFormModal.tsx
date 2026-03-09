@@ -7,8 +7,10 @@ import { format } from 'date-fns';
 import { BudgetCommitment } from '../../../types/budget';
 import { useData } from '../../../context/DataContext';
 import { TransactionType } from '../../../types';
-import { PlusIcon, XMarkIcon, CheckIcon, TagIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, CheckIcon, TagIcon, BanknotesIcon } from '../../../components/ui/Icons';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface BudgetFormModalProps {
     isOpen: boolean;
@@ -113,81 +115,67 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
 
     if (!isOpen) return null;
 
-    const FormLabel = ({ children }: { children: React.ReactNode }) => (
-        <label className="block text-[11px] font-medium text-slate-500 tracking-wide mb-1.5">
-            {children}
-        </label>
+    const headerTitle = (
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-50 dark:bg-slate-700 rounded-lg">
+                <BanknotesIcon className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+                <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">
+                    {initialCommitment ? 'Editar registro' : 'Nuevo gasto presupuestal'}
+                </h2>
+                <p className="text-xs2 text-slate-400 font-semibold uppercase tracking-caps mt-0.5">Módulo de Egresos</p>
+            </div>
+        </div>
     );
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] px-4" onClick={onClose}>
-            <div
-                className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Header Block – Aliaddo §4 style */}
-                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-50 dark:bg-slate-700 rounded-lg">
-                            <BanknotesIcon className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">
-                                {initialCommitment ? 'Editar registro' : 'Nuevo gasto presupuestal'}
-                            </h2>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.15em] mt-0.5">Módulo de Egresos</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg border border-slate-100 dark:border-slate-600 hover:bg-slate-50 transition-all"
-                    >
-                        <XMarkIcon className="w-4 h-4" />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={headerTitle}
+            maxWidth="max-w-xl"
+            className="p-0 overflow-hidden"
+        >
+            <div className="flex flex-col flex-1 min-h-0">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5 flex-1 overflow-y-auto">
                     {/* Primary Field: Title */}
-                    <div>
-                        <FormLabel>Descripción o Nombre del Proveedor</FormLabel>
+                    <FormGroup label="Descripción o Nombre del Proveedor" required>
                         <Input
                             value={formData.title}
                             onChange={e => handleChange('title', e.target.value)}
                             placeholder="Ej: Pago de Arriendo, Nómina, Marketing Digital..."
-                            className="!h-10 text-[13px] font-medium"
+                            className="text-sm- font-medium"
                             required
                         />
-                    </div>
+                    </FormGroup>
 
                     <div className="grid grid-cols-2 gap-5">
                         <div className="space-y-5">
-                            <div>
-                                <FormLabel>Importe Proyectado</FormLabel>
+                            <FormGroup label="Importe Proyectado" required>
                                 <CurrencyInput
                                     value={formData.amount}
                                     onChange={val => handleChange('amount', val)}
                                     placeholder="$ 0"
-                                    className="!h-10 text-[14px] font-bold"
+                                    className="text-sm font-bold"
                                     required
                                 />
-                            </div>
-                            <div>
-                                <FormLabel>Fecha de Vencimiento</FormLabel>
+                            </FormGroup>
+                            <FormGroup label="Fecha de Vencimiento" required>
                                 <DatePicker
                                     value={formData.date}
                                     onChange={val => handleChange('date', val)}
-                                    className="!h-10 text-[13px] font-medium uppercase tracking-tight"
+                                    className="text-sm- font-medium uppercase tracking-tight"
                                     required
                                 />
-                            </div>
+                            </FormGroup>
                         </div>
 
                         <div className="space-y-5">
-                            <div>
-                                <FormLabel>Estado del Pago</FormLabel>
+                            <FormGroup label="Estado del Pago">
                                 <Select
                                     value={formData.status}
-                                    className="!h-10 text-[13px] font-semibold text-slate-600"
+                                    className="text-sm- font-semibold text-slate-600"
                                     onChange={e => {
                                         const newStatus = e.target.value;
                                         setFormData(prev => ({
@@ -201,20 +189,18 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                     <option value="paid">Liquidado / Pagado</option>
                                     <option value="overdue">Vencido</option>
                                 </Select>
-                            </div>
+                            </FormGroup>
 
                             {formData.status === 'paid' ? (
-                                <div>
-                                    <FormLabel>Fecha de Liquidación</FormLabel>
+                                <FormGroup label="Fecha de Liquidación">
                                     <DatePicker
                                         value={formData.paymentDate}
                                         onChange={val => handleChange('paymentDate', val)}
-                                        className="!h-10 text-[13px] font-medium uppercase tracking-tight border-emerald-100 bg-emerald-50/10"
+                                        className="text-sm- font-medium uppercase tracking-tight border-emerald-100 bg-emerald-50/10"
                                     />
-                                </div>
+                                </FormGroup>
                             ) : (
-                                <div>
-                                    <FormLabel>Categoría</FormLabel>
+                                <FormGroup label="Categoría" required>
                                     <div className="flex gap-2">
                                         <div className="flex-1">
                                             {isAddingCategory ? (
@@ -224,19 +210,19 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                                         onChange={(e) => setNewCategoryName(e.target.value)}
                                                         placeholder="Nombre..."
                                                         autoFocus
-                                                        className="!h-10 !text-[12px]"
+                                                        className="!text-xs"
                                                     />
-                                                    <Button type="button" onClick={handleAddCategory} className="!h-10 !w-10 !p-0">
+                                                    <Button type="button" onClick={handleAddCategory} className="!w-10 !p-0">
                                                         <CheckIcon className="w-5 h-5" />
                                                     </Button>
-                                                    <Button type="button" variant="secondary" onClick={() => setIsAddingCategory(false)} className="!h-10 !w-10 !p-0">
+                                                    <Button type="button" variant="secondary" onClick={() => setIsAddingCategory(false)} className="!w-10 !p-0">
                                                         <XMarkIcon className="w-5 h-5" />
                                                     </Button>
                                                 </div>
                                             ) : (
                                                 <Select
                                                     value={formData.category}
-                                                    className="!h-10 text-[13px] font-medium text-slate-600"
+                                                    className="text-sm- font-medium text-slate-600"
                                                     onChange={e => handleChange('category', e.target.value)}
                                                     required
                                                 >
@@ -255,19 +241,19 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                                 type="button"
                                                 variant="secondary"
                                                 onClick={() => setIsAddingCategory(true)}
-                                                className="!h-10 !w-10 !p-0 border-dashed"
+                                                className="!w-10 !p-0 border-dashed"
                                                 title="Añadir categoría"
                                             >
                                                 <PlusIcon className="w-5 h-5" />
                                             </Button>
                                         )}
                                     </div>
-                                </div>
+                                </FormGroup>
                             )}
                         </div>
                     </div>
 
-                    <div className="pt-6 flex justify-between items-center border-t border-gray-50 dark:border-slate-700 mt-4">
+                    <div className="pt-6 flex justify-between items-center border-t border-gray-50 dark:border-slate-700 mt-4 shrink-0 bg-white dark:bg-slate-800">
                         <div className="flex-1">
                             {initialCommitment && initialCommitment.status !== 'paid' && (
                                 <button
@@ -279,7 +265,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                             paymentDate: new Date().toISOString().split('T')[0]
                                         }));
                                     }}
-                                    className="flex items-center gap-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest hover:bg-emerald-50 dark:hover:bg-emerald-900/10 px-3 py-2 rounded-lg transition-colors"
+                                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest hover:bg-emerald-50 dark:hover:bg-emerald-900/10 px-3 py-2 rounded-lg transition-colors"
                                 >
                                     <CheckIcon className="w-4 h-4" />
                                     Liquidar Ahora
@@ -292,14 +278,14 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 type="button"
                                 variant="secondary"
                                 onClick={onClose}
-                                className="!h-10 !px-6 font-semibold text-[12px] tracking-wide"
+                                className="!px-6 font-semibold text-xs tracking-wide"
                             >
                                 Cancelar
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="!h-10 !px-8 font-semibold text-[12px] tracking-wide shadow-md shadow-purple-500/10"
+                                className="!px-8 font-semibold text-xs tracking-wide shadow-md shadow-purple-500/10"
                             >
                                 {isLoading ? 'Procesando...' : (initialCommitment ? 'Actualizar registro' : 'Confirmar gasto')}
                             </Button>
@@ -307,6 +293,6 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                     </div>
                 </form>
             </div>
-        </div>
+        </Modal>
     );
 };

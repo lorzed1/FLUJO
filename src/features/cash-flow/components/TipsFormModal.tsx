@@ -3,9 +3,11 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
-import { XMarkIcon, DocumentTextIcon, CalculatorIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, CalculatorIcon } from '../../../components/ui/Icons';
+import { Modal } from '../../../components/ui/Modal';
 import { TipRecord } from '../../../services/tipsService';
 import { calculateTipDistribution } from '../../../utils/tipCalculations';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface TipsFormModalProps {
     isOpen: boolean;
@@ -92,109 +94,102 @@ export const TipsFormModal: React.FC<TipsFormModalProps> = ({
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] px-4" onClick={onClose}>
-            <div
-                className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
-                            <DocumentTextIcon className="w-5 h-5 text-indigo-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">
-                                {initialData?.id ? 'Editar Registro' : 'Nueva Propina'}
-                            </h2>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.15em] mt-0.5">Control de Propinas</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg border border-slate-100 dark:border-slate-600">
-                        <XMarkIcon className="w-4 h-4" />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Fecha</label>
-                            <DatePicker
-                                value={formData.fecha || ''}
-                                onChange={val => setFormData({ ...formData, fecha: val })}
-                                required
-                                className="!h-11 font-bold tracking-tight"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Total Propinas</label>
-                            <CurrencyInput
-                                value={formData.total_propinas}
-                                onChange={v => setFormData({ ...formData, total_propinas: Number(v) })}
-                                className="!h-11 text-emerald-600 font-black text-lg"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Comisión Electrónica</label>
-                            <CurrencyInput
-                                value={formData.comision_medios_electronicos}
-                                onChange={v => setFormData({ ...formData, comision_medios_electronicos: Number(v) })}
-                                disabled
-                                className="!h-11 text-rose-500 font-bold opacity-70 bg-slate-50 cursor-not-allowed"
-                            />
-                        </div>
-
-                        <div className="col-span-2 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                            <div className="flex justify-between items-center mb-4">
-                                <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-                                    <CalculatorIcon className="w-4 h-4" /> Resumen de Base
-                                </span>
-                                <span className="text-lg font-black text-slate-800 dark:text-white">
-                                    ${Number(formData.base_propinas).toLocaleString()}
-                                </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">División (Personas)</label>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        value={formData.division}
-                                        onChange={e => setFormData({ ...formData, division: Number(e.target.value) })}
-                                        className="!h-10 font-bold text-blue-600"
-                                    />
-                                </div>
-                                <div className="flex flex-col justify-end items-end">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase mb-1">Total x Persona</span>
-                                    <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">
-                                        ${Number(formData.total_persona).toLocaleString()}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="col-span-2">
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5 underline decoration-indigo-400">UNP (Calculado)</label>
-                            <CurrencyInput
-                                value={formData.unp}
-                                onChange={v => setFormData({ ...formData, unp: Number(v) })}
-                                disabled
-                                className="!h-11 font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 cursor-not-allowed"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-6 flex justify-end gap-3 border-t border-slate-50 dark:border-slate-700">
-                        <Button type="button" variant="secondary" onClick={onClose} className="!h-11 px-6 font-bold text-xs uppercase">Cancelar</Button>
-                        <Button type="submit" disabled={isLoading} className="!h-11 px-10 font-bold text-xs uppercase shadow-lg shadow-indigo-500/20 bg-indigo-600 text-white hover:bg-indigo-700">
-                            {isLoading ? 'Guardando...' : 'Guardar Registro'}
-                        </Button>
-                    </div>
-                </form>
+    const headerTitle = (
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
+                <DocumentTextIcon className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+                <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">
+                    {initialData?.id ? 'Editar Registro' : 'Nueva Propina'}
+                </h2>
+                <p className="text-xs2 text-slate-400 font-semibold uppercase tracking-caps mt-0.5">Control de Propinas</p>
             </div>
         </div>
+    );
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={headerTitle}
+            maxWidth="max-w-lg"
+            className="p-0 overflow-hidden"
+        >
+            <form onSubmit={handleSubmit} className="p-6 space-y-5 flex-1 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4">
+                    <FormGroup label="Fecha" className="col-span-2">
+                        <DatePicker
+                            value={formData.fecha || ''}
+                            onChange={val => setFormData({ ...formData, fecha: val })}
+                            required
+                            className="font-bold tracking-tight"
+                        />
+                    </FormGroup>
+
+                    <FormGroup label="Total Propinas">
+                        <CurrencyInput
+                            value={formData.total_propinas}
+                            onChange={v => setFormData({ ...formData, total_propinas: Number(v) })}
+                            className="text-emerald-600 font-black text-lg"
+                        />
+                    </FormGroup>
+
+                    <FormGroup label="Comisión Electrónica">
+                        <CurrencyInput
+                            value={formData.comision_medios_electronicos}
+                            onChange={v => setFormData({ ...formData, comision_medios_electronicos: Number(v) })}
+                            disabled
+                            className="text-rose-500 font-bold opacity-70 bg-slate-50 cursor-not-allowed"
+                        />
+                    </FormGroup>
+
+                    <div className="col-span-2 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                                <CalculatorIcon className="w-4 h-4" /> Resumen de Base
+                            </span>
+                            <span className="text-lg font-black text-slate-800 dark:text-white">
+                                ${Number(formData.base_propinas).toLocaleString()}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <FormGroup label="División (Personas)">
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    value={formData.division}
+                                    onChange={e => setFormData({ ...formData, division: Number(e.target.value) })}
+                                    className="font-bold text-blue-600"
+                                />
+                            </FormGroup>
+                            <div className="flex flex-col justify-end items-end">
+                                <span className="text-xs2 font-bold text-slate-400 uppercase mb-1">Total x Persona</span>
+                                <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">
+                                    ${Number(formData.total_persona).toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <FormGroup label="UNP (Calculado)" className="col-span-2">
+                        <CurrencyInput
+                            value={formData.unp}
+                            onChange={v => setFormData({ ...formData, unp: Number(v) })}
+                            disabled
+                            className="font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 cursor-not-allowed"
+                        />
+                    </FormGroup>
+                </div>
+
+                <div className="pt-6 flex justify-end gap-3 border-t border-slate-50 dark:border-slate-700 mt-auto shrink-0">
+                    <Button type="button" variant="secondary" onClick={onClose} className="px-6 font-bold text-xs uppercase">Cancelar</Button>
+                    <Button type="submit" disabled={isLoading} className="px-10 font-bold text-xs uppercase shadow-lg shadow-indigo-500/20 bg-indigo-600 text-white hover:bg-indigo-700">
+                        {isLoading ? 'Guardando...' : 'Guardar Registro'}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 };

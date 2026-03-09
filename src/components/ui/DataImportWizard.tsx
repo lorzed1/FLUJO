@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, CogIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, CogIcon, XMarkIcon, ArrowPathIcon } from '@/components/ui/Icons';
 import * as XLSX from 'xlsx';
 import { SmartDataTable, Column } from './SmartDataTable';
 import { Button } from './Button';
@@ -330,7 +330,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                 if (val === undefined || val === null || val === '') return <span className="text-gray-300">-</span>;
                 if (col.type === 'currency') return <span className="font-medium tabular-nums">${Number(val).toLocaleString('es-CO')}</span>;
                 if (col.type === 'number') return <span className="font-medium tabular-nums">{Number(val).toLocaleString('es-CO')}</span>;
-                if (col.type === 'boolean') return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${val ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{val ? 'Sí' : 'No'}</span>;
+                if (col.type === 'boolean') return <span className={`px-2 py-0.5 rounded-full text-xs2 font-bold uppercase ${val ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{val ? 'Sí' : 'No'}</span>;
                 if (col.type === 'date') return <span className="text-gray-600">{val}</span>;
                 return String(val);
             }
@@ -341,8 +341,8 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
             label: 'Estado',
             sortable: false,
             render: (_: any, item: ParsedRow) => importDuplicates.has(item.id)
-                ? <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-[10px] uppercase whitespace-nowrap">Duplicado (Actualizará)</span>
-                : <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold text-[10px] uppercase">Nuevo</span>
+                ? <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase whitespace-nowrap">Duplicado (Actualizará)</span>
+                : <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase">Nuevo</span>
         };
 
         return [statusCol, ...configColumns];
@@ -377,16 +377,16 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                     <div className="flex-1 relative flex items-center">
                         <div className="absolute bottom-0 left-0 w-full h-[3px] bg-gray-200 dark:bg-slate-700"></div>
                         <div
-                            className="absolute bottom-0 left-0 h-[3px] bg-[#7511E5] transition-all duration-500 ease-in-out"
+                            className="absolute bottom-0 left-0 h-[3px] bg-purple-600 transition-all duration-500 ease-in-out"
                             style={{ width: `${(step / 3) * 100}%` }}
                         ></div>
-                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 1 ? 'text-[#7511E5]' : 'text-gray-400'}`}>
+                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 1 ? 'text-purple-600' : 'text-gray-400'}`}>
                             1. Cargar Archivo
                         </div>
-                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 2 ? 'text-[#7511E5]' : 'text-gray-400'}`}>
+                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 2 ? 'text-purple-600' : 'text-gray-400'}`}>
                             2. Configurar Columnas
                         </div>
-                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 3 ? 'text-[#7511E5]' : 'text-gray-400'}`}>
+                        <div className={`flex-1 py-5 text-center text-sm font-semibold transition-colors z-10 ${step >= 3 ? 'text-purple-600' : 'text-gray-400'}`}>
                             3. Previsualizar
                         </div>
                     </div>
@@ -400,9 +400,9 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                     >
-                        <div className={`flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center border-2 border-dashed rounded-3xl transition-all duration-300 ${isDragging ? 'border-[#7511E5] bg-[#7511E5]/5 scale-[1.02]' : 'border-gray-200 dark:border-slate-700 bg-transparent'}`}>
-                            <div className="p-4 bg-[#7511E5]/10 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-                                <ArrowUpTrayIcon className="w-10 h-10 text-[#7511E5]" />
+                        <div className={`flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full text-center border-2 border-dashed rounded-3xl transition-all duration-300 ${isDragging ? 'border-purple-600 bg-purple-600/5 scale-[1.02]' : 'border-gray-200 dark:border-slate-700 bg-transparent'}`}>
+                            <div className="p-4 bg-purple-600/10 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+                                <ArrowUpTrayIcon className="w-10 h-10 text-purple-600" />
                             </div>
                             <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">
                                 {title}
@@ -421,9 +421,10 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                             />
 
                             <Button
+                                variant="primary"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isProcessing}
-                                className="bg-[#7511E5] hover:bg-[#5b0cb5] text-white px-10 py-5 h-auto text-lg rounded-full shadow-xl shadow-[#7511E5]/20 gap-3 font-semibold transition-transform active:scale-95 z-10"
+                                className="px-10 py-5 h-auto text-lg rounded-full shadow-xl shadow-purple-500/20 gap-3 font-semibold transition-transform active:scale-95 z-10"
                             >
                                 {isProcessing ? (
                                     <>
@@ -445,7 +446,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between shrink-0">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                    <CogIcon className="w-6 h-6 text-[#7511E5]" />
+                                    <CogIcon className="w-6 h-6 text-purple-600" />
                                     Configuración de Columnas
                                 </h3>
                                 <p className="text-sm text-gray-500 mt-1">
@@ -453,7 +454,8 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                                 </p>
                             </div>
                             <Button
-                                className="bg-[#7511E5] hover:bg-[#5b0cb5] text-white gap-2 shadow-lg shadow-[#7511E5]/20 h-10 px-6 rounded-lg text-sm font-semibold transition-all active:scale-95 sm:w-auto w-full"
+                                variant="primary"
+                                className="gap-2 shadow-lg shadow-purple-500/20 h-10 px-6 rounded-lg text-sm font-semibold transition-all active:scale-95 sm:w-auto w-full"
                                 onClick={processData}
                             >
                                 Continuar <CheckCircleIcon className="w-4 h-4" />
@@ -514,19 +516,19 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                                         return (
                                             <tr key={col.key} className="hover:bg-purple-50/50 dark:hover:bg-slate-800 transition-colors group">
                                                 <td className="px-6 py-3">
-                                                    <span className="bg-gray-100 group-hover:bg-purple-100 dark:bg-slate-700 dark:group-hover:bg-[#7511E5]/20 text-gray-600 group-hover:text-purple-700 dark:text-gray-300 dark:group-hover:text-[#7511E5] text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider transition-colors inline-block text-center w-full">
+                                                    <span className="bg-gray-100 group-hover:bg-purple-100 dark:bg-slate-700 dark:group-hover:bg-purple-600/20 text-gray-600 group-hover:text-purple-700 dark:text-gray-300 dark:group-hover:text-purple-600 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider transition-colors inline-block text-center w-full">
                                                         Col {index + 1}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-3 text-[14px] text-gray-800 dark:text-gray-200 font-semibold truncate max-w-sm" title={col.label}>
+                                                <td className="px-6 py-3 text-sm text-gray-800 dark:text-gray-200 font-semibold truncate max-w-sm" title={col.label}>
                                                     {col.label}
                                                 </td>
-                                                <td className="px-6 py-3 text-[13px] text-gray-500 dark:text-gray-400 italic truncate max-w-[200px]" title={String(rawVal)}>
+                                                <td className="px-6 py-3 text-sm- text-gray-500 dark:text-gray-400 italic truncate max-w-[200px]" title={String(rawVal)}>
                                                     {preview}
                                                 </td>
                                                 <td className="px-6 py-3">
                                                     <select
-                                                        className="w-full text-[13px] font-medium border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 focus:ring-2 focus:ring-[#7511E5]/20 focus:border-[#7511E5] dark:text-white cursor-pointer shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all disabled:opacity-50 h-[38px] px-3 outline-none"
+                                                        className="w-full text-sm- font-medium border border-gray-200 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 dark:text-white cursor-pointer shadow-sm hover:border-gray-300 dark:hover:border-slate-500 transition-all disabled:opacity-50 h-[38px] px-3 outline-none"
                                                         value={col.type}
                                                         onChange={(e) => handleFormatChange(index, e.target.value as DataType)}
                                                     >
@@ -593,7 +595,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                                                     importDuplicates.forEach(id => next.delete(id));
                                                     setImportSelection(next);
                                                 }}
-                                                className="mt-2 text-[12px] font-bold text-amber-700 dark:text-amber-400 hover:text-amber-900 underline transition-colors focus:outline-none"
+                                                className="mt-2 text-xs font-bold text-amber-700 dark:text-amber-400 hover:text-amber-900 underline transition-colors focus:outline-none"
                                             >
                                                 Desmarcar todos los duplicados e ignorarlos
                                             </button>

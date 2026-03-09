@@ -7,7 +7,7 @@ import {
     CalendarDaysIcon,
     AdjustmentsHorizontalIcon,
     ArrowPathIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { Button } from '../../../components/ui/Button';
 import { IncomeStatementImportModal } from '../components/IncomeStatementImportModal';
 import { IncomeStatementConfigModal } from '../components/IncomeStatementConfigModal';
@@ -192,7 +192,7 @@ export const IncomeStatementTable: React.FC = () => {
                         <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
                         <PresentationChartBarIcon className="absolute inset-0 m-auto h-6 w-6 text-primary animate-pulse" />
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Cargando Entorno Financiero</span>
+                    <span className="text-xs2 font-black text-slate-400 uppercase tracking-ultra">Cargando Entorno Financiero</span>
                 </div>
             </div>
         );
@@ -225,7 +225,7 @@ export const IncomeStatementTable: React.FC = () => {
                                 <>
                                     <Button variant="secondary" onClick={() => setIsConfigModalOpen(true)}>
                                         <AdjustmentsHorizontalIcon className="w-5 h-5 mr-2" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Configuración</span>
+                                        <span className="text-xs2 font-black uppercase tracking-widest">Configuración</span>
                                     </Button>
 
                                     <div className="relative">
@@ -235,7 +235,7 @@ export const IncomeStatementTable: React.FC = () => {
                                                 e.stopPropagation();
                                                 setShowDeleteMonth(!showDeleteMonth);
                                             }}
-                                            className="text-rose-500 hover:bg-rose-50 transition-all font-black uppercase tracking-widest text-[10px]"
+                                            className="text-rose-500 hover:bg-rose-50 transition-all font-black uppercase tracking-widest text-xs2"
                                         >
                                             <CalendarDaysIcon className="w-5 h-5 mr-2" />
                                             Borrar Mes
@@ -254,7 +254,7 @@ export const IncomeStatementTable: React.FC = () => {
                                                         <button
                                                             key={m}
                                                             onClick={() => handleDeleteMonth(m)}
-                                                            className="w-full text-left px-4 py-2 text-[10px] font-black text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 rounded-lg transition-all flex justify-between items-center group uppercase tracking-widest"
+                                                            className="w-full text-left px-4 py-2 text-xs2 font-black text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 rounded-lg transition-all flex justify-between items-center group uppercase tracking-widest"
                                                         >
                                                             {label}
                                                             <TrashIcon className="w-4 h-4 opacity-0 group-hover:opacity-100" />
@@ -264,7 +264,7 @@ export const IncomeStatementTable: React.FC = () => {
                                                 <div className="border-t border-gray-50 dark:border-slate-700 mt-1 pt-1">
                                                     <button
                                                         onClick={handleClearAll}
-                                                        className="w-full text-left px-4 py-2 text-[10px] font-black text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-all flex justify-between items-center group uppercase tracking-widest"
+                                                        className="w-full text-left px-4 py-2 text-xs2 font-black text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-all flex justify-between items-center group uppercase tracking-widest"
                                                     >
                                                         Borrar Todo
                                                         <TrashIcon className="w-4 h-4" />
@@ -278,7 +278,7 @@ export const IncomeStatementTable: React.FC = () => {
                             <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
                             <Button variant="primary" onClick={() => setIsImportModalOpen(true)}>
                                 <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Cargar P&G Excel</span>
+                                <span className="text-xs2 font-black uppercase tracking-widest">Cargar P&G Excel</span>
                             </Button>
                         </div>
                     }
@@ -286,10 +286,10 @@ export const IncomeStatementTable: React.FC = () => {
 
                 {availableMonths.length > 0 && (
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar scroll-smooth">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2 whitespace-nowrap">Filtrar Períodos:</span>
+                        <span className="text-2xs font-black text-slate-400 uppercase tracking-widest mr-2 whitespace-nowrap">Filtrar Períodos:</span>
                         <button
                             onClick={() => setSelectedMonthsFilter([])}
-                            className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${selectedMonthsFilter.length === 0 ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-purple-400/50'}`}
+                            className={`px-3 py-1.5 rounded-md text-2xs font-black uppercase tracking-widest transition-all whitespace-nowrap border ${selectedMonthsFilter.length === 0 ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-purple-400/50'}`}
                         >
                             Todos
                         </button>
@@ -304,7 +304,7 @@ export const IncomeStatementTable: React.FC = () => {
                                         if (isActive) setSelectedMonthsFilter(prev => prev.filter(x => x !== m));
                                         else setSelectedMonthsFilter(prev => [...prev, m]);
                                     }}
-                                    className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${isActive ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-purple-400/50'}`}
+                                    className={`px-3 py-1.5 rounded-md text-2xs font-black uppercase tracking-widest transition-all whitespace-nowrap border ${isActive ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-purple-400/50'}`}
                                 >
                                     {label}
                                 </button>
@@ -325,7 +325,7 @@ export const IncomeStatementTable: React.FC = () => {
                             <PresentationChartBarIcon className="w-10 h-10 text-primary" />
                         </div>
                         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2 uppercase tracking-widest">No hay datos procesados</h3>
-                        <p className="text-slate-400 text-[11px] max-w-sm text-center font-medium mb-8 uppercase tracking-wider">Importa tu reporte de ingresos y egresos para ver la estructura contable comparativa.</p>
+                        <p className="text-slate-400 text-xs max-w-sm text-center font-medium mb-8 uppercase tracking-wider">Importa tu reporte de ingresos y egresos para ver la estructura contable comparativa.</p>
                         <Button onClick={() => setIsImportModalOpen(true)} variant="primary">Comenzar ahora</Button>
                     </div>
                 )}

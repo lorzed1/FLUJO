@@ -1,6 +1,6 @@
 import React from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
-import { DocumentTextIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon } from '../../../components/ui/Icons';
 
 export interface AsientoContableRow {
     id: string;

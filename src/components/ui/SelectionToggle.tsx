@@ -35,7 +35,7 @@ export const SelectionToggle: React.FC<SelectionToggleProps> = ({
                 />
                 <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform shadow-sm ${checked ? 'translate-x-4' : 'translate-x-1'}`} />
             </div>
-            <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors uppercase tracking-[0.1em] whitespace-nowrap">
+            <span className="text-xs2 font-bold text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors uppercase tracking-micro whitespace-nowrap">
                 {label}
             </span>
         </label>

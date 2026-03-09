@@ -164,8 +164,8 @@ const RulesBuster: React.FC = () => {
                                 <tr key={r.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                                     <td className="p-2 text-center">
                                         {isHealthy ?
-                                            <span className="text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800 text-[10px]">✓ Sana</span> :
-                                            <span className="text-rose-600 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-800 text-[10px]">⚠️ Error</span>
+                                            <span className="text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800 text-xs2">✓ Sana</span> :
+                                            <span className="text-rose-600 font-bold bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-800 text-xs2">⚠️ Error</span>
                                         }
                                     </td>
                                     <td className="p-2 font-bold">{name || 'Sin Nombre'}</td>

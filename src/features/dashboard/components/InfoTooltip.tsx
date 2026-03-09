@@ -117,7 +117,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
                         <div className="relative">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
                                     {title}
                                 </h4>
                                 <button
@@ -138,8 +138,8 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
                             {/* Formula */}
                             {formula && (
                                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-md px-2.5 py-2 mb-2 border border-gray-100 dark:border-gray-600">
-                                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fórmula</span>
-                                    <p className="text-[11px] font-mono font-bold text-gray-800 dark:text-gray-200 mt-0.5">
+                                    <span className="text-xs2 font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fórmula</span>
+                                    <p className="text-xs font-mono font-bold text-gray-800 dark:text-gray-200 mt-0.5">
                                         {formula}
                                     </p>
                                 </div>
@@ -151,7 +151,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
                                     <svg className="w-3 h-3 text-gray-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                     </svg>
-                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                                    <span className="text-xs2 text-gray-400 dark:text-gray-500 leading-relaxed">
                                         Fuente: {source}
                                     </span>
                                 </div>

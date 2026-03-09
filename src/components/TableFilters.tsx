@@ -1,10 +1,15 @@
 'use client'
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/DropdownMenu"
 import { DatePicker } from "@/components/ui/DatePicker"
-import { CalendarIcon, Hash, Search } from "lucide-react"
+import { CalendarIcon, MagnifyingGlassIcon as Search } from "@/components/ui/Icons"
+const Hash = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <line x1="4" x2="20" y1="9" y2="9" /><line x1="4" x2="20" y1="15" y2="15" /><line x1="10" x2="8" y1="3" y2="21" /><line x1="16" x2="14" y1="3" y2="21" />
+    </svg>
+);
 
 // FILTRO DE TEXTO
 export function TextFilter({ value, onChange }: { value?: string, onChange: (val: string) => void }) {

@@ -78,10 +78,10 @@ export const ProjectionsHeatmap: React.FC<ProjectionsHeatmapProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-[13px] font-bold text-slate-700 dark:text-white uppercase tracking-wider">
+                    <h3 className="text-sm- font-bold text-slate-700 dark:text-white uppercase tracking-wider">
                         Mapa de Intensidad
                     </h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Distribución de metas</p>
+                    <p className="text-xs2 text-slate-400 font-bold uppercase tracking-widest mt-0.5">Distribución de metas</p>
                 </div>
             </div>
 
@@ -89,7 +89,7 @@ export const ProjectionsHeatmap: React.FC<ProjectionsHeatmapProps> = ({
             <div className="grid grid-cols-7 gap-1.5">
                 {/* Headers */}
                 {weekDays.map((d, index) => (
-                    <div key={`${d}-${index}`} className="text-center text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase py-1">
+                    <div key={`${d}-${index}`} className="text-center text-xs2 font-bold text-slate-300 dark:text-slate-600 uppercase py-1">
                         {d}
                     </div>
                 ))}
@@ -111,7 +111,7 @@ export const ProjectionsHeatmap: React.FC<ProjectionsHeatmapProps> = ({
                             `}
                             title={`${format(dayObj.date, 'EEEE d', { locale: es })}: $ ${dayObj.value.toLocaleString()}`}
                         >
-                            <span className="text-[10px] font-medium leading-none">
+                            <span className="text-xs2 font-medium leading-none">
                                 {format(dayObj.date, 'd')}
                             </span>
                             {/* Visual Bar Indicator for high values */}
@@ -127,13 +127,13 @@ export const ProjectionsHeatmap: React.FC<ProjectionsHeatmapProps> = ({
             <div className="mt-4 flex items-center justify-between border-t border-slate-50 dark:border-slate-700 pt-3">
                 <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-sm bg-indigo-50 border border-indigo-100"></div>
-                    <span className="text-[9px] text-slate-400">Bajo</span>
+                    <span className="text-2xs text-slate-400">Bajo</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <div className="h-1 w-16 bg-gradient-to-r from-indigo-50 via-indigo-300 to-indigo-600 rounded-full"></div>
                 </div>
                 <div className="flex items-center gap-1">
-                    <span className="text-[9px] text-slate-400">Alto</span>
+                    <span className="text-2xs text-slate-400">Alto</span>
                     <div className="w-2 h-2 rounded-sm bg-indigo-600"></div>
                 </div>
             </div>

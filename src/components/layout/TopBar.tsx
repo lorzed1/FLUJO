@@ -60,7 +60,7 @@ export const TopBar: React.FC = () => {
                             <span className="text-xs font-bold text-gray-700 dark:text-gray-200 leading-none">
                                 {userName?.split(' ')[0] || 'Usuario'}
                             </span>
-                            <span className="text-[9px] text-gray-400 dark:text-gray-500 font-medium uppercase leading-none mt-0.5">
+                            <span className="text-2xs text-gray-400 dark:text-gray-500 font-medium uppercase leading-none mt-0.5">
                                 Conectado
                             </span>
                         </div>

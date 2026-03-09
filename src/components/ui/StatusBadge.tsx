@@ -57,7 +57,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, label, classN
             className
         )}>
             <span className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
-            <span className={cn("text-[10px] font-semibold uppercase tracking-widest", style.text)}>
+            <span className={cn("text-xs2 font-semibold uppercase tracking-widest", style.text)}>
                 {label}
             </span>
         </div>

@@ -63,7 +63,7 @@ export const ProjectionsChart: React.FC<ProjectionsChartProps> = ({
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg text-[11px]">
+                <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg text-xs">
                     <p className="font-bold text-slate-700 dark:text-slate-200 mb-2 capitalize">{payload[0].payload.fullDate}</p>
                     {payload.map((entry: any, index: number) => (
                         <div key={index} className="flex items-center justify-between gap-4 mb-1">
@@ -94,10 +94,10 @@ export const ProjectionsChart: React.FC<ProjectionsChartProps> = ({
         <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm mb-4 h-[350px]">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-[13px] font-bold text-slate-700 dark:text-white flex items-center gap-2">
+                    <h3 className="text-sm- font-bold text-slate-700 dark:text-white flex items-center gap-2">
                         Tendencia de Ventas
                     </h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Real vs Meta</p>
+                    <p className="text-xs2 text-slate-400 font-bold uppercase tracking-widest mt-0.5">Real vs Meta</p>
                 </div>
                 {/* Leyenda Custom simple */}
                 <div className="flex gap-3">

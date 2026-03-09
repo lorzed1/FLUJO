@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { ClipboardDocumentListIcon } from '../../../components/ui/Icons';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 export interface CurrencyInputProps {
     label: string;
@@ -20,8 +21,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({ label, name, value
     };
 
     return (
-        <div className="w-full mb-2">
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide">{label}</label>
+        <FormGroup label={label} description={sublabel} className="w-full mb-2">
             <div className="flex gap-2">
                 <div className="relative flex-1">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 pointer-events-none text-base sm:text-lg">$</span>
@@ -48,9 +48,6 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({ label, name, value
                     </button>
                 )}
             </div>
-            {sublabel && (
-                <p className="text-xs text-gray-500 mt-1 ml-1 font-medium">{sublabel}</p>
-            )}
-        </div>
+        </FormGroup>
     );
 };

@@ -62,7 +62,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     key={view.id}
                                     onClick={() => onViewChange(view.id as ViewMode)}
                                     className={`
-                                        flex-1 flex items-center justify-center gap-2 px-4 h-full text-[13px] font-semibold transition-all duration-200 whitespace-nowrap cursor-pointer
+                                        flex-1 flex items-center justify-center gap-2 px-4 h-full text-sm- font-semibold transition-all duration-200 whitespace-nowrap cursor-pointer
                                         min-h-[40px]
                                         ${!isLast ? 'border-r border-slate-200 dark:border-slate-700' : ''}
                                         ${isActive

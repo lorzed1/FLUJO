@@ -16,6 +16,7 @@ import {
     ChartBarIcon, UsersIcon, ScaleIcon, CalendarDaysIcon, CreditCardIcon
 } from '../../../components/ui/Icons';
 import { dashboardService } from '../../../services/dashboardService';
+import { Card } from '../../../components/ui/Card';
 
 const PAYMENT_COLORS = ['#059669', '#7c3aed', '#3b82f6', '#d97706', '#e11d48', '#0d9488', '#4f46e5'];
 
@@ -182,11 +183,11 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
                 {/* KPI 1: Ventas y Cumplimiento */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                <Card className="p-4 transition-all duration-300">
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     Ventas & Cumplimiento
                                 </p>
                                 <InfoTooltip
@@ -206,15 +207,15 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Meta: {formatCompact(summary.totalMeta)}</span>
                     </div>
                     <ProgressBar percentage={summary.compliance} className="mt-2" />
-                    <p className="text-[10px] text-right text-gray-400 mt-1 font-semibold">{summary.compliance.toFixed(1)}% Cumplido</p>
-                </div>
+                    <p className="text-xs2 text-right text-gray-400 mt-1 font-semibold">{summary.compliance.toFixed(1)}% Cumplido</p>
+                </Card>
 
                 {/* KPI 2: Estado Contra Meta (Diferencia) */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                <Card className="p-4 transition-all duration-300">
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     Diferencia vs Meta
                                 </p>
                                 <InfoTooltip
@@ -235,14 +236,14 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                             {summary.diff >= 0 ? 'Por encima de la proyección' : 'Presupuesto faltante para la meta'}
                         </span>
                     </div>
-                </div>
+                </Card>
 
                 {/* KPI 3: Visitas Totales */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                <Card className="p-4 transition-all duration-300">
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     Total Visitas
                                 </p>
                             </div>
@@ -266,14 +267,14 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500">vs mes anterior</span>
                     </div>
-                </div>
+                </Card>
 
                 {/* KPI 4: Ticket Promedio */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+                <Card className="p-4 transition-all duration-300">
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                     Ticket Promedio
                                 </p>
                             </div>
@@ -297,14 +298,14 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         </span>
                         <span className="text-xs text-gray-400 dark:text-gray-500">vs mes anterior</span>
                     </div>
-                </div>
+                </Card>
             </div>
 
             {/* ── Gráfica Diaria Consolidada ── */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <Card className="p-4">
                 <div className="mb-2 flex justify-between items-center">
                     <div className="flex items-center gap-1">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             Rendimiento Diario (Ingresos vs Meta vs Visitas)
                         </h3>
                         <InfoTooltip
@@ -315,15 +316,15 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <div className="flex gap-4">
                         <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">Venta Real</span>
+                            <span className="text-xs2 text-gray-600 dark:text-gray-300 font-medium">Venta Real</span>
                         </div>
                         <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
                             <span className="w-2 h-2 rounded-full bg-purple-500/40 border border-purple-500" />
-                            <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">Meta Diaria</span>
+                            <span className="text-xs2 text-gray-600 dark:text-gray-300 font-medium">Meta Diaria</span>
                         </div>
                         <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
                             <div className="w-3 h-0.5 bg-blue-500 rounded-full" />
-                            <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">Visitas</span>
+                            <span className="text-xs2 text-gray-600 dark:text-gray-300 font-medium">Visitas</span>
                         </div>
                     </div>
                 </div>
@@ -404,17 +405,17 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         </ResponsiveContainer>
                     )}
                 </div>
-            </div>
+            </Card>
 
             {/* ── Row 3: Cumplimiento Semanal + Mix de Pagos ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                 {/* Cumplimiento Semanal — Bullet Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                <Card className="lg:col-span-2 flex flex-col p-4">
                     <div className="mb-3 flex justify-between items-center">
                         <div>
                             <div className="flex items-center gap-1">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                     Cumplimiento Semanal
                                 </h3>
                                 <InfoTooltip
@@ -436,11 +437,11 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                             formatValue={(v) => formatCompact(v)}
                         />
                     </div>
-                </div>
+                </Card>
 
                 {/* Payment Mix — Barra 100% Apilada + Lista */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                <Card className="flex flex-col p-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                         Mix de Pagos
                     </h3>
 
@@ -457,7 +458,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                                             minWidth: pm.percentage > 0 ? '4px' : '0',
                                         }}
                                     >
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded-md whitespace-nowrap opacity-0 group-hover/seg:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs2 rounded-md whitespace-nowrap opacity-0 group-hover/seg:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
                                             <div className="font-bold">{pm.method}</div>
                                             <div>{formatCOP(pm.amount)} · {pm.percentage.toFixed(1)}%</div>
                                         </div>
@@ -466,7 +467,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                             </div>
 
                             <div className="flex justify-between items-center mt-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-[10px] font-medium text-gray-400">Total</span>
+                                <span className="text-xs2 font-medium text-gray-400">Total</span>
                                 <span className="text-sm font-bold text-gray-800 dark:text-white">
                                     {formatCOP(realPaymentMethods.reduce((sum, pm) => sum + pm.amount, 0))}
                                 </span>
@@ -478,22 +479,22 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PAYMENT_COLORS[idx % PAYMENT_COLORS.length] }} />
                                         <span className="text-xs text-gray-600 dark:text-gray-300 flex-1 truncate">{pm.method}</span>
                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{formatCOP(pm.amount)}</span>
-                                        <span className="text-[10px] text-gray-400 tabular-nums w-10 text-right">{pm.percentage.toFixed(1)}%</span>
+                                        <span className="text-xs2 text-gray-400 tabular-nums w-10 text-right">{pm.percentage.toFixed(1)}%</span>
                                     </div>
                                 ))}
                             </div>
                         </>
                     ) : (
                         <div className="flex-1 flex items-center justify-center">
-                            <p className="text-[11px] text-gray-400">Sin datos de pagos</p>
+                            <p className="text-xs text-gray-400">Sin datos de pagos</p>
                         </div>
                     )}
-                </div>
+                </Card>
             </div>
 
             {/* Top Products Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+            <Card className="p-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                     Estadísticas - Productos Más Vendidos
                 </h3>
 
@@ -501,24 +502,24 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="border-b border-gray-100 dark:border-gray-700">
-                                <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Producto</th>
-                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Cant.</th>
-                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Ingresos</th>
-                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400 px-4 py-3 w-[120px]">Participación</th>
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Producto</th>
+                                <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Cant.</th>
+                                <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Ingresos</th>
+                                <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3 w-[120px]">Participación</th>
                             </tr>
                         </thead>
                         <tbody>
                             {MOCK_SALES_DATA.topProducts.map((prod, idx) => (
                                 <tr key={idx} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <td className="px-4 py-3.5 text-[13px] font-medium text-gray-900 dark:text-gray-100">{prod.product}</td>
-                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">{prod.quantity.toLocaleString()}</td>
-                                    <td className="px-4 py-3.5 text-[13px] text-gray-600 dark:text-gray-300 text-right">{formatCOP(prod.revenue)}</td>
+                                    <td className="px-4 py-3.5 text-sm- font-medium text-gray-900 dark:text-gray-100">{prod.product}</td>
+                                    <td className="px-4 py-3.5 text-sm- text-gray-600 dark:text-gray-300 text-right">{prod.quantity.toLocaleString()}</td>
+                                    <td className="px-4 py-3.5 text-sm- text-gray-600 dark:text-gray-300 text-right">{formatCOP(prod.revenue)}</td>
                                     <td className="px-4 py-3.5 text-right">
                                         <div className="inline-flex items-center gap-2 justify-end">
                                             <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                                                 <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${prod.share}%` }} />
                                             </div>
-                                            <span className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 inline-block w-8 text-right">{prod.share}%</span>
+                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 inline-block w-8 text-right">{prod.share}%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -526,7 +527,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </Card>
         </div>
     );
 };

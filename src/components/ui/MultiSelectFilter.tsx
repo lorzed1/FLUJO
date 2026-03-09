@@ -9,7 +9,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu"
-import { Filter } from "lucide-react"
+import { FunnelIcon as Filter } from "@/components/ui/Icons"
 import { Badge } from "@/components/ui/Badge"
 
 interface MultiSelectFilterProps {

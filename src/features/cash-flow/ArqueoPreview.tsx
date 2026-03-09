@@ -27,6 +27,7 @@ import { DatabaseService } from '../../services/database';
 import { tipsService } from '../../services/tipsService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { FormGroup } from '../../components/ui/FormGroup';
 
 // Extracted components & hook
 import { CurrencyInput } from './components/CurrencyInput';
@@ -322,7 +323,8 @@ const ArqueoPreview: React.FC = () => {
 
 
                             <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm h-10">
-                                <button
+                                <Button
+                                    variant="ghost" size="sm"
                                     onClick={() => form.setAlertConfig({
                                         isOpen: true,
                                         title: 'Guía Rápida',
@@ -331,16 +333,17 @@ const ArqueoPreview: React.FC = () => {
                                         confirmText: 'Entendido',
                                         showCancel: false
                                     })}
-                                    className="p-2 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                    className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700"
                                 >
                                     <InformationCircleIcon className="h-5 w-5" />
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="ghost" size="sm"
                                     onClick={() => form.setIsDarkMode(!form.isDarkMode)}
-                                    className="p-2 text-gray-500 hover:bg-gray-50 dark:text-yellow-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                                    className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-yellow-400 dark:hover:bg-slate-700"
                                 >
                                     {form.isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     }
@@ -348,7 +351,7 @@ const ArqueoPreview: React.FC = () => {
 
                 <div className="mt-4 sm:mt-6">
                     {activeTab === 'historial' && (
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden animate-fadeIn">
+                        <Card className="overflow-hidden animate-fadeIn" noPadding>
                             {historySubTab === 'medios' ? (
                                 <TransfersView />
                             ) : (
@@ -397,27 +400,27 @@ const ArqueoPreview: React.FC = () => {
                                     />
                                     {form.showImportModal && (
                                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[85dvh] animate-in zoom-in-95 duration-200">
+                                            <Card className="w-full max-w-5xl flex flex-col max-h-[85dvh] animate-in zoom-in-95 duration-200 shadow-2xl" noPadding>
                                                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                                                     <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                                         <ArrowUpTrayIcon className="h-6 w-6 text-indigo-600" /> Importar Arqueos
                                                     </h3>
-                                                    <button onClick={() => form.setShowImportModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                                                    <Button variant="ghost" size="sm" onClick={() => form.setShowImportModal(false)} className="h-8 w-8 p-1 text-slate-400 rounded-full">
                                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                                 <div className="p-4 sm:p-6 overflow-y-auto">
                                                     <ExcelImportTab onBatchImport={(rows) => form.handleBatchImport(rows, onSave)} />
                                                 </div>
                                                 <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t flex justify-end">
-                                                    <button onClick={() => form.setShowImportModal(false)} className="px-6 py-2 text-slate-600 font-semibold">Cerrar</button>
+                                                    <Button variant="secondary" onClick={() => form.setShowImportModal(false)} className="px-6 py-2 font-semibold">Cerrar</Button>
                                                 </div>
-                                            </div>
+                                            </Card>
                                         </div>
                                     )}
                                 </>
                             )}
-                        </div>
+                        </Card>
                     )}
 
                     {activeTab === 'arqueo' && (
@@ -434,30 +437,27 @@ const ArqueoPreview: React.FC = () => {
                                         </h3>
 
                                         <div className="space-y-3 sm:space-y-5">
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Fecha del Arqueo</label>
+                                            <FormGroup label="Fecha del Arqueo" required>
                                                 <DatePicker
                                                     value={form.formData.fecha}
                                                     onChange={() => { }} // ReadOnly visually
                                                     className="w-full h-14"
                                                     required
                                                 />
-                                            </div>
+                                            </FormGroup>
 
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Cajero Responsable</label>
+                                            <FormGroup label="Cajero Responsable" required>
                                                 <input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange}
                                                     placeholder="Nombre..."
                                                     className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                                                     required />
-                                            </div>
+                                            </FormGroup>
 
-                                            <div>
-                                                <label className="block text-sm font-bold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Total Visitas</label>
+                                            <FormGroup label="Total Visitas">
                                                 <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
                                                     className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                                                     placeholder="0" />
-                                            </div>
+                                            </FormGroup>
                                         </div>
                                     </Card>
 
@@ -469,7 +469,7 @@ const ArqueoPreview: React.FC = () => {
                                                 Ventas
                                             </h3>
                                             <div className="text-right">
-                                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Total Esperado</div>
+                                                <div className="text-xs2 text-gray-400 font-bold uppercase mb-1">Total Esperado</div>
                                                 <div className="text-xl font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg">
                                                     {formatCurrencyValue(form.ventaTotalEsperada)}
                                                 </div>
@@ -570,15 +570,15 @@ const ArqueoPreview: React.FC = () => {
                                     </Card>
                                 </div>
 
-                                {/* Action Button: sticky on mobile, inline on desktop */}
                                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 z-50 flex justify-center shadow-2xl lg:static lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:border-0 lg:shadow-none lg:p-0 lg:mt-8 col-span-1 lg:col-span-2">
                                     <div className="max-w-xl lg:max-w-none w-full">
-                                        <button type="submit"
-                                            className="w-full py-4 bg-gray-900 dark:bg-blue-600 active:bg-black dark:active:bg-blue-700 text-white text-lg font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all transform active:scale-[0.98] flex justify-center items-center gap-3"
+                                        <Button
+                                            type="submit"
+                                            className="w-full h-14 bg-gray-900 dark:bg-blue-600 text-white text-lg font-bold rounded-2xl shadow-xl hover:shadow-2xl border-0 flex justify-center items-center gap-3"
                                         >
                                             <span>Finalizar Arqueo</span>
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                                 {/* Spacer for sticky button on mobile only */}

@@ -169,14 +169,14 @@ export const FinancialStatementMatrix: React.FC<{ data: any[] }> = ({ data }) =>
                                     {isExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                                 </button>
                             ) : <span className="w-3 h-3 inline-block" />}
-                            <span className="text-[10px] font-mono font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{node.code}</span>
-                            <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium uppercase tracking-wide leading-none">{node.name}</span>
+                            <span className="text-xs2 font-mono font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{node.code}</span>
+                            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium uppercase tracking-wide leading-none">{node.name}</span>
                         </div>
                     </td>
                     {monthKeys.map(m => {
                         const val = node.amount[m] || 0;
                         return (
-                            <td key={m} className={`px-6 py-1.5 text-right font-mono text-[11px] ${val < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
+                            <td key={m} className={`px-6 py-1.5 text-right font-mono text-xs ${val < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
                                 {formatCurrency(val)}
                             </td>
                         );
@@ -192,8 +192,8 @@ export const FinancialStatementMatrix: React.FC<{ data: any[] }> = ({ data }) =>
     return (
         <div className="w-full h-full flex flex-col bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="py-2.5 px-6 text-center border-b border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50/50">
-                <h1 className="text-[14px] font-black text-slate-800 dark:text-white uppercase tracking-[0.2em] leading-tight">ESTADO DE RESULTADO INTEGRAL</h1>
-                <div className="text-[8px] font-black text-primary/60 uppercase tracking-[0.3em]">
+                <h1 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-spread leading-tight">ESTADO DE RESULTADO INTEGRAL</h1>
+                <div className="text-3xs font-black text-primary/60 uppercase tracking-ultra">
                     {months.length > 0
                         ? `DEL 1 DE ${getMonthLabel(months[0])} AL 30 DE ${getMonthLabel(months[months.length - 1])} DE ${months[0].split('-')[0]}`
                         : 'REPORTE DE GESTIÓN CORPORATIVA'}
@@ -203,7 +203,7 @@ export const FinancialStatementMatrix: React.FC<{ data: any[] }> = ({ data }) =>
             <div className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full border-separate border-spacing-0">
                     <thead className="sticky top-0 z-50 shadow-sm">
-                        <tr className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-900">
+                        <tr className="text-3xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-900">
                             <th className="px-10 py-2.5 text-left border-b border-slate-100">CUENTA</th>
                             {months.map(m => (
                                 <th key={m} className="px-6 py-2.5 text-right border-b border-slate-100">
@@ -231,7 +231,7 @@ export const FinancialStatementMatrix: React.FC<{ data: any[] }> = ({ data }) =>
                                                         {isExpanded ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
                                                     </button>
                                                 ) : (!isCalc ? <span className="w-3.5 h-3.5 inline-block" /> : null)}
-                                                <span className={`text-[11px] uppercase tracking-wider ${isCalc ? 'text-slate-900 dark:text-white font-black' : 'text-slate-700 dark:text-slate-200 font-bold'}`}>
+                                                <span className={`text-xs uppercase tracking-wider ${isCalc ? 'text-slate-900 dark:text-white font-black' : 'text-slate-700 dark:text-slate-200 font-bold'}`}>
                                                     {master.name}
                                                 </span>
                                             </div>
@@ -239,7 +239,7 @@ export const FinancialStatementMatrix: React.FC<{ data: any[] }> = ({ data }) =>
                                         {months.map(m => {
                                             const val = totals[m] || 0;
                                             return (
-                                                <td key={m} className={`px-6 py-2.5 text-right font-mono text-[12px] font-black ${isCalc ? (val < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-500') : 'text-slate-800 dark:text-slate-100'}`}>
+                                                <td key={m} className={`px-6 py-2.5 text-right font-mono text-xs font-black ${isCalc ? (val < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-500') : 'text-slate-800 dark:text-slate-100'}`}>
                                                     {formatCurrency(val)}
                                                 </td>
                                             );
@@ -253,7 +253,7 @@ export const FinancialStatementMatrix: React.FC<{ data: any[] }> = ({ data }) =>
                 </table>
             </div>
             <div className="px-8 py-2 bg-slate-50/80 border-t border-slate-100 flex justify-end">
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest italic">Cierre Contable Certificado Aliaddo 2026</span>
+                <span className="text-4xs font-black text-slate-400 uppercase tracking-widest italic">Cierre Contable Certificado Aliaddo 2026</span>
             </div>
         </div>
     );

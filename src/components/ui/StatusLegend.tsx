@@ -24,7 +24,7 @@ export const StatusLegend: React.FC<StatusLegendProps> = ({
             {items.map((item, index) => (
                 <div key={index} className="flex items-center gap-2 shrink-0">
                     <div className={`w-1.5 h-1.5 rounded-full ${item.colorClass}`} />
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                    <span className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">
                         {item.label}
                     </span>
                 </div>

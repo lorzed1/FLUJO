@@ -8,7 +8,7 @@ import {
     ListBulletIcon,
     ChevronLeftIcon,
     ChevronRightIcon
-} from '@heroicons/react/24/outline';
+} from '../components/ui/Icons';
 
 const ButtonDesignPlayground: React.FC = () => {
     const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
@@ -19,7 +19,7 @@ const ButtonDesignPlayground: React.FC = () => {
             {/* INSTRUCCIONES GLOBALES */}
             <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-6 rounded-lg border border-blue-100 dark:border-blue-800/50 mt-6">
                 <h2 className="text-xl font-bold mb-2">Playground de Botonera (Action Bar)</h2>
-                <p className="text-[13px] leading-relaxed">
+                <p className="text-sm- leading-relaxed">
                     Esta página no está conectada a ninguna tabla ni base de datos. Es un campo de pruebas visual para
                     estandarizar la posición, tamaño y colores de los botones externos a las tablas en todo Aliaddo.
                     <br /><br />
@@ -47,7 +47,7 @@ const ButtonDesignPlayground: React.FC = () => {
                             <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md w-fit shadow-sm overflow-hidden h-9">
                                 <button
                                     onClick={() => setViewMode('table')}
-                                    className={`flex items-center justify-center gap-2 px-4 h-full text-[13px] font-semibold transition-colors border-r border-slate-200 dark:border-slate-700 ${viewMode === 'table'
+                                    className={`flex items-center justify-center gap-2 px-4 h-full text-sm- font-semibold transition-colors border-r border-slate-200 dark:border-slate-700 ${viewMode === 'table'
                                         ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
                                         : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
                                         }`}
@@ -57,7 +57,7 @@ const ButtonDesignPlayground: React.FC = () => {
                                 </button>
                                 <button
                                     onClick={() => setViewMode('calendar')}
-                                    className={`flex items-center justify-center gap-2 px-4 h-full text-[13px] font-semibold transition-colors ${viewMode === 'calendar'
+                                    className={`flex items-center justify-center gap-2 px-4 h-full text-sm- font-semibold transition-colors ${viewMode === 'calendar'
                                         ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
                                         : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
                                         }`}
@@ -73,7 +73,7 @@ const ButtonDesignPlayground: React.FC = () => {
                             <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-purple-600 transition-colors">
                                 <ChevronLeftIcon className="w-4 h-4" />
                             </button>
-                            <span className="px-3 text-[12px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-widest min-w-[120px] text-center">
+                            <span className="px-3 text-xs font-bold text-slate-700 dark:text-gray-200 uppercase tracking-widest min-w-[120px] text-center">
                                 FEBRERO 2026
                             </span>
                             <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-purple-600 transition-colors">
@@ -84,19 +84,19 @@ const ButtonDesignPlayground: React.FC = () => {
                         {/* ZONA 3: Acciones Globales */}
                         <div className="flex items-center justify-end gap-2 w-full md:w-auto shrink-0 h-10">
                             {/* Botón Secundario con Icono */}
-                            <button className="h-full px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700/80 text-[13px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all shadow-sm active:scale-95 group">
+                            <button className="h-full px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700/80 text-sm- font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all shadow-sm active:scale-95 group">
                                 <CogIcon className="w-4 h-4 group-hover:rotate-45 transition-transform" />
                                 <span className="hidden sm:inline">Configurar</span>
                             </button>
 
                             {/* Botón Secundario de Exportación (Outline style) */}
-                            <button className="h-full px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700/80 text-[13px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all shadow-sm active:scale-95 group">
+                            <button className="h-full px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700/80 text-sm- font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 transition-all shadow-sm active:scale-95 group">
                                 <ArrowDownTrayIcon className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
                                 <span className="hidden sm:inline">Exportar</span>
                             </button>
 
                             {/* Botón Primario Dominante (Usando azul corporativo intenso) */}
-                            <button className="h-full px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-[13px] flex items-center gap-2 transition-all active:scale-95 border border-transparent hover:border-purple-400/50">
+                            <button className="h-full px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-sm- flex items-center gap-2 transition-all active:scale-95 border border-transparent hover:border-purple-400/50">
                                 <PlusIcon className="w-4 h-4 stroke-[2.5]" />
                                 Nuevo Egreso
                             </button>
@@ -125,7 +125,7 @@ const ButtonDesignPlayground: React.FC = () => {
                                         <button
                                             key={key}
                                             onClick={() => setActiveTab(key)}
-                                            className={`px-4 pb-3 text-[13px] font-bold tracking-wide transition-all border-b-2 ${activeTab === key
+                                            className={`px-4 pb-3 text-sm- font-bold tracking-wide transition-all border-b-2 ${activeTab === key
                                                 ? 'border-purple-600 text-purple-600'
                                                 : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                                                 }`}
@@ -141,10 +141,10 @@ const ButtonDesignPlayground: React.FC = () => {
 
                         {/* ZONA 3: Acciones Globales (Alienadas a la línea inferior del border) */}
                         <div className="flex items-center gap-2 mb-2">
-                            <button className="h-10 px-4 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 rounded-md text-[13px] font-semibold transition-colors active:scale-95">
+                            <button className="h-10 px-4 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 rounded-md text-sm- font-semibold transition-colors active:scale-95">
                                 Cancelar
                             </button>
-                            <button className="h-10 px-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-md shadow-md shadow-black/10 font-bold text-[13px] transition-transform active:scale-95 border border-transparent">
+                            <button className="h-10 px-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-md shadow-md shadow-black/10 font-bold text-sm- transition-transform active:scale-95 border border-transparent">
                                 Guardar Cambios
                             </button>
                         </div>
@@ -160,34 +160,34 @@ const ButtonDesignPlayground: React.FC = () => {
 
                     {/* Tarjeta Botón Primario */}
                     <div className="bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-6 rounded-lg border border-slate-100 dark:border-slate-800 gap-4 shadow-sm hover:shadow-md transition-shadow">
-                        <button className="h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-[13px] flex items-center gap-2 transition-all active:scale-95">
+                        <button className="h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-sm- flex items-center gap-2 transition-all active:scale-95">
                             <PlusIcon className="w-4 h-4 stroke-[2.5]" /> Primario
                         </button>
-                        <p className="text-[10px] text-slate-400 text-center font-mono uppercase tracking-widest">bg-purple-600 rounded-md font-bold shadow-md</p>
+                        <p className="text-xs2 text-slate-400 text-center font-mono uppercase tracking-widest">bg-purple-600 rounded-md font-bold shadow-md</p>
                     </div>
 
                     {/* Tarjeta Botón Secundario (Outline) */}
                     <div className="bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-6 rounded-lg border border-slate-100 dark:border-slate-800 gap-4 shadow-sm hover:shadow-md transition-shadow">
-                        <button className="h-10 px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 text-[13px] font-semibold text-slate-600 transition-all shadow-sm active:scale-95 flex items-center gap-2">
+                        <button className="h-10 px-5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 text-sm- font-semibold text-slate-600 transition-all shadow-sm active:scale-95 flex items-center gap-2">
                             <ArrowDownTrayIcon className="w-4 h-4" /> Secundario
                         </button>
-                        <p className="text-[10px] text-slate-400 text-center font-mono uppercase tracking-widest">border-slate-200 font-semibold shadow-sm rounded-md</p>
+                        <p className="text-xs2 text-slate-400 text-center font-mono uppercase tracking-widest">border-slate-200 font-semibold shadow-sm rounded-md</p>
                     </div>
 
                     {/* Tarjeta Botón Tercioario (Puro Ghost) */}
                     <div className="bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-6 rounded-lg border border-slate-100 dark:border-slate-800 gap-4 shadow-sm hover:shadow-md transition-shadow">
-                        <button className="h-10 px-5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md text-[13px] font-semibold transition-colors active:scale-95">
+                        <button className="h-10 px-5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md text-sm- font-semibold transition-colors active:scale-95">
                             Fantasma
                         </button>
-                        <p className="text-[10px] text-slate-400 text-center font-mono uppercase tracking-widest">text-slate-500 hover:bg-slate-100 rounded-md</p>
+                        <p className="text-xs2 text-slate-400 text-center font-mono uppercase tracking-widest">text-slate-500 hover:bg-slate-100 rounded-md</p>
                     </div>
 
                     {/* Tarjeta Peligro (Danger) */}
                     <div className="bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-6 rounded-lg border border-slate-100 dark:border-slate-800 gap-4 shadow-sm hover:shadow-md transition-shadow">
-                        <button className="h-10 px-5 border border-red-200 bg-red-50 hover:bg-red-100 text-[13px] font-bold text-red-600 transition-all shadow-sm rounded-md active:scale-95 flex items-center gap-2">
+                        <button className="h-10 px-5 border border-red-200 bg-red-50 hover:bg-red-100 text-sm- font-bold text-red-600 transition-all shadow-sm rounded-md active:scale-95 flex items-center gap-2">
                             Eliminar
                         </button>
-                        <p className="text-[10px] text-slate-400 text-center font-mono uppercase tracking-widest">bg-red-50 text-red-600 border-red-200 rounded-md</p>
+                        <p className="text-xs2 text-slate-400 text-center font-mono uppercase tracking-widest">bg-red-50 text-red-600 border-red-200 rounded-md</p>
                     </div>
 
                 </div>

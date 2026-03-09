@@ -10,6 +10,7 @@ import { ArqueoRecord } from '../../types';
 import CashBaseModal from './CashBaseModal';
 import { EyeIcon } from '../../components/ui/Icons';
 import { DatePicker } from '../../components/ui/DatePicker';
+import { Button } from '../../components/ui/Button';
 
 interface ArqueosTableProps {
     arqueos: ArqueoRecord[];
@@ -57,12 +58,13 @@ const EditableCell = ({
     if (isEditing) {
         if (type === 'date') {
             return (
-                <div className="absolute left-0 top-0 w-48 z-[60]">
+                <div className="w-full min-w-[130px] relative z-[60]" onClick={(e) => e.stopPropagation()}>
                     <DatePicker
                         value={String(value)}
                         onChange={(val) => onSave(val)}
-                        onBlur={onCancel}
-                        className="w-full"
+                        onClose={onCancel}
+                        className="!py-1 !px-2 !pr-8 !border-purple-500 !h-[30px] !text-sm-"
+                        wrapperClassName="w-full"
                     />
                 </div>
             );
@@ -77,7 +79,7 @@ const EditableCell = ({
                     if (e.key === 'Enter') onSave(tempValue);
                     if (e.key === 'Escape') onCancel();
                 }}
-                className={`w-full px-2 py-1 rounded border border-purple-500 bg-white dark:bg-slate-800 text-[13px] font-normal tabular-nums text-slate-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-sm z-50`}
+                className={`w-full px-2 py-1 rounded border border-purple-500 bg-white dark:bg-slate-800 text-sm- font-normal tabular-nums text-slate-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-sm z-50`}
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
             />
@@ -409,7 +411,7 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
 
                 return (
                     <span className={cn(
-                        "tabular-nums px-2.5 py-1 rounded-md text-[11px] font-black inline-block min-w-[70px] text-center border shadow-sm",
+                        "tabular-nums px-2.5 py-1 rounded-md text-xs font-black inline-block min-w-[70px] text-center border shadow-sm",
                         styles
                     )}>
                         {formatCompact(item.descuadre)}
@@ -463,24 +465,30 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
             render: (_, item) => (
                 <div className="flex items-center gap-1 justify-end">
                     {item.baseDetail && (
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => { e.stopPropagation(); handleViewDetail(item, 'base'); }}
-                            className="mr-1 px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-purple-900/40 dark:hover:text-purple-300 transition-colors"
+                            className="mr-1 px-1.5 py-0.5 h-auto text-2xs font-bold bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-purple-900/40 dark:hover:text-purple-300"
                             title="Ver detalle de base"
                         >
                             BASE
-                        </button>
+                        </Button>
                     )}
                     {item.cuadreDetail && (
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => { e.stopPropagation(); handleViewDetail(item, 'cuadre'); }}
-                            className="mr-2 px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-purple-900/40 dark:hover:text-purple-300 transition-colors"
+                            className="mr-2 px-1.5 py-0.5 h-auto text-2xs font-bold bg-slate-100 text-slate-500 hover:bg-purple-100 hover:text-purple-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-purple-900/40 dark:hover:text-purple-300"
                             title="Ver detalle de cuadre"
                         >
                             CUADRE
-                        </button>
+                        </Button>
                     )}
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={(e) => {
                             e.stopPropagation();
                             setAlertModal({
@@ -492,12 +500,14 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                                 showCancel: false,
                             });
                         }}
-                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all"
+                        className="p-1 h-8 w-8 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                         title="Editar arqueo"
                     >
                         <PencilIcon className="h-4 w-4" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={(e) => {
                             e.stopPropagation();
                             setAlertModal({
@@ -513,11 +523,11 @@ const ArqueosTable = forwardRef<ArqueosTableHandle, ArqueosTableProps>(({ arqueo
                                 }
                             });
                         }}
-                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                        className="p-1 h-8 w-8 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                         title="Eliminar arqueo"
                     >
                         <TrashIcon className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
             )
         }

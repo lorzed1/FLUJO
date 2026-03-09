@@ -148,7 +148,7 @@ export const DailySalesVsGoalChart: React.FC<DailySalesVsGoalProps> = ({
                 </ResponsiveContainer>
             </div>
             {/* Legend manual */}
-            <div className="flex justify-center gap-4 mt-2 text-[10px] text-slate-500">
+            <div className="flex justify-center gap-4 mt-2 text-xs2 text-slate-500">
                 <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-sm bg-slate-200"></div>
                     <span>Meta</span>

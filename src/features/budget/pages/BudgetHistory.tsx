@@ -3,7 +3,7 @@ import {
     ClockIcon,
     ArrowTrendingDownIcon,
     ArrowPathIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { BudgetExecutionLog } from '../../../types/budget';
 import { budgetService } from '../../../services/budget';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
 import { useUI } from '../../../context/UIContext';
+import { Spinner } from '../../../components/ui/Spinner';
 
 interface BudgetHistoryProps {
     hideHeader?: boolean;
@@ -111,7 +112,7 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
             align: 'text-center',
             sortable: true,
             render: (value: number) => (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-blue-200 bg-blue-50 text-[10px] font-semibold text-blue-600 tracking-widest dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-blue-200 bg-blue-50 text-xs2 font-semibold text-blue-600 tracking-widest dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400">
                     {value} ITEMS
                 </span>
             )
@@ -194,7 +195,7 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
             <Card className="overflow-hidden flex-1 relative flex flex-col" noPadding>
                 {loading && (
                     <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex justify-center items-center z-20 backdrop-blur-sm">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <Spinner size="md" />
                     </div>
                 )}
 
@@ -226,25 +227,25 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
 
                         <div className="p-6 space-y-3">
                             <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Cta Corriente</span>
-                                <span className="font-mono font-bold text-[13px] text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaCorriente || 0)}</span>
+                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Cta Corriente</span>
+                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaCorriente || 0)}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Cta Ahorros J</span>
-                                <span className="font-mono font-bold text-[13px] text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaAhorrosJ || 0)}</span>
+                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Cta Ahorros J</span>
+                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaAhorrosJ || 0)}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Cta Ahorros N</span>
-                                <span className="font-mono font-bold text-[13px] text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaAhorrosN || 0)}</span>
+                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Cta Ahorros N</span>
+                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaAhorrosN || 0)}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Efectivo</span>
-                                <span className="font-mono font-bold text-[13px] text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.efectivo || 0)}</span>
+                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Efectivo</span>
+                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.efectivo || 0)}</span>
                             </div>
                             <div className="mt-4 flex justify-between items-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30 shadow-sm">
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-black">Disponibilidad Total</span>
-                                    <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/50">Al momento del pago</span>
+                                    <span className="text-2xs uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-black">Disponibilidad Total</span>
+                                    <span className="text-xs2 text-emerald-600/70 dark:text-emerald-400/50">Al momento del pago</span>
                                 </div>
                                 <span className="font-mono font-black text-lg text-emerald-700 dark:text-emerald-300">
                                     {formatCurrency(detailLog.initialState?.totalAvailable || 0)}

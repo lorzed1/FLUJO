@@ -5,16 +5,14 @@ import {
     BanknotesIcon,
     ArrowTrendingUpIcon,
     UsersIcon,
-    ChartPieIcon
-} from '../../../components/ui/Icons';
-import {
+    ChartPieIcon,
     CheckCircleIcon,
     XCircleIcon,
     CalendarDaysIcon,
     SparklesIcon,
     ArrowTrendingDownIcon,
     StarIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { useProjectionsKPIs } from '../hooks/useProjectionsKPIs';
 
 interface ProjectionsKPIsProps {
@@ -72,7 +70,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                     <div className="absolute -right-8 -top-8 w-28 h-28 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Cumplimiento Equilibrio</p>
+                            <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Cumplimiento Equilibrio</p>
                             <div className="flex items-baseline gap-2 mt-2">
                                 <span className={`text-3xl font-bold tracking-tight ${cumplimientoColor}`}>
                                     {fmtPercent(stats.cumplimiento)}
@@ -85,7 +83,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                                     style={{ width: `${Math.min(stats.cumplimiento, 100)}%` }}
                                 />
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-2">
+                            <p className="text-xs2 text-slate-400 mt-2">
                                 {stats.countDaysWithReal} de {stats.daysInMonth} días operados
                             </p>
                         </div>
@@ -100,11 +98,11 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                     <div className="absolute -right-8 -top-8 w-28 h-28 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Venta Acumulada</p>
+                            <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Venta Acumulada</p>
                             <p className="text-2xl font-bold text-slate-700 dark:text-white mt-2 truncate tracking-tight">
                                 {fmtMoney(stats.totalReal)}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-2">
+                            <p className="text-xs text-slate-400 mt-2">
                                 Meta: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{fmtMoney(stats.totalMeta)}</span>
                             </p>
                         </div>
@@ -119,7 +117,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                     <div className="absolute -right-8 -top-8 w-28 h-28 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-900/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">
+                            <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">
                                 {stats.superavit > 0 ? 'Superávit 🎉' : 'Brecha para Meta'}
                             </p>
                             <p className={`text-2xl font-bold mt-2 tracking-tight ${stats.superavit > 0
@@ -127,7 +125,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                                 : 'text-rose-600 dark:text-rose-400'}`}>
                                 {stats.superavit > 0 ? `+${fmtMoney(stats.superavit)}` : fmtMoney(stats.faltante)}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-2">
+                            <p className="text-xs2 text-slate-400 mt-2">
                                 {stats.superavit > 0
                                     ? 'Por encima del punto de equilibrio'
                                     : 'Falta por vender este mes'}
@@ -148,11 +146,11 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                     <div className="absolute -right-8 -top-8 w-28 h-28 bg-gradient-to-br from-purple-50 to-transparent dark:from-purple-900/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Proyección de Cierre</p>
+                            <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Proyección de Cierre</p>
                             <p className={`text-2xl font-bold mt-2 tracking-tight ${proyeccionCierreColor}`}>
                                 {stats.countDaysWithReal > 0 ? fmtMoney(stats.proyeccionCierre) : '-'}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-2">
+                            <p className="text-xs2 text-slate-400 mt-2">
                                 Prom. diario: <span className="font-bold text-slate-600 dark:text-slate-300">{fmtMoney(stats.avgDiario)}</span>
                             </p>
                         </div>
@@ -167,7 +165,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                     <div className="absolute -right-8 -top-8 w-28 h-28 bg-gradient-to-br from-green-50 to-transparent dark:from-green-900/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Tasa de Éxito Diario</p>
+                            <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Tasa de Éxito Diario</p>
                             <div className="flex items-baseline gap-3 mt-2">
                                 <div className="flex items-center gap-1.5">
                                     <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
@@ -179,7 +177,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                                     <span className="text-2xl font-bold tracking-tight text-rose-500 dark:text-rose-400">{stats.daysNoCumplidos}</span>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-2">
+                            <p className="text-xs2 text-slate-400 mt-2">
                                 {stats.countDaysWithReal > 0
                                     ? `${((stats.daysCumplidos / stats.countDaysWithReal) * 100).toFixed(0)}% de éxito en ${stats.countDaysWithReal} días`
                                     : 'Sin datos registrados'}
@@ -196,11 +194,11 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
                     <div className="absolute -right-8 -top-8 w-28 h-28 bg-gradient-to-br from-yellow-50 to-transparent dark:from-yellow-900/10 rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
                     <div className="relative z-10 flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Mejor Día del Mes</p>
+                            <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Mejor Día del Mes</p>
                             <p className="text-2xl font-bold text-slate-700 dark:text-white mt-2 truncate tracking-tight">
                                 {stats.bestDay.value > 0 ? fmtMoney(stats.bestDay.value) : '-'}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-2 capitalize font-medium">
+                            <p className="text-xs2 text-slate-400 mt-2 capitalize font-medium">
                                 {stats.bestDayLabel}
                             </p>
                         </div>
@@ -222,7 +220,7 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
             {/* KPI 1: Cumplimiento Global */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Cumplimiento Mes</p>
+                    <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Cumplimiento Mes</p>
                     <div className="flex items-baseline gap-2 mt-2">
                         <span className={`text-2xl font-bold tracking-tight ${stats.cumplimiento >= 100 ? 'text-emerald-600' : stats.cumplimiento >= 80 ? 'text-amber-500' : 'text-slate-700 dark:text-white'}`}>
                             {fmtPercent(stats.cumplimiento)}
@@ -243,12 +241,12 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
             {/* KPI 2: Venta Real vs Meta */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                 <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Venta Real vs Meta</p>
+                    <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Venta Real vs Meta</p>
                     <div className="flex flex-col mt-2">
                         <span className="text-xl font-bold text-slate-700 dark:text-white tracking-tight truncate">
                             {fmtMoney(stats.totalReal)}
                         </span>
-                        <span className="text-[11px] text-slate-400 font-medium mt-1">
+                        <span className="text-xs text-slate-400 font-medium mt-1">
                             Meta: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{fmtMoney(stats.totalMeta)}</span>
                         </span>
                     </div>
@@ -261,12 +259,12 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
             {/* KPI 3: Brecha (Faltante) */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                 <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Brecha para Meta</p>
+                    <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Brecha para Meta</p>
                     <div className="mt-2">
                         <span className="text-xl font-bold text-slate-600 dark:text-slate-300 tracking-tight">
                             {stats.faltante > 0 ? fmtMoney(stats.faltante) : '$ 0'}
                         </span>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium">
+                        <p className="text-xs2 text-slate-400 mt-1 font-medium">
                             {stats.faltante > 0 ? 'Falta por vender' : '¡Meta superada! 🎉'}
                         </p>
                     </div>
@@ -279,12 +277,12 @@ export const ProjectionsKPIs: React.FC<ProjectionsKPIsProps> = ({
             {/* KPI 4: Días Operados */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.1em]">Días Operados</p>
+                    <p className="text-xs2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-micro">Días Operados</p>
                     <div className="mt-2">
                         <span className="text-xl font-bold text-slate-700 dark:text-slate-200 tracking-tight">
                             {stats.countDaysWithReal}
                         </span>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium">Con registros reales</p>
+                        <p className="text-xs2 text-slate-400 mt-1 font-medium">Con registros reales</p>
                     </div>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">

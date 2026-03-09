@@ -7,7 +7,7 @@ import {
     PlusIcon,
     ArrowPathIcon,
     TagIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { BudgetFormModal } from '../components/BudgetFormModal';
 import { budgetService } from '../../../services/budget';
 

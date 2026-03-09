@@ -3,8 +3,9 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { DatePicker } from './DatePicker';
 import { CurrencyInput } from './CurrencyInput';
-import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon } from '@/components/ui/Icons';
 import { Column } from '../../hooks/useSmartDataTable';
+import { Modal } from './Modal';
 
 export interface SmartDataFormModalProps<T> {
     isOpen: boolean;
@@ -72,41 +73,37 @@ export function SmartDataFormModal<T extends Record<string, any>>({
         col.key !== 'acciones'
     );
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] px-4" onClick={onClose}>
-            <div
-                className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Header Block */}
-                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-50 dark:bg-slate-700 rounded-lg">
-                            <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">
-                                {title}
-                            </h2>
-                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.15em] mt-0.5">Módulo de Ingreso Manual</p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg border border-slate-100 dark:border-slate-600 hover:bg-slate-50"
-                    >
-                        <XMarkIcon className="w-4 h-4" />
-                    </button>
-                </div>
+    const headerTitle = (
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-50 dark:bg-slate-700 rounded-lg">
+                <DocumentTextIcon className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+                <span className="text-base font-bold text-slate-800 dark:text-white leading-tight block">
+                    {title}
+                </span>
+                <span className="text-xs2 text-slate-400 font-semibold uppercase tracking-caps mt-0.5 block">
+                    Módulo de Ingreso Manual
+                </span>
+            </div>
+        </div>
+    );
 
-                <form onSubmit={handleSubmit} className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-h-[60vh] overflow-y-auto px-1">
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={headerTitle}
+            maxWidth="max-w-2xl"
+        >
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="p-6 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 px-1 pb-2">
                         {editableColumns.map((col) => {
                             const val = formData[col.key as keyof T] as string | number;
                             return (
                                 <div key={col.key} className={col.type === 'text' || !col.type ? 'sm:col-span-2' : ''}>
-                                    <label className="block text-[11px] font-bold text-slate-500 tracking-wide mb-1.5 uppercase">
+                                    <label className="block text-xs font-bold text-slate-500 tracking-wide mb-1.5 uppercase">
                                         {col.label}
                                     </label>
 
@@ -115,7 +112,7 @@ export function SmartDataFormModal<T extends Record<string, any>>({
                                             value={val as string || ''}
                                             onChange={v => handleChange(col.key as keyof T, Number(v) || 0)}
                                             placeholder="$ 0"
-                                            className="!h-10 text-[14px] font-bold text-emerald-700"
+                                            className="text-sm font-bold text-emerald-700"
                                             required={false}
                                         />
                                     ) : col.type === 'number' ? (
@@ -124,13 +121,13 @@ export function SmartDataFormModal<T extends Record<string, any>>({
                                             value={val || ''}
                                             onChange={e => handleChange(col.key as keyof T, Number(e.target.value))}
                                             placeholder="0"
-                                            className="!h-10 text-[13px] font-medium"
+                                            className="text-sm- font-medium"
                                         />
                                     ) : col.type === 'date' ? (
                                         <DatePicker
                                             value={val as string || ''}
                                             onChange={v => handleChange(col.key as keyof T, v)}
-                                            className="!h-10 text-[13px] font-medium uppercase tracking-tight"
+                                            className="text-sm- font-medium uppercase tracking-tight"
                                         />
                                     ) : (
                                         <Input
@@ -138,33 +135,33 @@ export function SmartDataFormModal<T extends Record<string, any>>({
                                             value={val as string || ''}
                                             onChange={e => handleChange(col.key as keyof T, e.target.value)}
                                             placeholder={`Ingresar ${col.label.toLowerCase()}`}
-                                            className="!h-10 text-[13px] font-medium"
+                                            className="text-sm- font-medium"
                                         />
                                     )}
                                 </div>
                             );
                         })}
                     </div>
+                </div>
 
-                    <div className="pt-6 flex justify-end items-center border-t border-gray-50 dark:border-slate-700 mt-6 gap-3">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={onClose}
-                            className="!h-10 !px-6 font-semibold text-[12px] tracking-wide"
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={isLoading}
-                            className="!h-10 !px-8 font-semibold text-[12px] tracking-wide shadow-md shadow-purple-500/10 bg-purple-600 hover:bg-purple-700 text-white"
-                        >
-                            {isLoading ? 'Guardando...' : 'Guardar Registro'}
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="pt-5 pb-5 px-6 flex justify-end items-center border-t border-gray-50 dark:border-slate-700 gap-3 bg-white dark:bg-slate-800 shrink-0">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onClose}
+                        className="!px-6 font-semibold text-xs tracking-wide"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="!px-8 font-semibold text-xs tracking-wide shadow-md shadow-purple-500/10 bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                        {isLoading ? 'Guardando...' : 'Guardar Registro'}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 }

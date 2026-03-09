@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { format, addMonths, subMonths, setMonth, setYear } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon } from '@/components/ui/Icons';
 
 /* ══════════════════════════════════════════════════════════
    DateNavigator – Aliaddo Design System §4 Zona 2
@@ -103,10 +103,10 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
                     }
                 `}
             >
-                <span className="text-[13px] font-bold uppercase tracking-widest">
+                <span className="text-sm- font-bold uppercase tracking-widest">
                     {format(value, 'MMMM', { locale: es })}
                 </span>
-                <span className="text-[13px] font-bold text-slate-400 dark:text-slate-500">
+                <span className="text-sm- font-bold text-slate-400 dark:text-slate-500">
                     {currentYear}
                 </span>
                 {/* Dropdown indicator */}
@@ -128,7 +128,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
             {showToday && !isCurrentMonth && (
                 <button
                     onClick={handleToday}
-                    className="h-10 px-3 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm text-[11px] font-bold uppercase tracking-widest text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                    className="h-10 px-3 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm text-xs font-bold uppercase tracking-widest text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                 >
                     Hoy
                 </button>
@@ -148,7 +148,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
                         >
                             <ChevronLeftIcon className="h-3.5 w-3.5" />
                         </button>
-                        <span className="text-[14px] font-bold text-slate-800 dark:text-white tracking-wide">
+                        <span className="text-sm font-bold text-slate-800 dark:text-white tracking-wide">
                             {popoverYear}
                         </span>
                         <button
@@ -170,7 +170,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
                                     key={idx}
                                     onClick={() => handleSelectMonth(idx)}
                                     className={`
-                                        h-9 rounded-md text-[12px] font-semibold transition-all
+                                        h-9 rounded-md text-xs font-semibold transition-all
                                         ${isSelected
                                             ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20 font-bold'
                                             : isCurrent
@@ -192,7 +192,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
                                 key={y}
                                 onClick={() => setPopoverYear(y)}
                                 className={`
-                                    flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all
+                                    flex-1 py-1.5 rounded-md text-xs font-bold transition-all
                                     ${popoverYear === y
                                         ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white'
                                         : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'

@@ -54,12 +54,12 @@ export const CashCalculator: React.FC<CashCalculatorProps> = ({
                     </div>
                     <div className="text-left">
                         <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-white leading-tight">Calculadora de Efectivo</h3>
-                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Conteo físico detallado de billetes y monedas</p>
+                        <p className="text-xs2 sm:text-xs text-gray-500 dark:text-gray-400">Conteo físico detallado de billetes y monedas</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="text-right hidden sm:block">
-                        <span className="text-[10px] uppercase text-gray-400 font-bold block">Total Conteo</span>
+                        <span className="text-xs2 uppercase text-gray-400 font-bold block">Total Conteo</span>
                         <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatCurrencyValue(totalFinalCuadre)}</span>
                     </div>
                     <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -91,7 +91,7 @@ export const CashCalculator: React.FC<CashCalculatorProps> = ({
                             {/* Extras inline */}
                             <div className="p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl space-y-2 border border-indigo-100/50 dark:border-slate-700">
                                 <div className="flex items-center gap-2">
-                                    <label className="flex-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Consumo Pers.</label>
+                                    <label className="flex-1 text-xs2 font-bold text-gray-500 dark:text-gray-400 uppercase">Consumo Pers.</label>
                                     <input
                                         type="number"
                                         value={consumoPersonal || ''}
@@ -102,7 +102,7 @@ export const CashCalculator: React.FC<CashCalculatorProps> = ({
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <label className="flex-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Facturas/Gastos</label>
+                                    <label className="flex-1 text-xs2 font-bold text-gray-500 dark:text-gray-400 uppercase">Facturas/Gastos</label>
                                     <input
                                         type="number"
                                         value={facturas || ''}

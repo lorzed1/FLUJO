@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
 import {
     XMarkIcon,
     Bars3Icon,
@@ -11,7 +12,7 @@ import {
     ArrowsPointingInIcon,
     ArrowPathIcon,
     InformationCircleIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { useUI } from '../../../context/UIContext';
 import { RowFormula } from '../../../services/financialStatement';
 
@@ -87,9 +88,14 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-7xl max-h-[94vh] flex flex-col overflow-hidden border border-white/10 ring-1 ring-black/10">
-
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            maxWidth="max-w-7xl"
+            hideCloseIcon={true}
+            className="p-0 overflow-hidden"
+        >
+            <div className="flex flex-col h-full max-h-[94vh]">
                 {/* Header Deluxe */}
                 <div className="px-10 py-8 bg-slate-50 dark:bg-slate-800/40 border-b border-gray-100 dark:border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
@@ -101,7 +107,7 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
                                 Estructura Financiera
                             </h2>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase rounded-md tracking-wider">Modo Avanzado</span>
+                                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs2 font-black uppercase rounded-md tracking-wider">Modo Avanzado</span>
                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest px-2 border-l border-slate-300 dark:border-slate-700">Configuración de Totales y Orden</p>
                             </div>
                         </div>
@@ -139,7 +145,7 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
                             IMPORTANTE: El sistema agrupa automáticamente los códigos (e.g. 5105 suma todos los 5105XX). Las filas sin código son consideradas totales matemáticos.
                         </p>
                     </div>
-                    <span className="text-[10px] font-black opacity-60">ID: CNF-PG-V2</span>
+                    <span className="text-xs2 font-black opacity-60">ID: CNF-PG-V2</span>
                 </div>
 
                 {/* Account List Grid */}
@@ -165,12 +171,12 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
                                             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-1">
                                                 <Bars3Icon className="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
                                             </div>
-                                            <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 uppercase">#{index + 1}</span>
+                                            <span className="text-2xs font-black text-slate-300 dark:text-slate-600 uppercase">#{index + 1}</span>
                                         </div>
                                         <div className="flex flex-col min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
-                                                {cat.id && <span className="text-[10px] font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md uppercase">{cat.id}</span>}
-                                                {isTotal && <span className="text-[8px] font-black text-white bg-emerald-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">Campo Calculado</span>}
+                                                {cat.id && <span className="text-xs2 font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md uppercase">{cat.id}</span>}
+                                                {isTotal && <span className="text-3xs font-black text-white bg-emerald-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">Campo Calculado</span>}
                                             </div>
                                             <span className={`font-black tracking-tight ${isTotal ? 'text-slate-900 dark:text-white text-sm' : 'text-slate-600 dark:text-slate-400 text-xs'} truncate uppercase`}>
                                                 {cat.name}
@@ -217,26 +223,26 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
                                 }
                             });
                         }}
-                        className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-[0.2em]"
+                        className="flex items-center gap-2 text-xs2 font-black text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-spread"
                     >
                         <ArrowPathIcon className="h-5 w-5" />
                         Restablecer Plan de Cuentas
                     </button>
 
                     <div className="flex gap-6">
-                        <button onClick={onClose} className="px-8 py-3 text-sm font-black text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-[1rem] transition-all uppercase tracking-widest">
+                        <Button variant="ghost" onClick={onClose} className="px-8 py-3 text-sm font-black text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-[1rem] transition-all uppercase tracking-widest">
                             Cerrar
-                        </button>
+                        </Button>
                         <Button
                             onClick={handleSave}
                             variant="primary"
-                            className="!px-14 !py-4 shadow-[0_20px_50px_rgba(37,99,235,0.3)] !rounded-[1.2rem] text-xs font-black uppercase tracking-[0.2em]"
+                            className="!px-14 !py-4 shadow-[0_20px_50px_rgba(37,99,235,0.3)] !rounded-[1.2rem] text-xs font-black uppercase tracking-spread"
                         >
                             Guardar Estructura P&G
                         </Button>
                     </div>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };

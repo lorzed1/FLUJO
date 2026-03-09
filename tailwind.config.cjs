@@ -19,6 +19,19 @@ module.exports = {
             fontFamily: {
                 sans: ['"Segoe UI"', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
             },
+            fontSize: {
+                '4xs': ['7px', { lineHeight: '10px' }],
+                '3xs': ['8px', { lineHeight: '12px' }],
+                '2xs': ['9px', { lineHeight: '14px' }],
+                'xs2': ['10px', { lineHeight: '14px' }],
+                'sm-': ['13px', { lineHeight: '18px' }],
+            },
+            letterSpacing: {
+                'micro': '0.1em',
+                'caps': '0.15em',
+                'spread': '0.2em',
+                'ultra': '0.3em',
+            },
             colors: {
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
@@ -62,6 +75,9 @@ module.exports = {
                 lg: "var(--radius)",
                 md: "calc(var(--radius) - 2px)",
                 sm: "calc(var(--radius) - 4px)",
+                'xl2': '1.2rem',
+                '2xl2': '1.5rem',
+                '3xl2': '2.5rem',
             },
             keyframes: {
                 "accordion-down": {

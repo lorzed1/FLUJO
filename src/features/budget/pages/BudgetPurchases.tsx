@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { ShoppingBagIcon } from '@heroicons/react/24/outline';
+import { ShoppingBagIcon } from '../../../components/ui/Icons';
 import { Column } from '../../../components/ui/SmartDataTable';
 import { purchaseService } from '../../../services/budget/purchases';
 import { Purchase } from '../../../types/budget';

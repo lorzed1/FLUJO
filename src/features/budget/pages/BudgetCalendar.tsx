@@ -13,7 +13,7 @@ import {
     TrashIcon,
     BanknotesIcon,
     CheckCircleIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { useBudgetContext } from '../layouts/BudgetLayout';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
@@ -232,7 +232,7 @@ export const BudgetCalendar: React.FC = () => {
         week: {
             header: ({ date, localizer }: any) => (
                 <div className="flex flex-col items-center py-2 gap-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    <span className="text-xs2 font-bold text-gray-400 uppercase tracking-widest">
                         {localizer.format(date, 'EEE', locales['es'])}
                     </span>
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${isSameDay(date, new Date())
@@ -246,7 +246,7 @@ export const BudgetCalendar: React.FC = () => {
         },
         month: {
             header: ({ date, localizer }: any) => (
-                <div className="py-2 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center border-b border-gray-100 dark:border-slate-700">
+                <div className="py-2 text-xs2 font-bold text-gray-400 uppercase tracking-spread text-center border-b border-gray-100 dark:border-slate-700">
                     {localizer.format(date, 'EEEE', locales['es'])}
                 </div>
             )
@@ -268,7 +268,7 @@ export const BudgetCalendar: React.FC = () => {
                         <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-full">
                             <button
                                 onClick={() => setView('month')}
-                                className={`flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors border-r border-slate-200 dark:border-slate-700 ${view === 'month'
+                                className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors border-r border-slate-200 dark:border-slate-700 ${view === 'month'
                                     ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
                                     : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
                                     }`}
@@ -277,7 +277,7 @@ export const BudgetCalendar: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => setView('week')}
-                                className={`flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors ${view === 'week'
+                                className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors ${view === 'week'
                                     ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
                                     : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
                                     }`}
@@ -316,7 +316,7 @@ export const BudgetCalendar: React.FC = () => {
                         {/* Header Días Semana – Aliaddo §4 Style */}
                         <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700">
                             {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => (
-                                <div key={day} className="py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] text-center">
+                                <div key={day} className="py-2.5 text-xs2 font-bold text-slate-400 uppercase tracking-spread text-center">
                                     {day}
                                 </div>
                             ))}
@@ -375,20 +375,20 @@ export const BudgetCalendar: React.FC = () => {
                                             <div className="flex justify-between items-start mb-1 h-8">
                                                 <div className="flex flex-col items-center">
                                                     <span className={`
-                                                          text-[13px] font-semibold w-6 h-6 flex items-center justify-center rounded-lg transition-all
+                                                          text-sm- font-semibold w-6 h-6 flex items-center justify-center rounded-lg transition-all
                                                           ${isToday
                                                             ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
                                                             : isSelectedMonth ? 'text-slate-600 dark:text-gray-300' : 'text-slate-300 dark:text-slate-600'}
                                                         `}>
                                                         {format(dayItem, 'd')}
                                                     </span>
-                                                    {isToday && <span className="text-[8px] font-bold text-purple-600 uppercase tracking-widest mt-0.5">Hoy</span>}
+                                                    {isToday && <span className="text-3xs font-bold text-purple-600 uppercase tracking-widest mt-0.5">Hoy</span>}
                                                 </div>
 
                                                 {dailyTotal > 0 && (
                                                     <div className="flex flex-col items-end pt-0.5">
-                                                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Total</span>
-                                                        <span className="text-[12px] font-bold text-slate-600 dark:text-slate-200 tabular-nums leading-none">
+                                                        <span className="text-2xs font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Total</span>
+                                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-200 tabular-nums leading-none">
                                                             ${dailyTotal.toLocaleString('es-CO')}
                                                         </span>
                                                     </div>
@@ -413,7 +413,7 @@ export const BudgetCalendar: React.FC = () => {
                                                                 color: textColor,
                                                             }}
                                                             className={`
-                                                              rounded-md px-2 py-0.5 text-[11px] font-semibold cursor-pointer
+                                                              rounded-md px-2 py-0.5 text-xs font-semibold cursor-pointer
                                                               hover:shadow-sm transition-all relative group flex flex-col gap-0
                                                               ${isProjected ? 'opacity-85' : 'opacity-100'}
                                                               leading-tight
@@ -427,7 +427,7 @@ export const BudgetCalendar: React.FC = () => {
                                                                 <span className="truncate leading-tight pr-4 font-semibold">{event.title}</span>
                                                                 {isPaid && <CheckCircleIcon className="w-3 h-3 flex-shrink-0 text-emerald-600 mt-0.5" />}
                                                             </div>
-                                                            <span className="opacity-80 tabular-nums text-[10px] font-medium">
+                                                            <span className="opacity-80 tabular-nums text-xs2 font-medium">
                                                                 ${event.resource.amount.toLocaleString('es-CO')}
                                                             </span>
 

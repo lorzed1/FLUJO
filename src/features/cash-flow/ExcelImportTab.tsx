@@ -3,8 +3,11 @@ import { ClipboardDocumentListIcon, CheckCircleIcon, XCircleIcon, ExclamationTri
 import { extractHeadersAndLines, autoMapColumns, parseExcelRows, calculateTotalRecaudado, calculateDescuadre, SYSTEM_FIELDS, type ParsedRow } from '../../utils/excelParser';
 import { detectHeaderRow, inferColumnType, type ColumnType } from '../../utils/importUtils';
 import { formatCOP } from '../../components/ui/Input';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
 import { useUI } from '../../context/UIContext';
 import * as XLSX from 'xlsx';
+import { FormGroup } from '../../components/ui/FormGroup';
 
 interface ExcelImportTabProps {
     onBatchImport: (rows: ParsedRow[]) => void;
@@ -149,10 +152,7 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
             {step === 'input' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Opción 1: Archivo */}
-                    <div className="flex flex-col">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Opción A: Subir archivo Excel o CSV
-                        </label>
+                    <FormGroup label="Opción A: Subir archivo Excel o CSV" className="flex-1 flex flex-col">
                         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-800 hover:border-primary/50 transition-all cursor-pointer relative group">
                             <input
                                 type="file"
@@ -166,26 +166,23 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                                 <p className="text-xs text-gray-400 mt-1">.xlsx, .xls o .csv</p>
                             </div>
                         </div>
-                    </div>
+                    </FormGroup>
 
                     {/* Opción 2: Pegar */}
-                    <div className="flex flex-col">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Opción B: Pegar datos copiados
-                        </label>
+                    <FormGroup label="Opción B: Pegar datos copiados" className="flex-1 flex flex-col">
                         <textarea
                             value={importData}
                             onChange={handlePaste}
                             placeholder="Haz clic aquí y pega (Ctrl+V) los datos copiados de Excel..."
                             className="flex-1 w-full min-h-[160px] p-4 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary font-mono text-sm resize-none bg-white dark:bg-slate-800 dark:text-gray-200 dark:placeholder-gray-500"
                         />
-                    </div>
+                    </FormGroup>
                 </div>
             )}
 
             {/* Paso 2: Mapeo y Definición de Tipos */}
             {step === 'mapping' && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-md animate-in slide-in-from-right duration-300">
+                <Card className="shadow-md animate-in slide-in-from-right duration-300">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                         <div>
                             <h3 className="font-bold text-xl text-gray-800 dark:text-white flex items-center gap-2">
@@ -203,7 +200,7 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                                 return (
                                     <span
                                         key={field.key}
-                                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
+                                        className={`px-3 py-1 rounded-full text-xs2 font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
                                     >
                                         {isMapped ? <CheckCircleIcon className="h-3 w-3" /> : <ExclamationTriangleIcon className="h-3 w-3" />}
                                         {field.label}
@@ -233,7 +230,7 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                                         <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                                             <td className="px-5 py-4">
                                                 <div className="font-bold text-gray-900 dark:text-white mb-0.5">{header}</div>
-                                                <div className="text-[10px] text-gray-400 font-mono">Índice {idx}</div>
+                                                <div className="text-xs2 text-gray-400 font-mono">Índice {idx}</div>
                                             </td>
                                             <td className="px-5 py-4">
                                                 <select
@@ -280,21 +277,23 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                     </div>
 
                     <div className="flex gap-4 justify-end mt-8">
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={handleClear}
-                            className="px-6 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                            className="px-6 py-2.5 text-sm font-semibold"
                         >
                             Cancelar
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="primary"
                             onClick={handleProceedToPreview}
-                            className="px-8 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-primary/30 flex items-center gap-2"
+                            className="px-8 py-2.5 shadow-lg flex items-center gap-2"
                         >
                             Ver Preview de Datos
                             <ArrowPathIcon className="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* Paso 3: Preview de datos */}
@@ -313,7 +312,7 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                     </div>
 
                     {/* Tabla de preview */}
-                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+                    <Card className="overflow-hidden shadow" noPadding>
                         <div className="overflow-x-auto max-h-96">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-100 dark:bg-slate-900 sticky top-0 uppercase">
@@ -364,23 +363,25 @@ const ExcelImportTab: React.FC<ExcelImportTabProps> = ({ onBatchImport }) => {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </Card>
 
                     {/* Botones de acción */}
                     <div className="flex gap-3 justify-end">
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={handleBackToMapping}
-                            className="px-6 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                            className="px-6 py-3 font-semibold"
                         >
                             Atrás (Corregir Columnas)
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="primary"
                             onClick={handleConfirmImport}
                             disabled={validCount === 0}
-                            className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-3 font-semibold shadow-lg"
                         >
                             Importar {validCount} Registro{validCount !== 1 ? 's' : ''}
-                        </button>
+                        </Button>
                     </div>
 
                     {errorCount > 0 && (

@@ -210,10 +210,10 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
   return (
     <>
       {/* --- Desktop Sidebar --- */}
-      <aside className={`hidden md:flex ${isCollapsed ? 'w-16' : 'w-[220px]'} min-h-screen bg-[#2e323b] border-r border-[#18191e] flex-col transition-all duration-300 relative z-40 shadow-xl sticky top-0 h-screen font-sans`}>
+      <aside className={`hidden md:flex ${isCollapsed ? 'w-16' : 'w-[220px]'} min-h-screen bg-slate-800 border-r border-slate-900 flex-col transition-all duration-300 relative z-40 shadow-xl sticky top-0 h-screen font-sans`}>
 
         {/* --- Header / Logo --- */}
-        <div className={`h-14 flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} bg-[#18191e]`}>
+        <div className={`h-14 flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} bg-slate-900`}>
           <div className="flex items-center gap-2">
             {!isCollapsed && (
               <div className="hidden lg:block">
@@ -226,14 +226,14 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
         {/* --- Toggle (Desktop Only) --- */}
         <button
           onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-16 bg-[#18191e] border border-[#2e323b] text-slate-400 hover:text-white p-0.5 rounded-full shadow-sm transition-all z-50 items-center justify-center hover:scale-110"
+          className="hidden md:flex absolute -right-3 top-16 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white p-0.5 rounded-full shadow-sm transition-all z-50 items-center justify-center hover:scale-110"
         >
           {isCollapsed ? <ChevronRightIcon className="h-3 w-3" /> : <ChevronLeftIcon className="h-3 w-3" />}
         </button>
 
         {/* --- Navigation --- */}
         <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-          {!isCollapsed && <p className="px-4 mb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Navegación</p>}
+          {!isCollapsed && <p className="px-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Navegación</p>}
 
           {navItems.map(item => {
             const hasChildren = item.children && item.children.length > 0;
@@ -267,12 +267,12 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                       }}
                       onBlur={commitRename}
                       onClick={e => e.stopPropagation()}
-                      className="ml-3 flex-1 bg-white/10 text-white text-[14px] leading-[17.5px] px-1.5 py-0.5 rounded border border-slate-500 focus:border-purple-400 focus:outline-none font-normal"
+                      className="ml-3 flex-1 bg-white/10 text-white text-sm leading-[17.5px] px-1.5 py-0.5 rounded border border-slate-500 focus:border-purple-400 focus:outline-none font-normal"
                       maxLength={30}
                     />
                   ) : (
                     <span
-                      className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal flex-1 text-left tracking-normal`}
+                      className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal flex-1 text-left tracking-normal`}
                       onDoubleClick={e => {
                         e.stopPropagation();
                         e.preventDefault();
@@ -296,7 +296,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                         <button
                           key={child.id}
                           onClick={() => editingId === child.id ? undefined : handleNavigation(child.path, child.id)}
-                          className={`flex items-center w-full pl-12 pr-4 py-2 transition-colors duration-200 text-[13px] leading-[17.5px]
+                          className={`flex items-center w-full pl-12 pr-4 py-2 transition-colors duration-200 text-sm- leading-[17.5px]
                             ${isChildActive
                               ? 'text-white font-medium'
                               : 'text-slate-400 hover:text-white font-normal'
@@ -315,7 +315,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                               }}
                               onBlur={commitRename}
                               onClick={e => e.stopPropagation()}
-                              className="flex-1 bg-white/10 text-white text-[13px] leading-[17.5px] px-1.5 py-0.5 rounded border border-slate-500 focus:border-purple-400 focus:outline-none font-normal"
+                              className="flex-1 bg-white/10 text-white text-sm- leading-[17.5px] px-1.5 py-0.5 rounded border border-slate-500 focus:border-purple-400 focus:outline-none font-normal"
                               maxLength={30}
                             />
                           ) : (
@@ -338,7 +338,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
 
           {userRole === 'admin' && (
             <div className="pt-6 pb-2">
-              {!isCollapsed && <p className="px-4 mb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Sistema</p>}
+              {!isCollapsed && <p className="px-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest hidden lg:block">Sistema</p>}
 
               <button
                 onClick={onExport}
@@ -346,7 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                 title="Exportar base de datos"
               >
                 <ArrowUpTrayIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
-                <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal`}>Exportar DB</span>
+                <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Exportar DB</span>
               </button>
 
               <button
@@ -355,7 +355,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                 title="Importar base de datos"
               >
                 <ArrowDownTrayIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
-                <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal`}>Importar DB</span>
+                <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Importar DB</span>
               </button>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
 
@@ -384,16 +384,16 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                 title="Resetear Fábrica"
               >
                 <TrashIcon className="h-5 w-5 opacity-70" />
-                <span className={`${textClass} ml-3 text-[14px] leading-[17.5px] font-normal`}>Reset Fábrica</span>
+                <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Reset Fábrica</span>
               </button>
             </div>
           )}
         </nav>
 
         {/* --- Footer / User --- */}
-        <div className="p-4 border-t border-[#18191e] bg-[#18191e] mt-auto">
+        <div className="p-4 border-t border-slate-900 bg-slate-900 mt-auto">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="h-9 w-9 rounded-full bg-[#2e323b] flex items-center justify-center text-white font-bold border border-slate-600 text-sm">
+            <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center text-white font-bold border border-slate-600 text-sm">
               {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
             </div>
 
@@ -431,7 +431,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                 <div className={`${isActive ? 'scale-110' : ''} transition-transform duration-200`}>
                   {item.icon}
                 </div>
-                <span className="text-[10px] font-medium leading-none">{getLabel(item.id, item.label)}</span>
+                <span className="text-xs2 font-medium leading-none">{getLabel(item.id, item.label)}</span>
                 {isActive && <div className="absolute top-0 w-8 h-1 bg-primary rounded-b-lg" />}
               </button>
             );
@@ -443,7 +443,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
             className="flex flex-col items-center justify-center flex-1 h-full py-1 gap-1 text-gray-400 hover:text-red-500 transition-colors"
           >
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            <span className="text-[10px] font-medium leading-none">Salir</span>
+            <span className="text-xs2 font-medium leading-none">Salir</span>
           </button>
         </div>
       </nav>

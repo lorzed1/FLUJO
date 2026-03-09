@@ -119,7 +119,7 @@ const TransfersView: React.FC = () => {
                         {val || 'Sin referencia'}
                     </span>
                     {item?.arqueoId && (
-                        <span className="text-[10px] text-gray-400 font-mono mt-0.5">
+                        <span className="text-xs2 text-gray-400 font-mono mt-0.5">
                             ID: {item.arqueoId.slice(0, 8)}...
                         </span>
                     )}

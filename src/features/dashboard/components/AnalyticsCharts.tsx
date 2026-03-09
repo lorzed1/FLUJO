@@ -16,8 +16,8 @@ export const SalesEvolutionChart: React.FC<SalesEvolutionChartProps> = ({ data, 
     return (
         <ResponsiveContainer width="100%" height={350}>
             <ComposedChart data={data} margin={{ top: 20, right: 20, bottom: 30, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748B' }} stroke="#94A3B8" axisLine={false} tickLine={false} dy={10}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" axisLine={false} tickLine={false} dy={10}
                     tickFormatter={(val) => {
                         const d = new Date(val + 'T12:00:00');
                         if (periodMode === 'year') {
@@ -29,12 +29,12 @@ export const SalesEvolutionChart: React.FC<SalesEvolutionChartProps> = ({ data, 
 
                 {/* Eje Y Izquierdo (Ventas/Principal) */}
                 {(viewMode === 'all' || viewMode === 'sales') && (
-                    <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#64748B' }} stroke="#94A3B8" axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
                 )}
 
                 {/* Eje Y Derecho (Visitas/Secundario) - Si solo es Visitas, lo usamos como primario vizual pero alineado a la izquierda si se quiere, o mantenemos right */}
                 {(viewMode === 'all' || viewMode === 'visits') && (
-                    <YAxis yAxisId="right" orientation={viewMode === 'visits' ? 'left' : 'right'} tick={{ fontSize: 11, fill: '#64748B' }} stroke="#94A3B8" axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="right" orientation={viewMode === 'visits' ? 'left' : 'right'} tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" axisLine={false} tickLine={false} />
                 )}
 
                 <Tooltip
@@ -79,9 +79,9 @@ export const DayOfWeekAnalysis: React.FC<DayOfWeekAnalysisProps> = ({ data, view
     return (
         <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data} layout="vertical" margin={{ left: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E2E8F0" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--chart-grid)" />
                 <XAxis type="number" hide />
-                <YAxis dataKey="dayName" type="category" tick={{ fontSize: 12, fontWeight: 600, fill: '#475569' }} width={80} axisLine={false} tickLine={false} />
+                <YAxis dataKey="dayName" type="category" tick={{ fontSize: 12, fontWeight: 600, fill: 'var(--chart-text)' }} width={80} axisLine={false} tickLine={false} />
                 <Tooltip
                     cursor={{ fill: '#f1f5f9' }}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
@@ -151,9 +151,9 @@ export const WeeklyOverlapChart: React.FC<WeeklyOverlapChartProps> = ({ data, ke
     return (
         <ResponsiveContainer width="100%" height={350}>
             <LineChart data={data} margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} stroke="#94A3B8" axisLine={false} tickLine={false} dy={10} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748B' }} stroke="#94A3B8" axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" axisLine={false} tickLine={false} />
                 <Tooltip
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
                     formatter={(value: number, name: string) => [value, name]}
@@ -202,9 +202,9 @@ export const PaymentEvolutionChart: React.FC<PaymentEvolutionChartProps> = ({ da
                         <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                 </defs>
-                <XAxis dataKey="date" tickFormatter={(val) => new Date(val).getDate().toString()} stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="date" tickFormatter={(val) => new Date(val).getDate().toString()} stroke="var(--chart-text)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--chart-text)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                 <Tooltip
                     contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     formatter={(value: number) => [`$${value.toLocaleString()}`, '']}

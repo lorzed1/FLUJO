@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, forwardRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import {
     format,
     addMonths,
@@ -24,6 +25,7 @@ import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from './Icons';
 interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
     value?: string; // Formato YYYY-MM-DD
     onChange?: (val: string) => void;
+    onClose?: () => void;
     className?: string;
     wrapperClassName?: string;
 }
@@ -31,6 +33,7 @@ interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
 export const DatePicker: React.FC<DatePickerProps> = ({
     value,
     onChange,
+    onClose,
     className = '',
     wrapperClassName = '',
     placeholder = 'Seleccione una fecha',
@@ -38,7 +41,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     ...props
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLDivElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
+    const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; ready: boolean }>({ top: 0, left: 0, ready: false });
 
     // Fecha seleccionada real o null
     const selectedDate = value && isValid(parseISO(value)) ? parseISO(value) : null;
@@ -52,35 +57,100 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         }
     }, [value]);
 
-    // Manejador del clic fuera para cerrar el popover
+    // Calcular posición del popover relativo al trigger
+    const updatePosition = useCallback(() => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const popoverWidth = 240;
+        const popoverHeight = 310;
+
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        // Gap de 2px para que se vea pegado ("enseguida")
+        let top = rect.bottom + 2;
+        let left = rect.left;
+
+        // Solo voltear si realmente NO HAY espacio abajo y HAY más espacio arriba
+        // Pero intentamos forzar abajo lo más posible (hasta 150px de espacio mínimo)
+        if (spaceBelow < 150 && spaceAbove > spaceBelow) {
+            top = rect.top - popoverHeight - 2;
+        }
+
+        // Ajuste lateral para no salirse de la pantalla
+        if (left + popoverWidth > window.innerWidth - 12) {
+            left = window.innerWidth - popoverWidth - 12;
+        }
+        if (left < 12) left = 12;
+
+        setPopoverPos(prev => {
+            if (prev.top === top && prev.left === left && prev.ready) return prev;
+            return { top, left, ready: true };
+        });
+    }, []);
+
+    // Manejador del clic fuera del input (y del popover si existe)
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            // Si el clic es dentro del trigger (input) o dentro del popover (calendario), no hacemos nada
+            if (triggerRef.current && triggerRef.current.contains(target)) {
+                return;
+            }
+            if (popoverRef.current && popoverRef.current.contains(target)) {
+                return;
+            }
+
+            // Si el clic fue totalmente fuera
+            if (isOpen) {
                 setIsOpen(false);
             }
+            if (onClose) {
+                onClose();
+            }
         }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        document.addEventListener('mousedown', handleClickOutside, true);
+        return () => document.removeEventListener('mousedown', handleClickOutside, true);
+    }, [isOpen, onClose]);
+
+    // Bucle de seguimiento (polling con RAF)
+    useEffect(() => {
+        if (!isOpen) {
+            setPopoverPos(prev => ({ ...prev, ready: false }));
+            return;
+        }
+        let rafId: number;
+        const tick = () => {
+            updatePosition();
+            rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        return () => {
+            cancelAnimationFrame(rafId);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        };
+    }, [isOpen, updatePosition]);
 
     const handleToggle = () => {
         if (disabled) return;
         setIsOpen(!isOpen);
-        // Si la fecha era válida, volver a enfocar la vista en ese mes al abrir
         if (!isOpen && selectedDate) {
             setViewDate(selectedDate);
+        } else if (isOpen) {
+            if (onClose) onClose();
         }
     };
 
     const currentMonth = startOfMonth(viewDate);
-    const startDate = startOfWeek(currentMonth, { weekStartsOn: 0 }); // Domingo
+    const startDate = startOfWeek(currentMonth, { weekStartsOn: 0 });
     const endDate = endOfWeek(endOfMonth(viewDate), { weekStartsOn: 0 });
-
     const days = eachDayOfInterval({ start: startDate, end: endDate });
     const weekDays = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
     const today = startOfDay(new Date());
 
-    // Opciones select año y mes
     const years = Array.from({ length: 20 }, (_, i) => getYear(new Date()) - 10 + i);
     const months = Array.from({ length: 12 }, (_, i) => i);
 
@@ -88,9 +158,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     const nextMonth = () => setViewDate(addMonths(viewDate, 1));
 
     const handleDayClick = (day: Date) => {
-        if (onChange) {
-            onChange(format(day, 'yyyy-MM-dd'));
-        }
+        if (onChange) onChange(format(day, 'yyyy-MM-dd'));
         setIsOpen(false);
     };
 
@@ -104,10 +172,107 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
     const displayFormat = selectedDate ? format(selectedDate, 'dd/MM/yyyy') : '';
 
+    // Solo renderizar el contenido del portal cuando estemos listos y posicionados
+    const popoverContent = (isOpen && popoverPos.ready) ? ReactDOM.createPortal(
+        <div
+            ref={popoverRef}
+            className="fixed z-[9999] bg-white dark:bg-slate-800 rounded-xl shadow-2xl ring-1 ring-black ring-opacity-5 p-3 w-[240px] animate-in fade-in duration-100"
+            style={{
+                top: popoverPos.top,
+                left: popoverPos.left,
+                transitionProperty: 'opacity', // Solo animar la opacidad, no la posición
+                opacity: 1,
+                pointerEvents: 'auto'
+            }}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3 gap-1">
+                <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-primary transition-colors flex items-center justify-center border border-gray-200 dark:border-slate-600 w-7 h-7"
+                >
+                    <ChevronLeftIcon className="w-4 h-4 font-bold" />
+                </button>
+
+                <div className="flex gap-1 flex-1">
+                    {/* Mes selector */}
+                    <select
+                        value={getMonth(viewDate)}
+                        onChange={handleMonthChange}
+                        className="flex-1 block w-full outline-none text-xs font-semibold border border-gray-200 dark:border-slate-600 rounded-md py-0.5 px-1 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-primary focus:ring-1 focus:ring-primary focus:border-primary"
+                    >
+                        {months.map(m => (
+                            <option key={m} value={m}>
+                                {format(new Date(2000, m, 1), 'MMMM', { locale: es })}
+                            </option>
+                        ))}
+                    </select>
+
+                    {/* Año selector */}
+                    <select
+                        value={getYear(viewDate)}
+                        onChange={handleYearChange}
+                        className="w-[4.5rem] outline-none text-xs font-semibold border border-gray-200 dark:border-slate-600 rounded-md py-0.5 px-1 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-primary focus:ring-1 focus:ring-primary focus:border-primary"
+                    >
+                        {years.map(y => (
+                            <option key={y} value={y}>{y}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-primary transition-colors flex items-center justify-center border border-gray-200 dark:border-slate-600 w-7 h-7"
+                >
+                    <ChevronRightIcon className="w-4 h-4 font-bold" />
+                </button>
+            </div>
+
+            <hr className="mb-3 border-gray-100 dark:border-slate-700" />
+
+            {/* Días semana */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+                {weekDays.map(day => (
+                    <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        {day}
+                    </div>
+                ))}
+            </div>
+
+            {/* Días */}
+            <div className="grid grid-cols-7 gap-1">
+                {days.map((day) => {
+                    const _isSameMonth = isSameMonth(day, currentMonth);
+                    const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    const isCurrentDate = isSameDay(day, today);
+
+                    return (
+                        <button
+                            key={day.toISOString()}
+                            type="button"
+                            onClick={() => handleDayClick(day)}
+                            className={`
+                                w-7 h-7 mx-auto flex items-center justify-center rounded-md text-[11.5px] transition-colors
+                                ${!_isSameMonth ? 'text-gray-300 dark:text-gray-600 font-light' : 'text-gray-700 dark:text-gray-200'}
+                                ${isSelected ? 'bg-primary text-white font-medium shadow-md' : 'hover:bg-gray-100 dark:hover:bg-slate-700'}
+                                ${isCurrentDate && !isSelected ? 'border border-primary/50 text-primary font-medium' : ''}
+                            `}
+                        >
+                            {format(day, 'd')}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>,
+        document.body
+    ) : null;
+
     return (
-        <div className={`relative ${wrapperClassName}`} ref={containerRef}>
+        <div className={`relative ${wrapperClassName}`}>
             {/* Input trigger */}
-            <div className="relative">
+            <div className="relative" ref={triggerRef}>
                 <input
                     type="text"
                     readOnly
@@ -123,91 +288,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 </div>
             </div>
 
-            {/* Popover content */}
-            {isOpen && (
-                <div className="absolute z-50 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 p-3 w-[240px] animate-in fade-in zoom-in-95 duration-200">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3 gap-1">
-                        <button
-                            type="button"
-                            onClick={prevMonth}
-                            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-primary transition-colors flex items-center justify-center border border-gray-200 dark:border-slate-600 w-7 h-7"
-                        >
-                            <ChevronLeftIcon className="w-4 h-4 font-bold" />
-                        </button>
-
-                        <div className="flex gap-1 flex-1">
-                            {/* Mes selector */}
-                            <select
-                                value={getMonth(viewDate)}
-                                onChange={handleMonthChange}
-                                className="flex-1 block w-full outline-none text-xs font-semibold border border-gray-200 dark:border-slate-600 rounded-md py-0.5 px-1 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-primary focus:ring-1 focus:ring-primary focus:border-primary"
-                            >
-                                {months.map(m => (
-                                    <option key={m} value={m}>
-                                        {format(new Date(2000, m, 1), 'MMMM', { locale: es })}
-                                    </option>
-                                ))}
-                            </select>
-
-                            {/* Año selector */}
-                            <select
-                                value={getYear(viewDate)}
-                                onChange={handleYearChange}
-                                className="w-[4.5rem] outline-none text-xs font-semibold border border-gray-200 dark:border-slate-600 rounded-md py-0.5 px-1 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-primary focus:ring-1 focus:ring-primary focus:border-primary"
-                            >
-                                {years.map(y => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={nextMonth}
-                            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-primary transition-colors flex items-center justify-center border border-gray-200 dark:border-slate-600 w-7 h-7"
-                        >
-                            <ChevronRightIcon className="w-4 h-4 font-bold" />
-                        </button>
-                    </div>
-
-                    <hr className="mb-3 border-gray-100 dark:border-slate-700" />
-
-                    {/* Días semana */}
-                    <div className="grid grid-cols-7 gap-1 mb-2">
-                        {weekDays.map(day => (
-                            <div key={day} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
-                                {day}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Días */}
-                    <div className="grid grid-cols-7 gap-1">
-                        {days.map((day, dIdx) => {
-                            const _isSameMonth = isSameMonth(day, currentMonth);
-                            const isSelected = selectedDate && isSameDay(day, selectedDate);
-                            const isCurrentDate = isSameDay(day, today);
-
-                            return (
-                                <button
-                                    key={day.toISOString()}
-                                    type="button"
-                                    onClick={() => handleDayClick(day)}
-                                    className={`
-                    w-7 h-7 mx-auto flex items-center justify-center rounded-md text-[11.5px] transition-colors
-                    ${!_isSameMonth ? 'text-gray-300 dark:text-gray-600 font-light' : 'text-gray-700 dark:text-gray-200'}
-                    ${isSelected ? 'bg-primary text-white font-medium shadow-md' : 'hover:bg-gray-100 dark:hover:bg-slate-700'}
-                    ${isCurrentDate && !isSelected ? 'border border-primary/50 text-primary font-medium' : ''}
-                  `}
-                                >
-                                    {format(day, 'd')}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+            {popoverContent}
         </div>
     );
 };

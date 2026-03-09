@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { BanknotesIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, TableCellsIcon } from '../../../components/ui/Icons';
 import { Column } from '../../../components/ui/SmartDataTable';
 import { CategoryBadge } from '../../../components/ui/CategoryBadge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';

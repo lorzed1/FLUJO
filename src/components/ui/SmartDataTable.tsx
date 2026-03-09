@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
+import { Spinner } from '@/components/ui/Spinner';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 import {
     MagnifyingGlassIcon,
@@ -35,7 +37,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
         enableSearch = true,
         enableSelection = true,
         enableExport = true,
-        enableImport = true,
+        enableImport = !!(props.onImport || props.onImportFile),
         enableColumnConfig = true,
         onImport,
         onImportFile,
@@ -69,9 +71,9 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
         <div className={`flex flex-col min-h-0 ${containerClassName} relative`}>
             {loading && (
                 <div className="absolute inset-0 z-[100] flex items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[1px] animate-in fade-in duration-300">
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cargando datos...</span>
+                    <div className="flex flex-col items-center gap-3">
+                        <Spinner size="lg" />
+                        <span className="text-xs font-semibold text-purple-700 dark:text-purple-400 tracking-wide uppercase">Cargando datos...</span>
                     </div>
                 </div>
             )}
@@ -88,7 +90,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             variant="secondary"
                             size="sm"
                             onClick={() => table.setSelectedIds(new Set())}
-                            className="h-6 px-2.5 text-[11px] font-bold uppercase tracking-wider bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-transparent dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-md"
+                            className="h-6 px-2.5 text-xs font-bold uppercase tracking-wider bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-transparent dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-md"
                         >
                             Desmarcar
                         </Button>
@@ -208,7 +210,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             >
                                 {/* Header fijo — no scrollea */}
                                 <div className="px-2 py-2 border-b border-gray-100 bg-gray-50 sticky top-0">
-                                    <DropdownMenuLabel className="px-0 py-0 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                    <DropdownMenuLabel className="px-0 py-0 text-xs font-semibold uppercase tracking-wider text-gray-500">
                                         Columnas Visibles
                                     </DropdownMenuLabel>
                                 </div>
@@ -276,7 +278,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                                 <TableHead
                                                     key={col.key}
                                                     className={cn(
-                                                        "text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none",
+                                                        "text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none",
                                                         autoAlign === 'text-right' ? 'text-right' : autoAlign === 'text-center' ? 'text-center' : 'text-left',
                                                         idx === 0 && !enableSelection ? "pl-0 pr-4" : "px-4",
                                                         idx === arr.length - 1 ? "pr-0 pl-4" : "",
@@ -327,7 +329,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                                                             {isFiltered && (
                                                                                 <button
                                                                                     onClick={() => table.clearColumnFilter(col.key)}
-                                                                                    className="text-[10px] text-rose-600 cursor-pointer hover:underline font-bold"
+                                                                                    className="text-xs2 text-rose-600 cursor-pointer hover:underline font-bold"
                                                                                 >
                                                                                     BORRAR
                                                                                 </button>
@@ -354,7 +356,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                             );
                                         })}
                                         {(props.onDelete || props.onEdit || props.onView) && (
-                                            <TableHead className="w-[100px] text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none">
+                                            <TableHead className="w-[100px] text-center text-xs font-semibold uppercase tracking-wider text-gray-400 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none">
                                                 Acciones
                                             </TableHead>
                                         )}
@@ -402,7 +404,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                                                 key={col.key}
                                                                 className={cn(
                                                                     autoAlign === 'text-right' ? 'text-right' : autoAlign === 'text-center' ? 'text-center' : 'text-left',
-                                                                    "py-2.5 text-[12px] leading-[19.4px] text-[#363636] dark:text-gray-300 font-sans font-normal align-middle whitespace-nowrap",
+                                                                    "py-2.5 text-xs leading-[19.4px] text-[#363636] dark:text-gray-300 font-sans font-normal align-middle whitespace-nowrap",
                                                                     idx === 0 && !enableSelection ? "pl-0 pr-4" : idx === arr.length - 1 && !props.onDelete && !props.onEdit && !props.onView ? "pl-4 pr-0" : "px-4",
                                                                     col.key !== 'actions' && "[&>div]:!flex [&>div]:!flex-row [&>div]:!items-center [&>div]:!gap-2 [&_.block]:!inline [&_div.mt-0\\.5]:!mt-0",
                                                                     col.className?.includes('font-result') ? "font-bold text-purple-700 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/10" : "",
@@ -426,19 +428,19 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                                     <TableCell className="w-[80px] py-1.5 px-4 text-center align-middle">
                                                         <div className="flex items-center justify-center gap-1 transition-opacity">
                                                             {props.onView && (
-                                                                <button onClick={(e) => { e.stopPropagation(); props.onView?.(item); }} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all" title="Ver">
+                                                                <Button variant="icon" size="icon-sm" onClick={(e) => { e.stopPropagation(); props.onView?.(item); }} title="Ver">
                                                                     <EyeIcon className="h-4 w-4" />
-                                                                </button>
+                                                                </Button>
                                                             )}
                                                             {props.onEdit && (
-                                                                <button onClick={(e) => { e.stopPropagation(); props.onEdit?.(item); }} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all" title="Editar">
+                                                                <Button variant="icon" size="icon-sm" onClick={(e) => { e.stopPropagation(); props.onEdit?.(item); }} title="Editar">
                                                                     <PencilIcon className="h-4 w-4" />
-                                                                </button>
+                                                                </Button>
                                                             )}
                                                             {props.onDelete && (
-                                                                <button onClick={(e) => { e.stopPropagation(); props.onDelete?.(item); }} className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all" title="Eliminar">
+                                                                <Button variant="icon-danger" size="icon-sm" onClick={(e) => { e.stopPropagation(); props.onDelete?.(item); }} title="Eliminar">
                                                                     <TrashIcon className="h-4 w-4" />
-                                                                </button>
+                                                                </Button>
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -448,11 +450,11 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                             </TableRow>))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0) + (props.onDelete || props.onEdit || props.onView ? 1 : 0) + 1} className="h-32 text-center text-muted-foreground bg-white dark:bg-slate-800">
-                                                <div className="flex flex-col items-center justify-center gap-2">
-                                                    <MagnifyingGlassIcon className="h-8 w-8 text-gray-300 dark:text-slate-600" />
-                                                    <p className="text-sm font-medium text-gray-500">No se encontraron resultados.</p>
-                                                </div>
+                                            <TableCell colSpan={initialColumns.length + (enableSelection ? 1 : 0) + (props.onDelete || props.onEdit || props.onView ? 1 : 0) + 1} className="h-64 text-center text-muted-foreground bg-white dark:bg-slate-800">
+                                                <EmptyState
+                                                    title="No se encontraron resultados."
+                                                    description="Prueba cambiando los filtros o buscando con otros términos."
+                                                />
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -473,7 +475,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                         )}
                     </div>
                     {props.footerMessage && (
-                        <div className="hidden md:block flex-1 text-center text-[11px] text-gray-400 font-normal truncate px-4">
+                        <div className="hidden md:block flex-1 text-center text-xs text-gray-400 font-normal truncate px-4">
                             {props.footerMessage}
                         </div>
                     )}
@@ -493,7 +495,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             </select>
                         </div>
                         <div className="flex items-center gap-4">
-                            <div className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Pág. {table.currentPage} de {Math.max(1, table.totalPages)}
                             </div>
                             <div className="flex items-center gap-1.5">

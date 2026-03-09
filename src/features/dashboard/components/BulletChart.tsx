@@ -47,7 +47,7 @@ export const BulletChart: React.FC<BulletChartProps> = ({
 }) => {
     if (items.length === 0) {
         return (
-            <div className="flex items-center justify-center h-full text-[11px] text-gray-400">
+            <div className="flex items-center justify-center h-full text-xs text-gray-400">
                 Sin datos disponibles
             </div>
         );
@@ -110,21 +110,21 @@ export const BulletChart: React.FC<BulletChartProps> = ({
                         {/* Header: Label + Values */}
                         <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate">
+                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">
                                     {item.label}
                                 </span>
                                 {item.subtitle && (
-                                    <span className="text-[10px] text-gray-400 truncate hidden sm:inline">
+                                    <span className="text-xs2 text-gray-400 truncate hidden sm:inline">
                                         {item.subtitle}
                                     </span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                                <span className={`text-[11px] font-bold tabular-nums ${getStatusColor()}`}>
+                                <span className={`text-xs font-bold tabular-nums ${getStatusColor()}`}>
                                     {percentage.toFixed(0)}%
                                 </span>
                                 {inverted && getStatusLabel() && (
-                                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${percentage > 100
+                                    <span className={`text-2xs font-medium px-1.5 py-0.5 rounded-full ${percentage > 100
                                             ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                                             : percentage > 80
                                                 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
@@ -133,7 +133,7 @@ export const BulletChart: React.FC<BulletChartProps> = ({
                                         {getStatusLabel()}
                                     </span>
                                 )}
-                                <span className="text-[10px] text-gray-400 tabular-nums hidden md:inline">
+                                <span className="text-xs2 text-gray-400 tabular-nums hidden md:inline">
                                     {formatValue(item.actual)} / {formatValue(item.target)}
                                 </span>
                             </div>
@@ -183,41 +183,41 @@ export const BulletChart: React.FC<BulletChartProps> = ({
             <div className="flex items-center gap-4 pt-1 border-t border-gray-100 dark:border-slate-700">
                 <div className="flex items-center gap-1.5">
                     <div className="w-3 h-2 bg-purple-500 rounded-sm" />
-                    <span className="text-[10px] text-gray-500">{actualLabel}</span>
+                    <span className="text-xs2 text-gray-500">{actualLabel}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <div className="w-0.5 h-3 bg-gray-800 dark:bg-white" />
-                    <span className="text-[10px] text-gray-500">{targetLabel}</span>
+                    <span className="text-xs2 text-gray-500">{targetLabel}</span>
                 </div>
                 <div className="flex items-center gap-3 ml-auto">
                     {inverted ? (
                         <>
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                                <span className="text-[9px] text-gray-400">&lt;80%</span>
+                                <span className="text-2xs text-gray-400">&lt;80%</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-amber-400" />
-                                <span className="text-[9px] text-gray-400">80-100%</span>
+                                <span className="text-2xs text-gray-400">80-100%</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-rose-400" />
-                                <span className="text-[9px] text-gray-400">&gt;100%</span>
+                                <span className="text-2xs text-gray-400">&gt;100%</span>
                             </div>
                         </>
                     ) : (
                         <>
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-rose-400" />
-                                <span className="text-[9px] text-gray-400">&lt;80%</span>
+                                <span className="text-2xs text-gray-400">&lt;80%</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-amber-400" />
-                                <span className="text-[9px] text-gray-400">80-99%</span>
+                                <span className="text-2xs text-gray-400">80-99%</span>
                             </div>
                             <div className="flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                                <span className="text-[9px] text-gray-400">≥100%</span>
+                                <span className="text-2xs text-gray-400">≥100%</span>
                             </div>
                         </>
                     )}

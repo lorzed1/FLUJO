@@ -12,7 +12,7 @@ export const ViewModeSelector: React.FC<ViewModeSelectorProps> = ({ viewMode, on
                 <button
                     key={mode}
                     onClick={() => onChange(mode)}
-                    className={`flex items-center justify-center px-4 h-full text-[13px] font-semibold transition-colors
+                    className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors
                         ${idx < arr.length - 1 ? 'border-r border-slate-200 dark:border-slate-700' : ''}
                         ${viewMode === mode
                             ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'

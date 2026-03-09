@@ -5,6 +5,7 @@ import { ProjectionsDataTable } from '../components/ProjectionsDataTable';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { ChartBarIcon, QuestionMarkCircleIcon, InformationCircleIcon } from '../../../components/ui/Icons';
 import { DateNavigator } from '../../../components/ui/DateNavigator';
+import { Button } from '../../../components/ui/Button';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -47,13 +48,14 @@ export const ProjectionsTablePage: React.FC<ProjectionsTablePageProps> = ({
                         />
 
                         {/* Config Button */}
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={() => setIsConfigOpen(true)}
-                            className="h-full flex items-center gap-2 px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95"
+                            className="h-10 flex items-center gap-2 px-4 shadow-sm"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                             Configurar
-                        </button>
+                        </Button>
                     </div>
                 }
             />

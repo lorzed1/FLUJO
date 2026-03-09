@@ -24,7 +24,6 @@
     "firebase": "^12.9.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
-    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-big-calendar": "^1.19.4",
     "react-dom": "^19.2.0",

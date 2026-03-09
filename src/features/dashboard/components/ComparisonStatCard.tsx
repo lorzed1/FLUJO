@@ -24,7 +24,7 @@ export const ComparisonStatCard: React.FC<ComparisonStatCardProps> = ({ label, b
                 <div className="p-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg w-fit mb-1.5 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 transition-colors">
                     <CalendarIcon className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                 </div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+                <p className="text-xs2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
             </div>
 
             {/* Stats Area */}
@@ -32,10 +32,10 @@ export const ComparisonStatCard: React.FC<ComparisonStatCardProps> = ({ label, b
                 {/* Best */}
                 <div className="flex flex-col items-end min-w-[80px]">
                     <div className="flex items-center gap-1 mb-0.5">
-                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">MEJOR</span>
+                        <span className="text-2xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">MEJOR</span>
                     </div>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{bestValue}</p>
-                    {bestDate && <p className="text-[9px] text-slate-400 font-medium">{formatDate(bestDate)}</p>}
+                    {bestDate && <p className="text-2xs text-slate-400 font-medium">{formatDate(bestDate)}</p>}
                 </div>
 
                 <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
@@ -43,10 +43,10 @@ export const ComparisonStatCard: React.FC<ComparisonStatCardProps> = ({ label, b
                 {/* Worst */}
                 <div className="flex flex-col items-end min-w-[80px]">
                     <div className="flex items-center gap-1 mb-0.5">
-                        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/30 px-1.5 py-0.5 rounded-full">PEOR</span>
+                        <span className="text-2xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/30 px-1.5 py-0.5 rounded-full">PEOR</span>
                     </div>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{worstValue}</p>
-                    {worstDate && <p className="text-[9px] text-slate-400 font-medium">{formatDate(worstDate)}</p>}
+                    {worstDate && <p className="text-2xs text-slate-400 font-medium">{formatDate(worstDate)}</p>}
                 </div>
             </div>
         </div>

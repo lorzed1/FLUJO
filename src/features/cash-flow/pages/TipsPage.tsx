@@ -39,7 +39,7 @@ const EditableCell = ({
                     if (e.key === 'Enter') onSave(tempValue);
                     if (e.key === 'Escape') onCancel();
                 }}
-                className="w-16 px-2 py-1 mx-auto rounded border border-purple-500 bg-white dark:bg-slate-800 text-[13px] font-normal tabular-nums text-slate-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-sm z-[100] text-center"
+                className="w-16 px-2 py-1 mx-auto rounded border border-purple-500 bg-white dark:bg-slate-800 text-sm- font-normal tabular-nums text-slate-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-sm z-[100] text-center"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
             />

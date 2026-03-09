@@ -11,7 +11,7 @@ interface LabeledFieldProps {
 export const LabeledField: React.FC<LabeledFieldProps> = ({ label, children, icon, className = '' }) => {
     return (
         <div className={`relative border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-900 flex items-center gap-2 group focus-within:ring-2 focus-within:ring-indigo-100 transition-all ${className}`}>
-            <label className="absolute -top-2 left-2 bg-white dark:bg-slate-900 px-1 text-[10px] font-semibold text-slate-400 group-focus-within:text-indigo-500 whitespace-nowrap z-10">
+            <label className="absolute -top-2 left-2 bg-white dark:bg-slate-900 px-1 text-xs2 font-semibold text-slate-400 group-focus-within:text-indigo-500 whitespace-nowrap z-10">
                 {label}
             </label>
             {icon && (

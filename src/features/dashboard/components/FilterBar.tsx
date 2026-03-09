@@ -74,7 +74,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
                         <button
                             key={mode.id}
                             onClick={() => setFilters(prev => ({ ...prev, viewMode: mode.id as ViewMode }))}
-                            className={`flex items-center justify-center px-3 h-full text-[13px] font-semibold transition-colors
+                            className={`flex items-center justify-center px-3 h-full text-sm- font-semibold transition-colors
                                 ${idx < arr.length - 1 ? 'border-r border-slate-200 dark:border-slate-700' : ''}
                                 ${filters.viewMode === mode.id
                                     ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
@@ -92,7 +92,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
 
                 {/* Left: Period Type Selector */}
                 <div className="lg:col-span-5 flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Periodo Específico</label>
+                    <label className="text-xs2 font-bold text-slate-400 uppercase">Periodo Específico</label>
                     <div className="flex flex-wrap gap-2">
                         <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm">
                             <Button
@@ -161,9 +161,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
 
                 {/* Middle: Weekday Filter */}
                 <div className="lg:col-span-4 flex flex-col gap-2 items-center lg:items-start border-l border-slate-100 pl-6">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                    <label className="text-xs2 font-bold text-slate-400 uppercase flex items-center gap-2">
                         <FunnelIcon className="w-3 h-3" /> Filtro de Días
-                        {filters.selectedWeekdays.length > 0 && <span onClick={() => setFilters(prev => ({ ...prev, selectedWeekdays: [] }))} className="text-red-500 cursor-pointer hover:underline text-[9px] lowercase ml-auto">(limpiar)</span>}
+                        {filters.selectedWeekdays.length > 0 && <span onClick={() => setFilters(prev => ({ ...prev, selectedWeekdays: [] }))} className="text-red-500 cursor-pointer hover:underline text-2xs lowercase ml-auto">(limpiar)</span>}
                     </label>
                     <div className="flex gap-1">
                         {[
@@ -182,7 +182,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
                                     key={idx}
                                     onClick={() => toggleWeekday(idx)}
                                     className={`
-                                         w-8 h-8 rounded-full text-[10px] font-bold uppercase transition-all flex items-center justify-center
+                                         w-8 h-8 rounded-full text-xs2 font-bold uppercase transition-all flex items-center justify-center
                                          ${isSelected
                                             ? 'bg-purple-600 text-white shadow-md transform scale-105'
                                             : isAllSelected
@@ -200,7 +200,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
 
                 {/* Right: Comparison & Tools */}
                 <div className="lg:col-span-3 flex flex-col gap-2 items-end lg:items-end border-l border-slate-100 pl-6">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                    <label className="text-xs2 font-bold text-slate-400 uppercase flex items-center gap-2">
                         <ArrowPathIcon className="w-3 h-3" /> Comparativa
                     </label>
                     <Select

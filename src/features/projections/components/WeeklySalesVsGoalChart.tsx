@@ -78,7 +78,7 @@ export const WeeklySalesVsGoalChart: React.FC<WeeklySalesVsGoalProps> = ({
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             return (
-                <div className="bg-white dark:bg-slate-800 p-3.5 border border-slate-100 dark:border-slate-700 shadow-xl rounded-xl text-[11px] w-52">
+                <div className="bg-white dark:bg-slate-800 p-3.5 border border-slate-100 dark:border-slate-700 shadow-xl rounded-xl text-xs w-52">
                     <p className="font-bold text-slate-700 dark:text-slate-200 mb-3 capitalize text-xs tracking-tight">{data.weekLabel}</p>
                     <div className="space-y-2.5">
                         <div className="flex justify-between items-center text-slate-500">
@@ -92,7 +92,7 @@ export const WeeklySalesVsGoalChart: React.FC<WeeklySalesVsGoalProps> = ({
                             </span>
                         </div>
                         <div className="border-t border-slate-100 dark:border-slate-700 pt-2.5 flex justify-between items-center">
-                            <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Cumplimiento</span>
+                            <span className="text-slate-400 font-bold uppercase text-2xs tracking-wider">Cumplimiento</span>
                             <span className={`font-bold ${data.percent >= 100 ? 'text-emerald-500' : 'text-amber-500'} text-xs`}>
                                 {data.percent.toFixed(1)}%
                             </span>
@@ -108,7 +108,7 @@ export const WeeklySalesVsGoalChart: React.FC<WeeklySalesVsGoalProps> = ({
         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 h-full flex flex-col">
             <div className="flex items-center gap-3 mb-4">
                 <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
-                <h3 className="text-[13px] font-bold text-slate-700 dark:text-white uppercase tracking-wider">
+                <h3 className="text-sm- font-bold text-slate-700 dark:text-white uppercase tracking-wider">
                     Cumplimiento Semanal
                 </h3>
             </div>

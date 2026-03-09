@@ -10,6 +10,7 @@ import {
 import { dashboardService } from '../../../services/dashboardService';
 import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Line, Legend } from 'recharts';
 import { BulletChart, BulletChartItem } from '../components/BulletChart';
+import { Card } from '../../../components/ui/Card';
 
 const formatCOP = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -54,10 +55,10 @@ const GaugeRing = ({ label, percentage }: { label: string, percentage: number })
                     />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="text-[12px] font-bold text-gray-700 dark:text-gray-200">{percentage.toFixed(0)}%</span>
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{percentage.toFixed(0)}%</span>
                 </div>
             </div>
-            <span className="mt-2 text-[10px] font-bold uppercase text-gray-400 tracking-wider whitespace-nowrap">{label}</span>
+            <span className="mt-2 text-xs2 font-bold uppercase text-gray-400 tracking-wider whitespace-nowrap">{label}</span>
         </div>
     );
 };
@@ -134,14 +135,14 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
             {/* ── KPI Row ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map((kpi, i) => (
-                    <div
+                    <Card
                         key={i}
-                        className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
+                        className="p-4 hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
                         style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
                     >
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                                     {kpi.title}
                                 </p>
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -170,16 +171,16 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                                 vs mes anterior
                             </span>
                         </div>
-                    </div>
+                    </Card>
                 ))}
             </div>
 
             {/* ── Charts Row ── */}
             <div className="flex flex-col gap-4">
                 {/* Main Graph: Weekly Purchases */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[300px]">
+                <Card className="flex flex-col min-h-[300px] p-4">
                     <div className="mb-4">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             Evolución de Compras por Semana
                         </h3>
                     </div>
@@ -230,15 +231,15 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                             </ResponsiveContainer>
                         )}
                     </div>
-                </div>
+                </Card>
 
                 {/* Cumplimiento de Presupuesto — Bullet Chart */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                <Card className="flex flex-col p-4">
                     <div className="mb-3">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             Cumplimiento de Presupuesto
                         </h3>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
+                        <p className="text-xs2 text-gray-400 mt-0.5">
                             Compras reales vs presupuesto (40% de ventas semana anterior)
                         </p>
                     </div>
@@ -256,17 +257,17 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                         />
                     ) : (
                         <div className="flex-1 flex items-center justify-center py-8">
-                            <p className="text-[11px] text-gray-400">No hay datos esta semana.</p>
+                            <p className="text-xs text-gray-400">No hay datos esta semana.</p>
                         </div>
                     )}
-                </div>
+                </Card>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
                 {/* Table Placeholder */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-[250px]">
+                <Card className="flex flex-col min-h-[250px] p-4">
                     <div className="mb-4">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                             Tabla de Detalles
                         </h3>
                     </div>
@@ -275,7 +276,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                             Área para tabla detallada próxima a construir...
                         </p>
                     </div>
-                </div>
+                </Card>
             </div>
         </div>
     );

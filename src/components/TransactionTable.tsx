@@ -6,7 +6,7 @@ import { DateRangeFilter, NumberRangeFilter, TextFilter } from "@/components/Tab
 import { MultiSelectFilter } from "@/components/ui/MultiSelectFilter"
 import { Button } from "@/components/ui/Button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table"
-import { MoreHorizontal, Edit2, Trash2 } from "lucide-react"
+import { EllipsisVerticalIcon as MoreHorizontal, PencilIcon as Edit2, TrashIcon as Trash2 } from "@/components/ui/Icons"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/DropdownMenu"

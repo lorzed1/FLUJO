@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { RecurrenceRule, RecurrenceFrequency } from '../../../types/budget';
 import { useData } from '../../../context/DataContext';
 import { TransactionType } from '../../../types';
-import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Input } from '../../../components/ui/Input';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
+import { FormGroup } from '../../../components/ui/FormGroup';
 import { format, parseISO } from 'date-fns';
 
 interface RecurrenceRuleFormModalProps {
@@ -133,34 +134,23 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
 
     if (!isOpen) return null;
 
-    const FormLabel = ({ children }: { children: React.ReactNode }) => (
-        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-            {children}
-        </label>
-    );
+    const inputClasses = "h-9 py-1 text-sm- border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded px-2";
 
-    const inputClasses = "h-9 py-1 text-[13px] border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded px-2";
+    const headerTitle = initialRule && !isDuplicate ? 'Editar Regla' : (isDuplicate ? 'Duplicar Regla' : 'Nueva Regla');
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-[2px] px-4" onClick={onClose}>
-            {/* Modal Container: Max width 2xl for horizontal layout */}
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col animate-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
-
-                {/* Header: Compact */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 rounded-t-lg">
-                    <h2 className="text-base font-bold text-gray-800 dark:text-white">
-                        {initialRule && !isDuplicate ? 'Editar Regla' : (isDuplicate ? 'Duplicar Regla' : 'Nueva Regla')}
-                    </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 p-1">
-                        <XMarkIcon className="w-4 h-4" />
-                    </button>
-                </div>
-
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={headerTitle}
+            maxWidth="max-w-2xl"
+            className="p-0 overflow-hidden"
+        >
+            <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-slate-800">
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
 
                     {/* Row 1: Description (Full Width) */}
-                    <div>
-                        <FormLabel>Descripción</FormLabel>
+                    <FormGroup label="Descripción" required>
                         <Input
                             value={formData.title}
                             onChange={e => handleChange('title', e.target.value)}
@@ -169,12 +159,11 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                             autoFocus
                             className={inputClasses}
                         />
-                    </div>
+                    </FormGroup>
 
                     {/* Row 2: 3 Columns (Amount, Category, Frequency) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <FormLabel>Monto</FormLabel>
+                        <FormGroup label="Monto" required>
                             <div className="relative">
                                 <CurrencyInput
                                     name="amount"
@@ -184,9 +173,8 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                                     className={inputClasses}
                                 />
                             </div>
-                        </div>
-                        <div>
-                            <FormLabel>Categoría</FormLabel>
+                        </FormGroup>
+                        <FormGroup label="Categoría" required>
                             <Select
                                 value={formData.category}
                                 onChange={e => handleChange('category', e.target.value)}
@@ -199,9 +187,8 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                                 ))}
                                 <option value="Otros">Otros</option>
                             </Select>
-                        </div>
-                        <div>
-                            <FormLabel>Frecuencia</FormLabel>
+                        </FormGroup>
+                        <FormGroup label="Frecuencia">
                             <Select
                                 value={formData.frequency}
                                 onChange={e => handleChange('frequency', e.target.value)}
@@ -210,15 +197,14 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                                 <option value="weekly">Semanal</option>
                                 <option value="monthly">Mensual</option>
                             </Select>
-                        </div>
+                        </FormGroup>
                     </div>
 
                     {/* Row 3: Configuration (4 cols for max compactness) */}
                     <div className="bg-gray-50 dark:bg-slate-700/30 p-3 rounded-lg border border-gray-100 dark:border-slate-700 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
 
                         {/* 1. Day Selector */}
-                        <div>
-                            <FormLabel>{formData.frequency === 'weekly' ? 'Día Semana' : 'Día Mes'}</FormLabel>
+                        <FormGroup label={formData.frequency === 'weekly' ? 'Día Semana' : 'Día Mes'}>
                             {formData.frequency === 'weekly' ? (
                                 <Select
                                     value={selectedDayOfWeek}
@@ -244,11 +230,10 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                                     ))}
                                 </Select>
                             )}
-                        </div>
+                        </FormGroup>
 
                         {/* 2. Interval */}
-                        <div>
-                            <FormLabel>Cada (Mes/Sem)</FormLabel>
+                        <FormGroup label="Cada (Mes/Sem)" required>
                             <Input
                                 type="number"
                                 min="1"
@@ -257,32 +242,30 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                                 required
                                 className={`${inputClasses} text-center`}
                             />
-                        </div>
+                        </FormGroup>
 
                         {/* 3. Start Date */}
-                        <div>
-                            <FormLabel>Inicio</FormLabel>
+                        <FormGroup label="Inicio" required>
                             <DatePicker
                                 value={formData.validFrom}
                                 onChange={val => handleChange('validFrom', val)}
                                 required
                                 className={inputClasses}
                             />
-                        </div>
+                        </FormGroup>
 
                         {/* 4. End Date */}
-                        <div>
-                            <FormLabel>Fin (Opcional)</FormLabel>
+                        <FormGroup label="Fin (Opcional)">
                             <DatePicker
                                 value={formData.validUntil}
                                 onChange={val => handleChange('validUntil', val)}
                                 className={inputClasses}
                             />
-                        </div>
+                        </FormGroup>
                     </div>
 
                     {/* Summary Text (Small) */}
-                    <div className="text-[11px] text-gray-500 dark:text-gray-400 italic px-1">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 italic px-1">
                         <span className="font-semibold not-italic text-gray-700 dark:text-gray-300 mr-1">Resumen:</span>
                         {formData.frequency === 'weekly'
                             ? `Programado para todos los ${['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][selectedDayOfWeek]} ${formData.interval > 1 ? `(c/ ${formData.interval} semanas)` : ''}, iniciando el ${format(parseISO(formData.validFrom || new Date().toISOString()), 'dd/MM/yyyy')}.`
@@ -290,7 +273,7 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="pt-3 flex justify-end gap-2 border-t border-gray-100 dark:border-slate-700 mt-2">
+                    <div className="pt-3 flex justify-end gap-2 border-t border-gray-100 dark:border-slate-700 mt-2 shrink-0">
                         <Button
                             variant="secondary"
                             onClick={onClose}
@@ -309,6 +292,6 @@ export const RecurrenceRuleFormModal: React.FC<RecurrenceRuleFormModalProps> = (
                     </div>
                 </form>
             </div>
-        </div>
+        </Modal>
     );
 };

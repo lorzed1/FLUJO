@@ -3,10 +3,12 @@ import { useUI } from '../../../context/UIContext';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
 import { format } from 'date-fns';
-import { XMarkIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, BanknotesIcon } from '../../../components/ui/Icons';
 import { CurrencyInput } from '../../../components/ui/CurrencyInput';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../../components/ui/DatePicker';
+import { Modal } from '../../../components/ui/Modal';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface BudgetPaymentModalProps {
     isOpen: boolean;
@@ -73,84 +75,72 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
 
     if (!isOpen || !commitment) return null;
 
-    const FormLabel = ({ children }: { children: React.ReactNode }) => (
-        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5">
-            {children}
-        </label>
+    const headerTitle = (
+        <span className="flex items-center gap-2">
+            <BanknotesIcon className="w-5 h-5 text-gray-500" />
+            Confirmación de Pago
+        </span>
     );
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4" onClick={onClose}>
-            <div
-                className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-md border border-gray-200 dark:border-slate-700 overflow-visible animate-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Header Block */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 rounded-t-lg">
-                    <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                        <BanknotesIcon className="w-5 h-5 text-gray-500" />
-                        Confirmación de Pago
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 p-1"
-                    >
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </div>
-
+        <Modal
+            isOpen={true}
+            onClose={onClose}
+            title={headerTitle}
+            maxWidth="max-w-md"
+            className="p-0"
+        >
+            <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-slate-800">
                 <form onSubmit={handleSubmit}>
                     {/* Content Block */}
                     <div className="p-5 space-y-4">
                         {/* Summary / Concepto */}
-                        <div>
-                            <FormLabel>Concepto</FormLabel>
+                        <FormGroup label="Concepto">
                             <div className="px-3 py-2 bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded text-sm font-medium text-gray-700 dark:text-gray-200">
                                 {commitment.title}
                             </div>
-                        </div>
+                        </FormGroup>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <FormLabel>Importe</FormLabel>
+                            <FormGroup label="Importe" required>
                                 <CurrencyInput
                                     value={amount}
                                     onChange={(val) => setAmount(String(val))}
-                                    className="!h-9 text-[13px] font-medium !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
+                                    className="text-sm- font-medium !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
                                     required
                                 />
-                            </div>
-                            <div>
-                                <FormLabel>Fecha Valor</FormLabel>
+                            </FormGroup>
+                            <FormGroup label="Fecha Valor">
                                 <DatePicker
                                     value={date}
                                     onChange={(val) => setDate(val)}
-                                    className="!h-9 text-[13px] font-medium uppercase tracking-tight !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
+                                    className="text-sm- font-medium uppercase tracking-tight !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
                                 />
-                            </div>
+                            </FormGroup>
                         </div>
                     </div>
 
                     {/* Footer Block */}
-                    <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2 rounded-b-lg">
+                    <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2 rounded-b-xl mt-auto shrink-0">
                         <Button
                             type="button"
                             variant="secondary"
+                            size="sm"
                             onClick={onClose}
-                            className="h-8 text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm"
                         >
                             Cancelar
                         </Button>
                         <Button
                             type="submit"
+                            variant="primary"
+                            size="sm"
                             disabled={isLoading}
-                            className="h-8 text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white shadow-sm rounded-lg border-transparent"
                         >
                             {isLoading ? 'Procesando...' : 'Confirmar Pago'}
                         </Button>
                     </div>
                 </form>
             </div>
-        </div>
+        </Modal>
     );
 };

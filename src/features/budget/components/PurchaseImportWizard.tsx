@@ -22,6 +22,7 @@ import * as XLSX from 'xlsx';
 import { Purchase } from '../../../types/budget';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
 import { type Column } from '../../../hooks/useSmartDataTable';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface PurchaseImportWizardProps {
     onBatchImport: (purchases: Purchase[]) => void;
@@ -179,7 +180,7 @@ export const PurchaseImportWizard: React.FC<PurchaseImportWizardProps> = ({ onBa
                 tooltip: sysField ? `Mapeado a: ${sysField.label}` : undefined,
                 render: (val: any) => {
                     if (isCurrency) return <span className="font-bold tabular-nums text-purple-600">${formatCOP(val)}</span>;
-                    return <span className="text-[12px]">{String(val ?? '')}</span>;
+                    return <span className="text-xs">{String(val ?? '')}</span>;
                 },
                 getValue: (item: any) => item[header]
             };
@@ -207,24 +208,22 @@ export const PurchaseImportWizard: React.FC<PurchaseImportWizardProps> = ({ onBa
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="flex flex-col">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Subir Archivo Excel</label>
+                        <FormGroup label="Subir Archivo Excel" className="flex-1 flex flex-col">
                             <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer relative group">
                                 <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileImport} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                 <ArrowUpTrayIcon className="h-10 w-10 text-gray-400 group-hover:text-primary mb-2 transition-colors" />
                                 <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Seleccionar .xlsx o .csv</p>
                             </div>
-                        </div>
+                        </FormGroup>
 
-                        <div className="flex flex-col">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Pegar desde Excel</label>
+                        <FormGroup label="Pegar desde Excel" className="flex-1 flex flex-col">
                             <textarea
                                 value={importData}
                                 onChange={handlePaste}
                                 placeholder="Pega aquí las celdas copiadas..."
                                 className="flex-1 min-h-[160px] p-4 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-primary/50 text-xs font-mono resize-none bg-white dark:bg-slate-800"
                             />
-                        </div>
+                        </FormGroup>
                     </div>
 
                     <div className="flex justify-end gap-3">
@@ -306,7 +305,7 @@ export const PurchaseImportWizard: React.FC<PurchaseImportWizardProps> = ({ onBa
                                                 </select>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-900/50 p-2 rounded truncate max-w-[150px]">
+                                                <div className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-900/50 p-2 rounded truncate max-w-[150px]">
                                                     {sampleValue || '-'}
                                                 </div>
                                             </td>
@@ -324,11 +323,11 @@ export const PurchaseImportWizard: React.FC<PurchaseImportWizardProps> = ({ onBa
                     <div className="flex gap-4">
                         <div className="flex-1 bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
                             <div className="text-2xl font-bold text-primary">{parsedRows.length}</div>
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-primary/70">Registros Listos</div>
+                            <div className="text-xs2 font-bold uppercase tracking-widest text-primary/70">Registros Listos</div>
                         </div>
                         <div className="flex-1 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 text-center">
                             <div className="text-lg font-bold text-blue-700 dark:text-blue-400">Importador Universal</div>
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600/70">Modo Sin Restricciones</div>
+                            <div className="text-xs2 font-bold uppercase tracking-widest text-blue-600/70">Modo Sin Restricciones</div>
                         </div>
                     </div>
 

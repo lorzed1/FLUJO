@@ -8,7 +8,7 @@ import { CalendarDaysIcon, TrashIcon } from '../ui/Icons';
 import { useUI } from '../../context/UIContext';
 import { supabase } from '../../services/supabaseClient';
 import { InfoModal } from '../ui/InfoModal';
-import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon } from '@/components/ui/Icons';
 
 export interface SmartDataPageProps<T extends Record<string, any>> {
     title: string;

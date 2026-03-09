@@ -5,7 +5,7 @@ import {
     BanknotesIcon,
     CheckCircleIcon,
     CalendarDaysIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
@@ -19,6 +19,7 @@ import { DateNavigator } from '../../../components/ui/DateNavigator';
 import { GhostBuster } from '../components/GhostBuster';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
+import { Spinner } from '../../../components/ui/Spinner';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
@@ -197,8 +198,8 @@ export const BudgetDashboard: React.FC = () => {
     if (isLoading) return (
         <div className="flex h-full items-center justify-center p-6">
             <div className="flex flex-col items-center gap-3">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600"></div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">Analizando Datos...</p>
+                <Spinner size="xl" />
+                <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest animate-pulse">Analizando Datos...</p>
             </div>
         </div>
     );
@@ -241,7 +242,7 @@ export const BudgetDashboard: React.FC = () => {
                             <Card key={stat.name} className="p-5 transition-all hover:shadow-md" noPadding>
                                 <div className="flex items-center justify-between">
                                     <div className="min-w-0">
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
                                         <p className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">{formatCurrency(stat.value)}</p>
                                     </div>
                                     <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.bgDark} shrink-0`}>
@@ -260,7 +261,7 @@ export const BudgetDashboard: React.FC = () => {
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Evolución Semanal</h3>
-                                <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{format(selectedMonth, 'MMMM yyyy', { locale: es })}</p>
+                                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">{format(selectedMonth, 'MMMM yyyy', { locale: es })}</p>
                             </div>
                         </div>
                         <div className="h-[300px] w-full mt-2">
@@ -313,7 +314,7 @@ export const BudgetDashboard: React.FC = () => {
                                         layout="vertical"
                                         verticalAlign="middle"
                                         align="right"
-                                        formatter={(value) => <span className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{value}</span>}
+                                        formatter={(value) => <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">{value}</span>}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -328,11 +329,11 @@ export const BudgetDashboard: React.FC = () => {
                     {overdueStats.count > 0 && (
                         <Card className="overflow-hidden" noPadding>
                             <div className="flex items-center justify-between px-4 py-2.5 border-b border-rose-100 dark:border-rose-900/30 bg-rose-50/60 dark:bg-rose-900/10">
-                                <h3 className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                                <h3 className="text-xs2 font-bold text-rose-600 uppercase tracking-caps flex items-center gap-1.5">
                                     <ExclamationCircleIcon className="w-3.5 h-3.5" />
                                     Cartera en Mora
                                 </h3>
-                                <span className="text-[10px] font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                                <span className="text-xs2 font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
                                     {overdueStats.count}
                                 </span>
                             </div>
@@ -340,29 +341,29 @@ export const BudgetDashboard: React.FC = () => {
                                 <table className="w-full border-collapse">
                                     <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
                                         <tr className="border-b border-gray-100 dark:border-slate-700">
-                                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Concepto</th>
-                                            <th className="text-center text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5 w-12">Días</th>
-                                            <th className="text-right text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
+                                            <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Concepto</th>
+                                            <th className="text-center text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5 w-12">Días</th>
+                                            <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {overdueStats.chartData.map((item, idx) => (
                                             <tr key={`mora-${idx}`} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-rose-50/30 dark:hover:bg-rose-900/5 transition-colors">
-                                                <td className="px-3 py-1.5 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px]">{item.name}</td>
+                                                <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px]">{item.name}</td>
                                                 <td className="px-2 py-1.5 text-center">
-                                                    <span className={`text-[10px] font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
+                                                    <span className={`text-xs2 font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
                                                         {item.days}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-1.5 text-right text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                                <td className="px-3 py-1.5 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                     <tfoot className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600">
                                         <tr>
-                                            <td className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total</td>
-                                            <td className="px-2 py-2 text-center text-[10px] font-bold text-gray-400">{overdueStats.count}</td>
-                                            <td className="px-3 py-2 text-right text-[12px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
+                                            <td className="px-3 py-2 text-xs2 font-bold text-gray-500 uppercase tracking-wider">Total</td>
+                                            <td className="px-2 py-2 text-center text-xs2 font-bold text-gray-400">{overdueStats.count}</td>
+                                            <td className="px-3 py-2 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -373,36 +374,36 @@ export const BudgetDashboard: React.FC = () => {
                     {/* ── Próximos Vencimientos ── */}
                     <Card className="overflow-hidden" noPadding>
                         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-700/30">
-                            <h3 className="text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <h3 className="text-xs2 font-bold text-gray-600 dark:text-gray-300 uppercase tracking-caps flex items-center gap-1.5">
                                 <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
                                 Próximos Vencimientos
                             </h3>
-                            <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                            <span className="text-xs2 font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full tabular-nums">
                                 {upcomingList.length}
                             </span>
                         </div>
                         {upcomingList.length === 0 ? (
                             <div className="py-8 text-center">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
+                                <p className="text-xs2 font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
                             </div>
                         ) : (
                             <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
                                 <table className="w-full border-collapse">
                                     <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
                                         <tr className="border-b border-gray-100 dark:border-slate-700">
-                                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5 w-14">Fecha</th>
-                                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5">Concepto</th>
-                                            <th className="text-right text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
+                                            <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5 w-14">Fecha</th>
+                                            <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5">Concepto</th>
+                                            <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {upcomingList.map((item) => (
                                             <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/5 transition-colors cursor-pointer group">
-                                                <td className="px-3 py-1.5 text-[10px] font-bold text-indigo-500 tabular-nums whitespace-nowrap">
+                                                <td className="px-3 py-1.5 text-xs2 font-bold text-indigo-500 tabular-nums whitespace-nowrap">
                                                     {format(parseISO(item.dueDate), 'd MMM', { locale: es })}
                                                 </td>
-                                                <td className="px-2 py-1.5 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px] group-hover:text-primary transition-colors">{item.title}</td>
-                                                <td className="px-3 py-1.5 text-right text-[11px] font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                                <td className="px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px] group-hover:text-primary transition-colors">{item.title}</td>
+                                                <td className="px-3 py-1.5 text-right text-xs font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -413,10 +414,10 @@ export const BudgetDashboard: React.FC = () => {
 
                     {/* Diagnostic Tool */}
                     <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 border-dashed">
-                        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                             <span>🔍 Diagnóstico</span>
                         </h3>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+                        <p className="text-xs2 text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
                             Registro maestro (2024-2027) para conciliación.
                         </p>
                         <GhostBuster />

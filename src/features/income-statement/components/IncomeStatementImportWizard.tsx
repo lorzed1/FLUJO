@@ -16,6 +16,7 @@ import { isFinancialMatrixFormat, parseFinancialMatrix } from '../utils/financia
 import { formatCOP } from '../../../components/ui/Input';
 import { useUI } from '../../../context/UIContext';
 import * as XLSX from 'xlsx';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface IncomeStatementImportWizardProps {
     onBatchImport: (rows: ParsedIncomeRow[]) => void;
@@ -233,10 +234,7 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="flex flex-col">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Opción A: Subir archivo Excel
-                            </label>
+                        <FormGroup label="Opción A: Subir archivo Excel" className="flex-1 flex flex-col">
                             <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-800 hover:border-primary/50 transition-all cursor-pointer relative group">
                                 <input
                                     type="file"
@@ -250,22 +248,19 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                         <ArrowUpTrayIcon className="h-6 w-6 self-end" />
                                     </div>
                                     <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Seleccionar Excel/CSV</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">Detecta formato P&G automáticamente</p>
+                                    <p className="text-xs2 text-gray-400 mt-1">Detecta formato P&G automáticamente</p>
                                 </div>
                             </div>
-                        </div>
+                        </FormGroup>
 
-                        <div className="flex flex-col">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Opción B: Pegar datos (Lista Simple)
-                            </label>
+                        <FormGroup label="Opción B: Pegar datos (Lista Simple)" className="flex-1 flex flex-col">
                             <textarea
                                 value={importData}
                                 onChange={handlePaste}
                                 placeholder="Pega aquí filas copiadas..."
                                 className="flex-1 w-full min-h-[160px] p-4 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary font-mono text-xs resize-none bg-white dark:bg-slate-800 dark:text-gray-200 dark:placeholder-gray-500"
                             />
-                        </div>
+                        </FormGroup>
                     </div>
                 </div>
             )}
@@ -278,24 +273,17 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-2 uppercase tracking-wide">
-                                Año del Reporte
-                            </label>
+                        <FormGroup label="Año del Reporte" description="Los meses en columnas (Enero, Febrero...) se asignarán a este año.">
                             <input
                                 type="number"
                                 value={selectedYear}
                                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white font-bold"
                             />
-                            <p className="text-[10px] text-gray-400 mt-1">Los meses en columnas (Enero, Febrero...) se asignarán a este año.</p>
-                        </div>
+                        </FormGroup>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-2 uppercase tracking-wide">
-                                    Columna Código de Cuenta
-                                </label>
+                            <FormGroup label="Columna Código de Cuenta">
                                 <select
                                     value={matrixMapping.accountCode}
                                     onChange={(e) => setMatrixMapping(prev => ({ ...prev, accountCode: e.target.value }))}
@@ -304,11 +292,8 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                     <option value="">-- Seleccionar --</option>
                                     {rawHeaders.map((h, i) => <option key={i} value={h}>{h}</option>)}
                                 </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-2 uppercase tracking-wide">
-                                    Columna Nombre/Descripción
-                                </label>
+                            </FormGroup>
+                            <FormGroup label="Columna Nombre/Descripción">
                                 <select
                                     value={matrixMapping.accountName}
                                     onChange={(e) => setMatrixMapping(prev => ({ ...prev, accountName: e.target.value }))}
@@ -317,15 +302,12 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                     <option value="">-- Opcional --</option>
                                     {rawHeaders.map((h, i) => <option key={i} value={h}>{h}</option>)}
                                 </select>
-                            </div>
+                            </FormGroup>
                         </div>
                     </div>
 
                     {/* Month Selection */}
-                    <div className="mb-6">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-2 uppercase tracking-wide">
-                            Seleccionar Meses a Importar ({selectedMonths.length})
-                        </label>
+                    <FormGroup label={`Seleccionar Meses a Importar (${selectedMonths.length})`} className="mb-6">
                         <div className="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-lg border border-gray-200 dark:border-slate-600 max-h-[150px] overflow-y-auto custom-scrollbar">
                             {availableMonths.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -348,7 +330,7 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                 <p className="text-sm text-gray-400 italic">No se detectaron columnas de meses (Enero, Febrero...).</p>
                             )}
                         </div>
-                    </div>
+                    </FormGroup>
 
                     <div className="flex gap-3 justify-end mt-8">
                         <button onClick={handleClear} className="px-4 py-2 text-sm text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
@@ -376,7 +358,7 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                 return (
                                     <span
                                         key={field.key}
-                                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
+                                        className={`px-3 py-1 rounded-full text-xs2 font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
                                     >
                                         {isMapped ? <CheckCircleIcon className="h-3 w-3" /> : <ExclamationTriangleIcon className="h-3 w-3" />}
                                         {field.label}
@@ -406,7 +388,7 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                         <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                                             <td className="px-5 py-4">
                                                 <div className="font-bold text-gray-900 dark:text-white mb-0.5">{header}</div>
-                                                <div className="text-[10px] text-gray-400 font-mono italic">Col {idx + 1}</div>
+                                                <div className="text-xs2 text-gray-400 font-mono italic">Col {idx + 1}</div>
                                             </td>
                                             <td className="px-5 py-4">
                                                 <select
@@ -501,7 +483,7 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                             <td className="px-3 py-2 font-mono">{row.data.date || '-'}</td>
                                             <td className="px-3 py-2 font-mono text-gray-500">{row.data.code || '-'}</td>
                                             <td className="px-3 py-2 font-bold truncate max-w-[150px]">{row.data.description}</td>
-                                            <td className="px-3 py-2 uppercase font-bold text-[10px]">{row.data.type === 'income' ? <span className="text-emerald-500">Ingreso</span> : <span className="text-rose-500">Egreso</span>}</td>
+                                            <td className="px-3 py-2 uppercase font-bold text-xs2">{row.data.type === 'income' ? <span className="text-emerald-500">Ingreso</span> : <span className="text-rose-500">Egreso</span>}</td>
                                             <td className="px-3 py-2 text-right font-mono font-bold">
                                                 {formatCOP(row.data.amount)}
                                             </td>

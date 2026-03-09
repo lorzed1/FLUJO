@@ -194,7 +194,7 @@ const AccountingExportModal: React.FC<AccountingExportModalProps> = ({ isOpen, o
                                             <tr key={map.conceptId} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
                                                 <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-200">
                                                     {map.label}
-                                                    <span className={`block text-[10px] ${map.nature === 'debit' ? 'text-blue-500' : map.nature === 'credit' ? 'text-green-500' : 'text-purple-500'}`}>
+                                                    <span className={`block text-xs2 ${map.nature === 'debit' ? 'text-blue-500' : map.nature === 'credit' ? 'text-green-500' : 'text-purple-500'}`}>
                                                         {map.nature === 'debit' ? 'Débito' : map.nature === 'credit' ? 'Crédito' : 'Automático'}
                                                     </span>
                                                 </td>

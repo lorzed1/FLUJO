@@ -113,7 +113,7 @@ export const ProjectionsDataTable: React.FC<ProjectionsDataTableProps> = ({
         };
         const c = config[value];
         return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c.bg} ${c.color}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.color}`}>
                 {c.label}
             </span>
         );

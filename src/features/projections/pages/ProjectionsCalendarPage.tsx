@@ -8,6 +8,7 @@ import { es } from 'date-fns/locale';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { CalendarIcon, QuestionMarkCircleIcon } from '../../../components/ui/Icons';
 import { DateNavigator } from '../../../components/ui/DateNavigator';
+import { Button } from '../../../components/ui/Button';
 
 interface ProjectionsCalendarPageProps {
     currentDate: Date;
@@ -66,7 +67,7 @@ export const ProjectionsCalendarPage: React.FC<ProjectionsCalendarPageProps> = (
                                 { dot: 'bg-red-400', label: 'Festivo' },
                                 { dot: 'bg-purple-400', label: 'Evento' },
                             ].map(item => (
-                                <span key={item.label} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <span key={item.label} className="flex items-center gap-1.5 text-xs2 font-bold text-slate-400 uppercase tracking-widest">
                                     <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
                                     {item.label}
                                 </span>
@@ -81,22 +82,24 @@ export const ProjectionsCalendarPage: React.FC<ProjectionsCalendarPageProps> = (
 
                         {/* Botones de Acción – Aliaddo §4 Z3 (Derecha) */}
                         <div className="flex items-center gap-2">
-                            <button
+                            <Button
+                                variant="secondary"
                                 onClick={() => setIsConfigOpen(true)}
-                                className="h-10 flex items-center gap-2 px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95"
+                                className="h-10 flex items-center gap-2 px-4 shadow-sm"
                                 title="Configuración de metas"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                                 <span>Configurar</span>
-                            </button>
+                            </Button>
 
-                            <button
+                            <Button
+                                variant="secondary"
                                 onClick={() => setIsHelpOpen(true)}
-                                className="h-10 w-10 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 hover:text-purple-600 dark:hover:bg-slate-700 transition-all"
+                                className="h-10 w-10 flex items-center justify-center p-0 shadow-sm"
                                 title="Ayuda"
                             >
                                 <QuestionMarkCircleIcon className="h-5 w-5" />
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 }

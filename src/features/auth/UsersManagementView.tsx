@@ -3,6 +3,7 @@ import { getUsersForDisplay, createUser, updateUser, deleteUser, changePassword,
 import { PlusCircleIcon, TrashIcon, PencilIcon, KeyIcon, ExclamationTriangleIcon, CheckCircleIcon, UserIcon } from '../../components/ui/Icons';
 import AlertModal from '../../components/ui/AlertModal';
 import { SmartDataTable } from '../../components/ui/SmartDataTable';
+import { FormGroup } from '../../components/ui/FormGroup';
 
 const UsersManagementView: React.FC = () => {
     const [users, setUsers] = useState<Array<Omit<LocalUser, 'password'>>>([]);
@@ -203,7 +204,7 @@ const UsersManagementView: React.FC = () => {
                         setFormData({ username: '', displayName: '', role: 'cajero', password: '' });
                         setShowCreateModal(true);
                     }}
-                    className="flex items-center gap-2 px-4 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-[13px] transition-all active:scale-95"
+                    className="flex items-center gap-2 px-4 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-md shadow-md shadow-purple-500/20 font-bold text-sm- transition-all active:scale-95"
                 >
                     <PlusCircleIcon className="h-5 w-5" />
                     Crear Nuevo Usuario
@@ -286,8 +287,7 @@ const UsersManagementView: React.FC = () => {
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6">
                         <h3 className="text-xl font-bold text-dark-text dark:text-white mb-4">Crear Nuevo Usuario</h3>
                         <form onSubmit={handleCreateUser} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
+                            <FormGroup label="Usuario" required>
                                 <input
                                     type="text"
                                     value={formData.username}
@@ -296,9 +296,8 @@ const UsersManagementView: React.FC = () => {
                                     placeholder="usuario123"
                                     required
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre para mostrar</label>
+                            </FormGroup>
+                            <FormGroup label="Nombre para mostrar" required>
                                 <input
                                     type="text"
                                     value={formData.displayName}
@@ -307,9 +306,8 @@ const UsersManagementView: React.FC = () => {
                                     placeholder="Juan Pérez"
                                     required
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol</label>
+                            </FormGroup>
+                            <FormGroup label="Rol">
                                 <select
                                     value={formData.role}
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
@@ -318,9 +316,8 @@ const UsersManagementView: React.FC = () => {
                                     <option value="cajero">Cajero</option>
                                     <option value="admin">Administrador</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
+                            </FormGroup>
+                            <FormGroup label="Contraseña" required>
                                 <input
                                     type="password"
                                     value={formData.password}
@@ -329,18 +326,18 @@ const UsersManagementView: React.FC = () => {
                                     placeholder="Mínimo 6 caracteres"
                                     required
                                 />
-                            </div>
+                            </FormGroup>
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-[13px] active:scale-95"
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-sm- active:scale-95"
                                 >
                                     Crear Usuario
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-[13px] active:scale-95"
+                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-sm- active:scale-95"
                                 >
                                     Cancelar
                                 </button>
@@ -356,18 +353,15 @@ const UsersManagementView: React.FC = () => {
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6">
                         <h3 className="text-xl font-bold text-dark-text dark:text-white mb-4">Editar Usuario</h3>
                         <form onSubmit={handleEditUser} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
+                            <FormGroup label="Usuario" description="El nombre de usuario no se puede modificar">
                                 <input
                                     type="text"
                                     value={formData.username}
                                     className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-gray-100 dark:bg-slate-900 text-gray-600 dark:text-gray-400"
                                     disabled
                                 />
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">El nombre de usuario no se puede modificar</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre para mostrar</label>
+                            </FormGroup>
+                            <FormGroup label="Nombre para mostrar" required>
                                 <input
                                     type="text"
                                     value={formData.displayName}
@@ -375,9 +369,8 @@ const UsersManagementView: React.FC = () => {
                                     className="w-full p-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary/50 focus:outline-none"
                                     required
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol</label>
+                            </FormGroup>
+                            <FormGroup label="Rol">
                                 <select
                                     value={formData.role}
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
@@ -386,18 +379,18 @@ const UsersManagementView: React.FC = () => {
                                     <option value="cajero">Cajero</option>
                                     <option value="admin">Administrador</option>
                                 </select>
-                            </div>
+                            </FormGroup>
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-[13px] active:scale-95"
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-sm- active:scale-95"
                                 >
                                     Guardar Cambios
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowEditModal(false)}
-                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-[13px] active:scale-95"
+                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-sm- active:scale-95"
                                 >
                                     Cancelar
                                 </button>
@@ -413,8 +406,7 @@ const UsersManagementView: React.FC = () => {
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6">
                         <h3 className="text-xl font-bold text-dark-text dark:text-white mb-4">Cambiar Contraseña</h3>
                         <form onSubmit={handleChangePassword} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nueva Contraseña</label>
+                            <FormGroup label="Nueva Contraseña" required>
                                 <input
                                     type="password"
                                     value={newPassword}
@@ -423,9 +415,8 @@ const UsersManagementView: React.FC = () => {
                                     placeholder="Mínimo 6 caracteres"
                                     required
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar Contraseña</label>
+                            </FormGroup>
+                            <FormGroup label="Confirmar Contraseña" required>
                                 <input
                                     type="password"
                                     value={confirmPassword}
@@ -434,18 +425,18 @@ const UsersManagementView: React.FC = () => {
                                     placeholder="Repetir contraseña"
                                     required
                                 />
-                            </div>
+                            </FormGroup>
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-[13px] active:scale-95"
+                                    className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-md shadow-purple-500/20 transition-all font-bold text-sm- active:scale-95"
                                 >
                                     Cambiar Contraseña
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowPasswordModal(false)}
-                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-[13px] active:scale-95"
+                                    className="flex-1 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors font-semibold text-sm- active:scale-95"
                                 >
                                     Cancelar
                                 </button>

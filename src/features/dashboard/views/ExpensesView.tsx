@@ -5,7 +5,7 @@ import {
     BanknotesIcon,
     CheckCircleIcon,
     CalendarDaysIcon
-} from '@heroicons/react/24/outline';
+} from '../../../components/ui/Icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { budgetService } from '../../../services/budget';
 import { BudgetCommitment } from '../../../types/budget';
@@ -13,6 +13,7 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInter
 import { es } from 'date-fns/locale';
 import { useData } from '../../../context/DataContext';
 import { getCompleteWeeksRange } from '../../../utils/dateUtils';
+import { Card } from '../../../components/ui/Card';
 
 const COLORS = ['#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#9333ea', '#ec4899', '#06b6d4', '#84cc16'];
 
@@ -198,19 +199,19 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
             {/* KPI Stats Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat) => (
-                    <div key={stat.name} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-2"
+                    <Card key={stat.name} className="p-4 transition-all hover:shadow-md animate-in fade-in slide-in-from-bottom-2"
                         style={{ animationDelay: `${stats.indexOf(stat) * 80}ms`, animationFillMode: 'both' }}
                     >
                         <div className="flex items-center justify-between">
                             <div className="min-w-0">
-                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight truncate">{formatCurrency(stat.value)}</p>
                             </div>
                             <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.bgDark} shrink-0`}>
                                 <stat.icon className={`w-5 h-5 ${stat.color} ${stat.colorDark}`} />
                             </div>
                         </div>
-                    </div>
+                    </Card>
                 ))}
             </div>
 
@@ -219,13 +220,13 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
 
                 {/* ── Cartera en Mora ── */}
                 {overdueStats.count > 0 ? (
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                    <Card className="overflow-hidden p-0">
                         <div className="flex items-center justify-between px-4 py-2 border-b border-rose-100 dark:border-rose-900/30 bg-rose-50/60 dark:bg-rose-900/10">
-                            <h3 className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <h3 className="text-xs2 font-bold text-rose-600 uppercase tracking-caps flex items-center gap-1.5">
                                 <ExclamationCircleIcon className="w-3.5 h-3.5" />
                                 Cartera en Mora
                             </h3>
-                            <span className="text-[10px] font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                            <span className="text-xs2 font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
                                 {overdueStats.count}
                             </span>
                         </div>
@@ -233,91 +234,91 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                             <table className="w-full border-collapse">
                                 <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
                                     <tr className="border-b border-gray-100 dark:border-slate-700">
-                                        <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1">Concepto</th>
-                                        <th className="text-center text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-1 py-1 w-10">Días</th>
-                                        <th className="text-right text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1">Monto</th>
+                                        <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1">Concepto</th>
+                                        <th className="text-center text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-1 py-1 w-10">Días</th>
+                                        <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1">Monto</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {overdueStats.chartData.map((item, idx) => (
                                         <tr key={`mora-${idx}`} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-rose-50/30 dark:hover:bg-rose-900/5 transition-colors">
-                                            <td className="px-3 py-1 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[250px]">{item.name}</td>
+                                            <td className="px-3 py-1 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[250px]">{item.name}</td>
                                             <td className="px-1 py-1 text-center">
-                                                <span className={`text-[10px] font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
+                                                <span className={`text-xs2 font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
                                                     {item.days}
                                                 </span>
                                             </td>
-                                            <td className="px-3 py-1 text-right text-[11px] font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                            <td className="px-3 py-1 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600">
                                     <tr>
-                                        <td className="px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total</td>
-                                        <td className="px-1 py-1.5 text-center text-[10px] font-bold text-gray-400">{overdueStats.count}</td>
-                                        <td className="px-3 py-1.5 text-right text-[12px] font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
+                                        <td className="px-3 py-1.5 text-xs2 font-bold text-gray-500 uppercase tracking-wider">Total</td>
+                                        <td className="px-1 py-1.5 text-center text-xs2 font-bold text-gray-400">{overdueStats.count}</td>
+                                        <td className="px-3 py-1.5 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
-                    </div>
+                    </Card>
                 ) : (
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 flex items-center justify-center py-10">
-                        <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">✓ Sin mora pendiente</p>
-                    </div>
+                    <Card className="flex items-center justify-center py-10">
+                        <p className="text-xs2 font-bold text-emerald-500 uppercase tracking-widest">✓ Sin mora pendiente</p>
+                    </Card>
                 )}
 
                 {/* ── Próximos Vencimientos ── */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <Card className="overflow-hidden p-0">
                     <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-700/30">
-                        <h3 className="text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                        <h3 className="text-xs2 font-bold text-gray-600 dark:text-gray-300 uppercase tracking-caps flex items-center gap-1.5">
                             <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
                             Próximos Vencimientos
                         </h3>
-                        <span className="text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                        <span className="text-xs2 font-bold text-purple-500 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full tabular-nums">
                             {upcomingList.length}
                         </span>
                     </div>
                     {upcomingList.length === 0 ? (
                         <div className="py-8 text-center">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
+                            <p className="text-xs2 font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
                         </div>
                     ) : (
                         <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
                             <table className="w-full border-collapse">
                                 <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
                                     <tr className="border-b border-gray-100 dark:border-slate-700">
-                                        <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1 w-16">Fecha</th>
-                                        <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-2 py-1">Concepto</th>
-                                        <th className="text-right text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-3 py-1">Monto</th>
+                                        <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1 w-16">Fecha</th>
+                                        <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1">Concepto</th>
+                                        <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1">Monto</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {upcomingList.map((item) => (
                                         <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-purple-50/30 dark:hover:bg-purple-900/5 transition-colors cursor-pointer group">
-                                            <td className="px-3 py-1 text-[10px] font-bold text-purple-500 tabular-nums whitespace-nowrap">
+                                            <td className="px-3 py-1 text-xs2 font-bold text-purple-500 tabular-nums whitespace-nowrap">
                                                 {format(parseISO(item.dueDate), 'd MMM', { locale: es })}
                                             </td>
-                                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 font-medium truncate max-w-[250px] group-hover:text-primary transition-colors">{item.title}</td>
-                                            <td className="px-3 py-1 text-right text-[11px] font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                            <td className="px-2 py-1 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[250px] group-hover:text-primary transition-colors">{item.title}</td>
+                                            <td className="px-3 py-1 text-right text-xs font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                     )}
-                </div>
+                </Card>
             </div>
 
             {/* Row 3: Gráficas — 2 columnas */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                 {/* Evolución Semanal */}
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                <Card className="p-4">
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Evolución Semanal</h3>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{format(selectedDate, 'MMMM yyyy', { locale: es })}</p>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Evolución Semanal</h3>
+                            <p className="text-xs2 text-gray-400 mt-0.5">{format(selectedDate, 'MMMM yyyy', { locale: es })}</p>
                         </div>
                     </div>
                     <div className="h-[220px] w-full">
@@ -341,11 +342,11 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </Card>
 
                 {/* Concentración por Categoría */}
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Concentración por Categoría</h3>
+                <Card className="p-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Concentración por Categoría</h3>
                     <div className="h-[220px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
@@ -377,7 +378,7 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </Card>
             </div>
         </div>
     );

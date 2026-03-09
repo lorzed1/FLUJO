@@ -21,7 +21,7 @@ export const KPICard: React.FC<KPICardProps> = ({ label, value, vsLastMonth, vsL
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-1">
                     <div className="flex-1">
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
+                        <p className="text-xs2 font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
                         <p className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-slate-900 dark:text-slate-100 truncate tracking-tight`}>{value}</p>
                     </div>
                     <div className={`p-1.5 rounded-lg ${colorClass} bg-opacity-10 shadow-sm`}>
@@ -30,7 +30,7 @@ export const KPICard: React.FC<KPICardProps> = ({ label, value, vsLastMonth, vsL
                 </div>
 
                 {(vsLastMonth !== undefined || vsLastYear !== undefined) && (
-                    <div className="flex gap-2 text-[10px]">
+                    <div className="flex gap-2 text-xs2">
                         {vsLastMonth !== undefined && (
                             <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md font-medium ${vsLastMonth >= 0 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
                                 {vsLastMonth >= 0 ? <ArrowTrendingUpIcon className="w-3 h-3" /> : <ArrowTrendingDownIcon className="w-3 h-3" />}

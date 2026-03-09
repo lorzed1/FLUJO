@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Column } from '../../../components/ui/SmartDataTable';
 import { budgetService } from '../../../services/budget';
 import { RecurrenceRule, RecurrenceFrequency } from '../../../types/budget';
-import { ArrowPathIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, DocumentDuplicateIcon } from '../../../components/ui/Icons';
 import { CategoryBadge } from '../../../components/ui/CategoryBadge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { RecurrenceRuleFormModal } from '../components/RecurrenceRuleFormModal';
 import { useUI } from '../../../context/UIContext';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { BudgetCategories } from './BudgetCategories';
+import { Spinner } from '../../../components/ui/Spinner';
 import * as XLSX from 'xlsx';
 
 const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = ({ onSwitchToCategories }) => {
@@ -176,10 +177,10 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
     // ... loading state handled same ...
     if (loading) {
         return (
-            <div className="flex h-full items-center justify-center text-slate-400">
-                <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                    <span className="text-sm font-medium">Cargando reglas...</span>
+            <div className="flex h-full items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <Spinner size="lg" />
+                    <span className="text-sm font-semibold text-purple-700 dark:text-purple-400 uppercase tracking-widest">Cargando reglas...</span>
                 </div>
             </div>
         );

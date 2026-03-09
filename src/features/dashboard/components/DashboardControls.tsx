@@ -1,5 +1,6 @@
 import React from 'react';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '../../../components/ui/Icons';
+import { Button } from '../../../components/ui/Button';
 
 interface DashboardControlsProps {
     selectedDate: Date;
@@ -23,7 +24,7 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
         <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5 gap-3">
             <div className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">Período:</span>
+                <span className="text-xs2 font-medium text-slate-500 dark:text-slate-400 uppercase">Período:</span>
                 <span className="text-sm font-bold text-slate-800 dark:text-slate-200 capitalize">
                     {selectedDate.toLocaleDateString('es-CO', { month: 'long' })}
                 </span>
@@ -31,21 +32,21 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
 
             <div className="flex items-center gap-1">
                 {/* Navegación Mes */}
-                <button
+                <Button
+                    variant="icon" size="icon-sm"
                     onClick={() => handleMonthChange(-1)}
-                    className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Mes anterior"
                 >
-                    <ChevronLeftIcon className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-                </button>
+                    <ChevronLeftIcon className="h-3.5 w-3.5" />
+                </Button>
 
-                <button
+                <Button
+                    variant="icon" size="icon-sm"
                     onClick={() => handleMonthChange(1)}
-                    className="p-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
                     title="Mes siguiente"
                 >
-                    <ChevronRightIcon className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-                </button>
+                    <ChevronRightIcon className="h-3.5 w-3.5" />
+                </Button>
 
                 <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
 
@@ -63,12 +64,12 @@ export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDa
                 <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
 
                 {/* Botón Hoy */}
-                <button
+                <Button
+                    variant="primary" size="xs"
                     onClick={() => onDateChange(new Date())}
-                    className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md transition-colors min-h-[28px]"
                 >
                     Hoy
-                </button>
+                </Button>
             </div>
         </div>
     );

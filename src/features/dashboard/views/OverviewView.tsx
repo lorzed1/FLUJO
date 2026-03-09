@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line, Legend } from 'recharts';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, CurrencyDollarIcon, BanknotesIcon, ChartBarIcon } from '../../../components/ui/Icons';
-import { ShoppingCartIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, ExclamationCircleIcon } from '../../../components/ui/Icons';
 import { dashboardService } from '../../../services/dashboardService';
 import { InfoTooltip } from '../components/InfoTooltip';
+import { Card } from '../../../components/ui/Card';
 
 const COLORS = ['#059669', '#e11d48', '#7c3aed', '#d97706']; // emerald-600, rose-600, purple-600, amber-600
 
@@ -141,7 +142,7 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
         <div className="flex h-[400px] items-center justify-center p-6">
             <div className="flex flex-col items-center gap-3">
                 <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-100 border-t-purple-600"></div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">Analizando Datos...</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">Analizando Datos...</p>
             </div>
         </div>
     );
@@ -151,15 +152,15 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
             {/* KPI Grid — animación escalonada */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {kpis.map((kpi, index) => (
-                    <div
+                    <Card
                         key={index}
-                        className="relative group bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 hover:z-20"
+                        className="relative group hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 hover:z-20 p-4"
                         style={{ animationDelay: `${index * 80}ms`, animationFillMode: 'both' }}
                     >
                         <div className="flex justify-between items-start mb-3">
                             <div>
                                 <div className="flex items-center gap-1.5 mb-1">
-                                    <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{kpi.title}</p>
+                                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{kpi.title}</p>
                                     {kpi.tooltip && (
                                         <div className="relative z-50">
                                             <InfoTooltip
@@ -181,16 +182,16 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                         </div>
 
                         <div className="flex items-center justify-between gap-1 overflow-hidden">
-                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${kpi.trend === 'up'
+                            <span className={`flex items-center gap-1 text-xs2 font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${kpi.trend === 'up'
                                 ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
                                 : 'text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400'
                                 }`}>
                                 {kpi.trend === 'up' ? <ArrowTrendingUpIcon className="w-3 h-3 shrink-0" /> : <ArrowTrendingDownIcon className="w-3 h-3 shrink-0" />}
                                 {kpi.change}
                             </span>
-                            <span className="text-[9px] text-gray-400 dark:text-gray-500 truncate">{kpi.period}</span>
+                            <span className="text-2xs text-gray-400 dark:text-gray-500 truncate">{kpi.period}</span>
                         </div>
-                    </div>
+                    </Card>
                 ))}
             </div>
 
@@ -198,11 +199,11 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
                 {/* Yearly Sales and Visits Chart */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm w-full">
+                <Card className="p-4 w-full">
                     <div className="mb-4 flex items-start gap-2">
                         <div>
-                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ventas vs Visitas (Año)</h3>
-                            <p className="text-[10px] text-gray-400 mt-0.5">Evolución mensual</p>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ventas vs Visitas (Año)</h3>
+                            <p className="text-xs2 text-gray-400 mt-0.5">Evolución mensual</p>
                         </div>
                         <InfoTooltip
                             title="Ventas vs Visitas"
@@ -229,14 +230,14 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                             </ComposedChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </Card>
 
                 {/* Yearly Weekly Sales and Visits Chart */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm w-full">
+                <Card className="p-4 w-full">
                     <div className="mb-4 flex items-start gap-2">
                         <div>
-                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ventas vs Visitas (Semanas)</h3>
-                            <p className="text-[10px] text-gray-400 mt-0.5">Evolución semanal</p>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ventas vs Visitas (Semanas)</h3>
+                            <p className="text-xs2 text-gray-400 mt-0.5">Evolución semanal</p>
                         </div>
                         <InfoTooltip
                             title="Ventas vs Visitas SEMANAL"
@@ -263,7 +264,7 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                             </ComposedChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </Card>
 
             </div>
         </div>

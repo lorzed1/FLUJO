@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
 import { SmartDataTable } from '../../../components/ui/SmartDataTable';
-import { TrashIcon, PlusIcon, TagIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, PlusIcon, TagIcon, ArrowPathIcon } from '../../../components/ui/Icons';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { TransactionType } from '../../../types';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface BudgetCategoriesProps {
     hideHeader?: boolean;
@@ -127,7 +128,7 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 sticky top-6">
                         <div className="flex items-center gap-2 mb-1">
                             <PlusIcon className="w-4 h-4 text-primary" />
-                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Nueva Categoría</h3>
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Nueva Categoría</h3>
                         </div>
                         <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2 tracking-tight">Registro Maestro</h4>
                         <p className="text-gray-500 dark:text-gray-400 text-xs mb-6 leading-relaxed">
@@ -135,29 +136,23 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
                         </p>
 
                         <form onSubmit={handleAdd} className="space-y-5">
-                            <div>
-                                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                    Nombre de la Etiqueta
-                                </label>
+                            <FormGroup label="Nombre de la Etiqueta" required>
                                 <Input
                                     type="text"
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
                                     placeholder="Marketing, Nómina, etc."
-                                    className="!h-10 text-[13px] font-medium"
+                                    className="text-sm- font-medium"
                                     required
                                 />
-                            </div>
+                            </FormGroup>
 
-                            <div>
-                                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                    Tipo de Movimiento
-                                </label>
+                            <FormGroup label="Tipo de Movimiento">
                                 <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-slate-900/50 p-1 rounded-lg border border-gray-100 dark:border-slate-800">
                                     <button
                                         type="button"
                                         onClick={() => setNewCategoryType(TransactionType.EXPENSE)}
-                                        className={`px-4 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.EXPENSE
+                                        className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.EXPENSE
                                             ? 'bg-white dark:bg-slate-800 text-rose-600 shadow-sm border border-rose-100 dark:border-rose-900/30'
                                             : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                                             }`}
@@ -168,7 +163,7 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
                                     <button
                                         type="button"
                                         onClick={() => setNewCategoryType(TransactionType.INCOME)}
-                                        className={`px-4 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.INCOME
+                                        className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.INCOME
                                             ? 'bg-white dark:bg-slate-800 text-emerald-600 shadow-sm border border-emerald-100 dark:border-emerald-900/30'
                                             : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                                             }`}
@@ -177,13 +172,13 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
                                         Ingreso
                                     </button>
                                 </div>
-                            </div>
+                            </FormGroup>
 
                             <Button
                                 type="submit"
                                 variant="primary"
                                 disabled={!newCategoryName.trim()}
-                                className="w-full !py-3 font-bold text-[12px] uppercase tracking-wider shadow-lg shadow-indigo-100 dark:shadow-none"
+                                className="w-full !py-3 font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-100 dark:shadow-none"
                             >
                                 <PlusIcon className="w-4 h-4 mr-1" />
                                 Confirmar Registro

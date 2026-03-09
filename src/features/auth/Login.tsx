@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { loginLocal } from '../../services/auth';
+import { FormGroup } from '../../components/ui/FormGroup';
 
 interface LoginProps {
     onLoginSuccess: () => void;
@@ -52,10 +53,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 )}
 
                 <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Usuario
-                        </label>
+                    <FormGroup label="Usuario" required>
                         <input
                             type="text"
                             value={username}
@@ -66,12 +64,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                             disabled={loading}
                             autoFocus
                         />
-                    </div>
+                    </FormGroup>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Contraseña
-                        </label>
+                    <FormGroup label="Contraseña" required>
                         <input
                             type="password"
                             value={password}
@@ -81,7 +76,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                             required
                             disabled={loading}
                         />
-                    </div>
+                    </FormGroup>
 
                     <button
                         type="submit"

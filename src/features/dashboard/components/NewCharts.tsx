@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { formatCurrency } from '../../../components/ui/Input';
 
 const COLORS = {
-    primary: '#4f46e5',
+    primary: '#7511E5',
     secondary: '#10b981',
     tertiary: '#f59e0b',
     danger: '#ef4444',
@@ -48,18 +48,18 @@ export const DailySalesChart: React.FC<DailySalesChartProps> = ({ data, viewMode
     return (
         <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
-                    label={{ value: 'Día del Mes', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: '#6b7280' } }}
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
+                    label={{ value: 'Día del Mes', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: 'var(--chart-text)' } }}
                     padding={{ left: 20, right: 20 }}
                 />
                 <YAxis
                     width={80}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
                     tickFormatter={(val) => viewMode === 'visits' ? val.toString() : formatCurrency(val)}
                 />
                 <Tooltip content={<CustomTooltip valueFormatter={viewMode === 'visits' ? (v) => v.toString() : formatCurrency} />} />
@@ -86,12 +86,12 @@ export const WeeklySalesChart: React.FC<WeeklySalesChartProps> = ({ data, viewMo
     return (
         <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="weekLabel" tick={{ fontSize: 12 }} stroke="#6b7280" padding={{ left: 20, right: 20 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis dataKey="weekLabel" tick={{ fontSize: 12, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" padding={{ left: 20, right: 20 }} />
                 <YAxis
                     width={80}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
                     tickFormatter={(val) => viewMode === 'visits' ? val.toString() : formatCurrency(val)}
                 />
                 <Tooltip content={<CustomTooltip valueFormatter={viewMode === 'visits' ? (v) => v.toString() : formatCurrency} />} />
@@ -137,12 +137,12 @@ export const DayOfWeekByWeekChart: React.FC<DayOfWeekByWeekChartProps> = ({ data
                 barGap={-50}
                 barSize={50}
             >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="dayName" tick={{ fontSize: 11 }} stroke="#6b7280" padding={{ left: 20, right: 20 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis dataKey="dayName" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" padding={{ left: 20, right: 20 }} />
                 <YAxis
                     width={80}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
                     tickFormatter={viewMode === 'visits' ? (val) => val.toString() : formatCurrency}
                 />
                 <Tooltip content={<CustomTooltip valueFormatter={viewMode === 'visits' ? (v) => v.toString() : formatCurrency} />} />
@@ -181,9 +181,9 @@ export const MonthlyYearOverYearChart: React.FC<MonthlyYearOverYearChartProps> =
     return (
         <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#6b7280" padding={{ left: 20, right: 20 }} />
-                <YAxis width={80} tick={{ fontSize: 12 }} stroke="#6b7280" tickFormatter={formatCurrency} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" padding={{ left: 20, right: 20 }} />
+                <YAxis width={80} tick={{ fontSize: 12, fill: 'var(--chart-text)' }} stroke="var(--chart-text)" tickFormatter={formatCurrency} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
 
@@ -279,27 +279,27 @@ export const AvgByDayOfWeekChart: React.FC<AvgByDayOfWeekChartProps> = ({ data, 
     return (
         <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                     dataKey="dayName"
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
-                    label={{ value: 'Día de la Semana', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: '#6b7280' } }}
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
+                    label={{ value: 'Día de la Semana', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: 'var(--chart-text)' } }}
                     padding={{ left: 20, right: 20 }}
                 />
                 <YAxis
                     yAxisId="left"
                     width={80}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
                     tickFormatter={(val) => viewMode === 'visits' ? Math.round(val).toString() : formatCurrency(val)}
                 />
                 {viewMode === 'combined' && (
                     <YAxis
                         yAxisId="right"
                         orientation="right"
-                        tick={{ fontSize: 12 }}
-                        stroke="#6b7280"
+                        tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                        stroke="var(--chart-text)"
                         tickFormatter={(val) => Math.round(val).toString()}
                     />
                 )}
@@ -341,17 +341,17 @@ export const MonthlySummaryChart: React.FC<MonthlySummaryChartProps> = ({ data, 
     return (
         <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                     dataKey="month"
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
                     padding={{ left: 20, right: 20 }}
                 />
                 <YAxis
                     width={80}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
+                    tick={{ fontSize: 12, fill: 'var(--chart-text)' }}
+                    stroke="var(--chart-text)"
                     tickFormatter={(val) => viewMode === 'visits' ? val.toString() : formatCurrency(val)}
                 />
                 <Tooltip content={<CustomTooltip valueFormatter={viewMode === 'visits' ? (v) => v.toString() : formatCurrency} />} />

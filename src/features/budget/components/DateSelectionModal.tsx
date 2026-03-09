@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { CalendarDaysIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { DatePicker } from '../../../components/ui/DatePicker';
+import { Modal } from '../../../components/ui/Modal';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface DateSelectionModalProps {
     isOpen: boolean;
@@ -37,19 +38,13 @@ export const DateSelectionModal: React.FC<DateSelectionModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={onClose}>
-            <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200 overflow-visible"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                        {title}
-                    </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-500 transition-colors">
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </div>
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={title}
+            maxWidth="max-w-sm"
+        >
+            <div className="p-6">
 
                 {description && (
                     <div className="text-slate-600 dark:text-slate-300 text-sm mb-6 leading-relaxed">
@@ -57,10 +52,7 @@ export const DateSelectionModal: React.FC<DateSelectionModalProps> = ({
                     </div>
                 )}
 
-                <div className="mb-6">
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-                        {label}
-                    </label>
+                <FormGroup label={label} className="mb-6">
                     <div className="relative group">
                         <DatePicker
                             value={date}
@@ -69,7 +61,7 @@ export const DateSelectionModal: React.FC<DateSelectionModalProps> = ({
                             required
                         />
                     </div>
-                </div>
+                </FormGroup>
 
                 <div className="flex justify-end gap-3 pt-2">
                     <button
@@ -86,6 +78,6 @@ export const DateSelectionModal: React.FC<DateSelectionModalProps> = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };

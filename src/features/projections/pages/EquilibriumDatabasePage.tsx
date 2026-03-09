@@ -8,6 +8,7 @@ import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { ChartBarIcon, QuestionMarkCircleIcon } from '../../../components/ui/Icons';
 import { DateNavigator } from '../../../components/ui/DateNavigator';
+import { Button } from '../../../components/ui/Button';
 
 // Definición de tipos para la fila de la tabla PE (Semanal)
 interface EquilibriumRow {
@@ -163,7 +164,7 @@ export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = (
             align: 'text-center',
             render: (value: number) => (
                 <div className="flex flex-col gap-1 items-center min-w-[70px]">
-                    <span className={`font-semibold text-[11px] ${value >= 100 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                    <span className={`font-semibold text-xs ${value >= 100 ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
                         {formatPercent(value)}
                     </span>
                     <div className="w-full h-1 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -209,13 +210,14 @@ export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = (
                         />
 
                         {/* Config Button */}
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={() => setIsConfigOpen(true)}
-                            className="h-full flex items-center gap-2 px-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-md hover:bg-slate-50 hover:text-purple-600 text-[13px] font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95"
+                            className="h-10 flex items-center gap-2 px-4 shadow-sm"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                             Configurar
-                        </button>
+                        </Button>
                     </div>
                 }
             />
