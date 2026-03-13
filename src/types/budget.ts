@@ -28,6 +28,7 @@ export interface BudgetCommitment {
     category: string;
     description?: string;
     recurrenceRuleId?: string; // Link a la regla si es generado automáticamente
+    transactionId?: string; // ID de la transacción agrupada (ej. BudgetExecutionLog ID)
     providerName?: string;
     contactInfo?: string; // Email o teléfono para recordatorios
     createdAt: number;

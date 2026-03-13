@@ -16,6 +16,7 @@ export function mapCommitmentFromRow(row: any): BudgetCommitment {
         category: row.category,
         description: row.description,
         recurrenceRuleId: row.recurrence_rule_id,
+        transactionId: row.transaction_id,
         providerName: row.provider_name,
         contactInfo: row.contact_info,
         isProjected: row.is_projected,

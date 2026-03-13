@@ -46,7 +46,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-slate-500">
                         <CalendarDaysIcon className="w-5 h-5" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Contexto Global</span>
+                        <span className="text-xs2 font-semibold uppercase tracking-caps">Contexto Global</span>
                     </div>
 
                     <div className="flex items-center bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-600">

@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import ExcelImportTab from './ExcelImportTab';
 import ArqueosTable, { type ArqueosTableHandle } from './ArqueosTable';
-import TransfersView from './TransfersView';
 import { DatabaseService } from '../../services/database';
 import { tipsService } from '../../services/tipsService';
 import { jsPDF } from 'jspdf';
@@ -97,7 +96,6 @@ const ArqueoPreview: React.FC = () => {
 
     // --- Tab routing ---
     const [activeTab, setActiveTab] = useState<'arqueo' | 'historial'>('arqueo');
-    const [historySubTab, setHistorySubTab] = useState<'cierres' | 'medios'>('cierres');
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -107,11 +105,6 @@ const ArqueoPreview: React.FC = () => {
     useEffect(() => {
         if (location.pathname.includes('/history')) {
             setActiveTab('historial');
-            setHistorySubTab('cierres');
-            setIsDateConfirmed(true);
-        } else if (location.pathname.includes('/transfers')) {
-            setActiveTab('historial');
-            setHistorySubTab('medios');
             setIsDateConfirmed(true);
         } else {
             setActiveTab('arqueo');
@@ -122,8 +115,8 @@ const ArqueoPreview: React.FC = () => {
     const getPageDetails = () => {
         switch (activeTab) {
             case 'historial': return {
-                title: historySubTab === 'cierres' ? 'Historial de Cierres' : 'Medios de Pago',
-                subtitle: historySubTab === 'cierres' ? 'Registro histórico y auditoría' : 'Control de transferencias'
+                title: 'Historial de Cierres',
+                subtitle: 'Registro histórico y auditoría'
             };
             default: return { title: 'Arqueo de Caja', subtitle: 'Formulario de cierre diario' };
         }
@@ -278,7 +271,12 @@ const ArqueoPreview: React.FC = () => {
 
     return (
         <div className={cn("animate-fadeIn", form.isDarkMode ? 'dark' : '')}>
-            <div className="w-full h-full flex flex-col overflow-x-hidden space-y-6 bg-gray-50 dark:bg-slate-900 min-h-full">
+            <div className={cn(
+                "w-full h-full flex flex-col overflow-x-hidden min-h-full",
+                activeTab === 'historial'
+                    ? 'bg-transparent dark:bg-slate-900/20 overflow-hidden'
+                    : 'space-y-6 bg-gray-50 dark:bg-slate-900'
+            )}>
                 {/* Modals */}
                 <PaymentDetailModal
                     isOpen={!!form.activeDetailField}
@@ -311,117 +309,115 @@ const ArqueoPreview: React.FC = () => {
                     onExportPDF={handleExportPDF}
                 />
 
-                <PageHeader
-                    title={pageDetails.title}
-                    breadcrumbs={[
-                        { label: 'Caja', path: '/arqueo' },
-                        { label: pageDetails.title }
-                    ]}
-                    icon={<ClipboardDocumentListIcon className="h-6 w-6" />}
-                    actions={
-                        <div className="flex items-center gap-2">
-
-
-                            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm h-10">
-                                <Button
-                                    variant="ghost" size="sm"
-                                    onClick={() => form.setAlertConfig({
-                                        isOpen: true,
-                                        title: 'Guía Rápida',
-                                        message: '1. Completa la Información General.\n2. Abre la Calculadora de Efectivo para registrar el conteo físico.\n3. Verifica el descuadre y finaliza el arqueo.',
-                                        type: 'info',
-                                        confirmText: 'Entendido',
-                                        showCancel: false
-                                    })}
-                                    className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700"
-                                >
-                                    <InformationCircleIcon className="h-5 w-5" />
-                                </Button>
-                                <Button
-                                    variant="ghost" size="sm"
-                                    onClick={() => form.setIsDarkMode(!form.isDarkMode)}
-                                    className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-yellow-400 dark:hover:bg-slate-700"
-                                >
-                                    {form.isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-                                </Button>
+                <div className={activeTab === 'historial' ? 'px-6 pt-4 shrink-0 mb-4' : ''}>
+                    <PageHeader
+                        title={pageDetails.title}
+                        breadcrumbs={[
+                            { label: 'Caja', path: '/arqueo' },
+                            { label: pageDetails.title }
+                        ]}
+                        icon={<ClipboardDocumentListIcon className="h-6 w-6" />}
+                        actions={
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm h-10">
+                                    <Button
+                                        variant="ghost" size="sm"
+                                        onClick={() => form.setAlertConfig({
+                                            isOpen: true,
+                                            title: 'Guía Rápida',
+                                            message: '1. Completa la Información General.\n2. Abre la Calculadora de Efectivo para registrar el conteo físico.\n3. Verifica el descuadre y finaliza el arqueo.',
+                                            type: 'info',
+                                            confirmText: 'Entendido',
+                                            showCancel: false
+                                        })}
+                                        className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700"
+                                    >
+                                        <InformationCircleIcon className="h-5 w-5" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost" size="sm"
+                                        onClick={() => form.setIsDarkMode(!form.isDarkMode)}
+                                        className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-yellow-400 dark:hover:bg-slate-700"
+                                    >
+                                        {form.isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
-                    }
-                />
+                        }
+                    />
+                </div>
 
-                <div className="mt-4 sm:mt-6">
-                    {activeTab === 'historial' && (
-                        <Card className="overflow-hidden animate-fadeIn" noPadding>
-                            {historySubTab === 'medios' ? (
-                                <TransfersView />
-                            ) : (
-                                <>
-                                    <ArqueosTable
-                                        ref={tableRef}
-                                        arqueos={arqueos}
-                                        onUpdate={onUpdateArqueo}
-                                        onDelete={onDeleteArqueo}
-                                        userRole={userRole}
-                                        onInfoClick={() => setIsInfoOpen(true)}
-                                        extraActions={
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() => form.setShowAccountingWizard(true)}
-                                                    className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 hidden sm:flex"
-                                                    disabled={arqueos.length === 0}
-                                                >
-                                                    <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                                                    Contabilidad
-                                                </Button>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() => form.setShowImportModal(true)}
-                                                    className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 hidden sm:flex"
-                                                >
-                                                    <ArrowUpTrayIcon className="h-3.5 w-3.5" />
-                                                    Importar
-                                                </Button>
-                                            </div>
-                                        }
-                                    />
-                                    <InfoModal
-                                        isOpen={isInfoOpen}
-                                        onClose={() => setIsInfoOpen(false)}
-                                        title="Información de Arqueos"
-                                        definitions={arqueoInfoDefinitions}
-                                    />
-                                    <AccountingExportWizard
-                                        isOpen={form.showAccountingWizard}
-                                        onClose={() => form.setShowAccountingWizard(false)}
-                                        selectedArqueos={arqueos}
-                                    />
-                                    {form.showImportModal && (
-                                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                                            <Card className="w-full max-w-5xl flex flex-col max-h-[85dvh] animate-in zoom-in-95 duration-200 shadow-2xl" noPadding>
-                                                <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                                        <ArrowUpTrayIcon className="h-6 w-6 text-indigo-600" /> Importar Arqueos
-                                                    </h3>
-                                                    <Button variant="ghost" size="sm" onClick={() => form.setShowImportModal(false)} className="h-8 w-8 p-1 text-slate-400 rounded-full">
-                                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                    </Button>
-                                                </div>
-                                                <div className="p-4 sm:p-6 overflow-y-auto">
-                                                    <ExcelImportTab onBatchImport={(rows) => form.handleBatchImport(rows, onSave)} />
-                                                </div>
-                                                <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t flex justify-end">
-                                                    <Button variant="secondary" onClick={() => form.setShowImportModal(false)} className="px-6 py-2 font-semibold">Cerrar</Button>
-                                                </div>
-                                            </Card>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </Card>
-                    )}
+                {activeTab === 'historial' && (
+                    <main className="flex-1 px-4 pb-4 overflow-hidden flex flex-col min-h-0">
+                        <div className="flex-1 flex flex-col font-sans bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden animate-fadeIn">
+                            <ArqueosTable
+                                ref={tableRef}
+                                arqueos={arqueos}
+                                onUpdate={onUpdateArqueo}
+                                onDelete={onDeleteArqueo}
+                                userRole={userRole}
+                                onInfoClick={() => setIsInfoOpen(true)}
+                                extraActions={
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => form.setShowAccountingWizard(true)}
+                                            className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 hidden sm:flex"
+                                            disabled={arqueos.length === 0}
+                                        >
+                                            <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                                            Contabilidad
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => form.setShowImportModal(true)}
+                                            className="h-8 gap-2 bg-white dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 hidden sm:flex"
+                                        >
+                                            <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                                            Importar
+                                        </Button>
+                                    </div>
+                                }
+                            />
+                        </div>
+
+                        <InfoModal
+                            isOpen={isInfoOpen}
+                            onClose={() => setIsInfoOpen(false)}
+                            title="Información de Arqueos"
+                            definitions={arqueoInfoDefinitions}
+                        />
+                        <AccountingExportWizard
+                            isOpen={form.showAccountingWizard}
+                            onClose={() => form.setShowAccountingWizard(false)}
+                            selectedArqueos={arqueos}
+                        />
+                        {form.showImportModal && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                                <Card className="w-full max-w-5xl flex flex-col max-h-[85dvh] animate-in zoom-in-95 duration-200 shadow-2xl" noPadding>
+                                    <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <ArrowUpTrayIcon className="h-6 w-6 text-indigo-600" /> Importar Arqueos
+                                        </h3>
+                                        <Button variant="ghost" size="sm" onClick={() => form.setShowImportModal(false)} className="h-8 w-8 p-1 text-slate-400 rounded-full">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </Button>
+                                    </div>
+                                    <div className="p-4 sm:p-6 overflow-y-auto">
+                                        <ExcelImportTab onBatchImport={(rows) => form.handleBatchImport(rows, onSave)} />
+                                    </div>
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t flex justify-end">
+                                        <Button variant="secondary" onClick={() => form.setShowImportModal(false)} className="px-6 py-2 font-semibold">Cerrar</Button>
+                                    </div>
+                                </Card>
+                            </div>
+                        )}
+                    </main>
+                )}
+
+                <div className={activeTab === 'historial' ? 'hidden' : 'mt-4 sm:mt-6'}>
 
                     {activeTab === 'arqueo' && (
                         <div className="mx-auto w-full lg:max-w-6xl pb-24 px-0 sm:px-0">

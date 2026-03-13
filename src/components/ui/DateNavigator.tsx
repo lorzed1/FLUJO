@@ -103,7 +103,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
                     }
                 `}
             >
-                <span className="text-sm- font-bold uppercase tracking-widest">
+                <span className="text-sm- font-semibold uppercase tracking-caps">
                     {format(value, 'MMMM', { locale: es })}
                 </span>
                 <span className="text-sm- font-bold text-slate-400 dark:text-slate-500">
@@ -128,7 +128,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
             {showToday && !isCurrentMonth && (
                 <button
                     onClick={handleToday}
-                    className="h-10 px-3 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm text-xs font-bold uppercase tracking-widest text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                    className="h-10 px-3 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm text-xs2 font-semibold uppercase tracking-caps text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                 >
                     Hoy
                 </button>

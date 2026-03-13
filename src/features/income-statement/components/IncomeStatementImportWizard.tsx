@@ -358,7 +358,7 @@ export const IncomeStatementImportWizard: React.FC<IncomeStatementImportWizardPr
                                 return (
                                     <span
                                         key={field.key}
-                                        className={`px-3 py-1 rounded-full text-xs2 font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
+                                        className={`px-3 py-1 rounded-full text-xs2 font-semibold uppercase tracking-caps border flex items-center gap-1.5 transition-all ${isMapped ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'}`}
                                     >
                                         {isMapped ? <CheckCircleIcon className="h-3 w-3" /> : <ExclamationTriangleIcon className="h-3 w-3" />}
                                         {field.label}

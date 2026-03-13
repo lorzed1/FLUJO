@@ -145,7 +145,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                             value={formData.title}
                             onChange={e => handleChange('title', e.target.value)}
                             placeholder="Ej: Pago de Arriendo, Nómina, Marketing Digital..."
-                            className="text-sm- font-medium"
+                            className="text-sm-"
                             required
                         />
                     </FormGroup>
@@ -157,7 +157,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                     value={formData.amount}
                                     onChange={val => handleChange('amount', val)}
                                     placeholder="$ 0"
-                                    className="text-sm font-bold"
+                                    className="text-sm- font-semibold"
                                     required
                                 />
                             </FormGroup>
@@ -165,7 +165,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 <DatePicker
                                     value={formData.date}
                                     onChange={val => handleChange('date', val)}
-                                    className="text-sm- font-medium uppercase tracking-tight"
+                                    className="text-sm- font-medium"
                                     required
                                 />
                             </FormGroup>
@@ -175,7 +175,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                             <FormGroup label="Estado del Pago">
                                 <Select
                                     value={formData.status}
-                                    className="text-sm- font-semibold text-slate-600"
+                                    className="text-sm- font-medium text-slate-600"
                                     onChange={e => {
                                         const newStatus = e.target.value;
                                         setFormData(prev => ({
@@ -196,7 +196,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                     <DatePicker
                                         value={formData.paymentDate}
                                         onChange={val => handleChange('paymentDate', val)}
-                                        className="text-sm- font-medium uppercase tracking-tight border-emerald-100 bg-emerald-50/10"
+                                        className="text-sm- font-medium border-emerald-100 bg-emerald-50/10"
                                     />
                                 </FormGroup>
                             ) : (
@@ -222,7 +222,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                             ) : (
                                                 <Select
                                                     value={formData.category}
-                                                    className="text-sm- font-medium text-slate-600"
+                                                    className="text-sm- font-medium"
                                                     onChange={e => handleChange('category', e.target.value)}
                                                     required
                                                 >
@@ -253,11 +253,13 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                         </div>
                     </div>
 
-                    <div className="pt-6 flex justify-between items-center border-t border-gray-50 dark:border-slate-700 mt-4 shrink-0 bg-white dark:bg-slate-800">
+                    <div className="pt-5 flex justify-between items-center border-t border-slate-100 dark:border-slate-700 mt-4 shrink-0 bg-white dark:bg-slate-800">
                         <div className="flex-1">
                             {initialCommitment && initialCommitment.status !== 'paid' && (
-                                <button
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => {
                                         setFormData(prev => ({
                                             ...prev,
@@ -265,11 +267,11 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                             paymentDate: new Date().toISOString().split('T')[0]
                                         }));
                                     }}
-                                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest hover:bg-emerald-50 dark:hover:bg-emerald-900/10 px-3 py-2 rounded-lg transition-colors"
+                                    className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10"
                                 >
                                     <CheckIcon className="w-4 h-4" />
                                     Liquidar Ahora
-                                </button>
+                                </Button>
                             )}
                         </div>
 
@@ -278,14 +280,12 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 type="button"
                                 variant="secondary"
                                 onClick={onClose}
-                                className="!px-6 font-semibold text-xs tracking-wide"
                             >
                                 Cancelar
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="!px-8 font-semibold text-xs tracking-wide shadow-md shadow-purple-500/10"
                             >
                                 {isLoading ? 'Procesando...' : (initialCommitment ? 'Actualizar registro' : 'Confirmar gasto')}
                             </Button>

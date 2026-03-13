@@ -142,7 +142,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                     >
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                <p className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400 mb-1">
                                     {kpi.title}
                                 </p>
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -180,7 +180,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                 {/* Main Graph: Weekly Purchases */}
                 <Card className="flex flex-col min-h-[300px] p-4">
                     <div className="mb-4">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                             Evolución de Compras por Semana
                         </h3>
                     </div>
@@ -236,7 +236,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                 {/* Cumplimiento de Presupuesto — Bullet Chart */}
                 <Card className="flex flex-col p-4">
                     <div className="mb-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                             Cumplimiento de Presupuesto
                         </h3>
                         <p className="text-xs2 text-gray-400 mt-0.5">
@@ -267,7 +267,7 @@ export const PurchasesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }
                 {/* Table Placeholder */}
                 <Card className="flex flex-col min-h-[250px] p-4">
                     <div className="mb-4">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                             Tabla de Detalles
                         </h3>
                     </div>

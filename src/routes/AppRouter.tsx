@@ -11,6 +11,7 @@ const UsersManagementView = lazy(() => import('../features/auth/UsersManagementV
 const Login = lazy(() => import('../features/auth/Login'));
 const ArqueoView = lazy(() => import('../features/cash-flow/ArqueoPreview'));
 const TipsPage = lazy(() => import('../features/cash-flow/pages/TipsPage'));
+const TransfersView = lazy(() => import('../features/cash-flow/TransfersView'));
 
 const RescueData = lazy(() => import('../pages/RescueData'));
 const ButtonDesignPlayground = lazy(() => import('../pages/ButtonDesignPlayground'));
@@ -107,6 +108,9 @@ const AppRouter: React.FC = () => {
                 {/* Arqueo: Accesible para Admin y Cajero */}
                 <Route path="/arqueo/tips" element={
                     <TipsPage />
+                } />
+                <Route path="/arqueo/transfers" element={
+                    <TransfersView />
                 } />
                 <Route path="/arqueo/*" element={
                     <ArqueoView />

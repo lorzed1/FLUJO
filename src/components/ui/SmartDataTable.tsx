@@ -90,7 +90,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             variant="secondary"
                             size="sm"
                             onClick={() => table.setSelectedIds(new Set())}
-                            className="h-6 px-2.5 text-xs font-bold uppercase tracking-wider bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-transparent dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-md"
+                            className="h-6 px-2.5 text-xs2 font-semibold uppercase tracking-caps bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 dark:bg-transparent dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-md"
                         >
                             Desmarcar
                         </Button>
@@ -210,7 +210,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             >
                                 {/* Header fijo — no scrollea */}
                                 <div className="px-2 py-2 border-b border-gray-100 bg-gray-50 sticky top-0">
-                                    <DropdownMenuLabel className="px-0 py-0 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                    <DropdownMenuLabel className="px-0 py-0 text-xs2 font-medium uppercase tracking-caps text-gray-500">
                                         Columnas Visibles
                                     </DropdownMenuLabel>
                                 </div>
@@ -278,7 +278,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                                 <TableHead
                                                     key={col.key}
                                                     className={cn(
-                                                        "text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none",
+                                                        "text-xs2 font-medium uppercase tracking-caps text-gray-400 dark:text-slate-500 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none",
                                                         autoAlign === 'text-right' ? 'text-right' : autoAlign === 'text-center' ? 'text-center' : 'text-left',
                                                         idx === 0 && !enableSelection ? "pl-0 pr-4" : "px-4",
                                                         idx === arr.length - 1 ? "pr-0 pl-4" : "",
@@ -356,7 +356,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                             );
                                         })}
                                         {(props.onDelete || props.onEdit || props.onView) && (
-                                            <TableHead className="w-[100px] text-center text-xs font-semibold uppercase tracking-wider text-gray-400 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none">
+                                            <TableHead className="w-[100px] text-center text-xs2 font-medium uppercase tracking-caps text-gray-400 py-2 bg-transparent border-b border-gray-100 dark:border-slate-700 h-auto sticky top-0 z-20 shadow-none">
                                                 Acciones
                                             </TableHead>
                                         )}

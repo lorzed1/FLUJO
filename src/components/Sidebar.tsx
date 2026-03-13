@@ -146,6 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       path: '/budget',
       children: [
         { id: 'budget-execution', label: 'Pagos semanal', icon: <BanknotesIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/execution' },
+        { id: 'budget-history', label: 'Historial de pagos', icon: <ClockIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/history' },
         { id: 'budget-calendar', label: 'Calendario de gastos', icon: <CalendarIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/calendar' },
         { id: 'budget-recurrent', label: 'Gastos recurrentes', icon: <ArrowPathIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/recurrent' },
         { id: 'budget-list', label: 'BD de gastos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/list' },
@@ -350,24 +351,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
                 <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Design Playground</span>
               </button>
 
-              <button
-                onClick={onExport}
-                className={`flex items-center w-full px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
-                title="Exportar base de datos"
-              >
-                <ArrowUpTrayIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
-                <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Exportar DB</span>
-              </button>
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className={`flex items-center w-full px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
-                title="Importar base de datos"
-              >
-                <ArrowDownTrayIcon className="h-5 w-5 text-slate-500 group-hover:text-white" />
-                <span className={`${textClass} ml-3 text-sm leading-[17.5px] font-normal`}>Importar DB</span>
-              </button>
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
 
               <button
                 onClick={() => {

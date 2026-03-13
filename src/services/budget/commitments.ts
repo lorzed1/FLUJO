@@ -188,6 +188,23 @@ export async function getOverduePendingCommitments(beforeDate: string): Promise<
     }
 }
 
+/** Obtiene compromisos vinculados a una transacción específica (ej. un BudgetExecutionLog) */
+export async function getCommitmentsByTransaction(transactionId: string): Promise<BudgetCommitment[]> {
+    try {
+        const { data: rows, error } = await supabase
+            .from('budget_commitments')
+            .select('*')
+            .eq('transaction_id', transactionId)
+            .order('due_date', { ascending: true });
+
+        if (error) throw error;
+        return (rows || []).map((row: any) => mapCommitmentFromRow(row));
+    } catch (error) {
+        console.error('Error fetching grouped commitments:', error);
+        return [];
+    }
+}
+
 /** Agrega un nuevo compromiso */
 export async function addCommitment(commitment: Omit<BudgetCommitment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
@@ -205,6 +222,7 @@ export async function addCommitment(commitment: Omit<BudgetCommitment, 'id' | 'c
                 category: commitment.category,
                 description: commitment.description || null,
                 recurrence_rule_id: commitment.recurrenceRuleId || null,
+                transaction_id: commitment.transactionId || null,
                 provider_name: commitment.providerName || null,
                 contact_info: commitment.contactInfo || null,
                 is_projected: commitment.isProjected || false,
@@ -239,6 +257,7 @@ export async function updateCommitment(id: string, updates: Partial<BudgetCommit
         if (updates.category !== undefined) mapped.category = updates.category;
         if (updates.description !== undefined) mapped.description = updates.description;
         if (updates.recurrenceRuleId !== undefined) mapped.recurrence_rule_id = updates.recurrenceRuleId;
+        if (updates.transactionId !== undefined) mapped.transaction_id = updates.transactionId;
         if (updates.providerName !== undefined) mapped.provider_name = updates.providerName;
         if (updates.contactInfo !== undefined) mapped.contact_info = updates.contactInfo;
         if (updates.isProjected !== undefined) mapped.is_projected = updates.isProjected;

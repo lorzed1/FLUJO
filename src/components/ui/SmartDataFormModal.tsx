@@ -127,7 +127,7 @@ export function SmartDataFormModal<T extends Record<string, any>>({
                                         <DatePicker
                                             value={val as string || ''}
                                             onChange={v => handleChange(col.key as keyof T, v)}
-                                            className="text-sm- font-medium uppercase tracking-tight"
+                                            className="text-sm- font-medium"
                                         />
                                     ) : (
                                         <Input

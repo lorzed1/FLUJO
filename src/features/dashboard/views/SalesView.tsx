@@ -223,7 +223,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                                     Ventas & Cumplimiento
                                 </p>
                                 <InfoTooltip
@@ -261,7 +261,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                                     Diferencia vs {summary.isCurrentMonth ? 'Fecha' : 'Meta'}
                                 </p>
                                 <InfoTooltip
@@ -289,7 +289,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                                     Total Visitas
                                 </p>
                             </div>
@@ -320,7 +320,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <div className="flex justify-between items-start mb-2">
                         <div>
                             <div className="flex items-center gap-1 mb-1">
-                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <p className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                                     Ticket Promedio
                                 </p>
                             </div>
@@ -355,7 +355,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
             <Card className="p-4">
                 <div className="mb-2 flex justify-between items-center">
                     <div className="flex items-center gap-1">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                             Rendimiento Diario (Ingresos vs Meta vs Visitas)
                         </h3>
                         <InfoTooltip
@@ -465,7 +465,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <div className="mb-3 flex justify-between items-center">
                         <div>
                             <div className="flex items-center gap-1">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">
                                     Cumplimiento Semanal
                                 </h3>
                                 <InfoTooltip
@@ -491,7 +491,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
 
                 {/* Payment Mix — Barra 100% Apilada + Lista */}
                 <Card className="flex flex-col p-4">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                    <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400 mb-3">
                         Mix de Pagos
                     </h3>
 
@@ -544,7 +544,7 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
 
             {/* Top Products Table */}
             <Card className="p-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400 mb-3">
                     Estadísticas - Productos Más Vendidos
                 </h3>
 
@@ -552,10 +552,10 @@ export const SalesView: React.FC<{ selectedDate: Date }> = ({ selectedDate }) =>
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="border-b border-gray-100 dark:border-gray-700">
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Producto</th>
-                                <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Cant.</th>
-                                <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3">Ingresos</th>
-                                <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 px-4 py-3 w-[120px]">Participación</th>
+                                <th className="text-left text-xs2 font-medium uppercase tracking-caps text-gray-400 px-4 py-3">Producto</th>
+                                <th className="text-right text-xs2 font-medium uppercase tracking-caps text-gray-400 px-4 py-3">Cant.</th>
+                                <th className="text-right text-xs2 font-medium uppercase tracking-caps text-gray-400 px-4 py-3">Ingresos</th>
+                                <th className="text-right text-xs2 font-medium uppercase tracking-caps text-gray-400 px-4 py-3 w-[120px]">Participación</th>
                             </tr>
                         </thead>
                         <tbody>

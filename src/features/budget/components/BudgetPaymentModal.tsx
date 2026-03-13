@@ -114,7 +114,7 @@ export const BudgetPaymentModal: React.FC<BudgetPaymentModalProps> = ({
                                 <DatePicker
                                     value={date}
                                     onChange={(val) => setDate(val)}
-                                    className="text-sm- font-medium uppercase tracking-tight !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
+                                    className="text-sm- font-medium !border-gray-300 focus:!ring-purple-600 focus:!border-purple-600"
                                 />
                             </FormGroup>
                         </div>

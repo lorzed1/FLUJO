@@ -317,7 +317,7 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                 <Card className="p-4">
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Evolución Semanal</h3>
+                            <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">Evolución Semanal</h3>
                             <p className="text-xs2 text-gray-400 mt-0.5">{format(selectedDate, 'MMMM yyyy', { locale: es })}</p>
                         </div>
                     </div>
@@ -346,7 +346,7 @@ export const ExpensesView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
 
                 {/* Concentración por Categoría */}
                 <Card className="p-4">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Concentración por Categoría</h3>
+                    <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400 mb-3">Concentración por Categoría</h3>
                     <div className="h-[220px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>

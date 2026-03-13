@@ -126,7 +126,7 @@ export const PurchaseFormModal: React.FC<PurchaseFormModalProps> = ({
                             <DatePicker
                                 value={formData.fecha}
                                 onChange={val => handleChange('fecha', val)}
-                                className="text-sm- font-medium uppercase tracking-tight"
+                                className="text-sm- font-medium"
                                 required
                             />
                         </FormGroup>

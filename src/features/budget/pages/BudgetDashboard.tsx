@@ -209,221 +209,225 @@ export const BudgetDashboard: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-y-auto custom-scrollbar pr-2 pb-10">
-            <PageHeader
-                title="BI Egresos"
-                breadcrumbs={[
-                    { label: 'Egresos', path: '/budget' },
-                    { label: 'Tablero' }
-                ]}
-                icon={<PresentationChartLineIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex items-center gap-2 h-10">
-                        <DateNavigator
-                            value={selectedMonth}
-                            onChange={(newDate) => setSelectedMonth(newDate)}
-                        />
-                        <Button
-                            onClick={() => openForm()}
-                            size="md"
-                        >
-                            <PlusIcon className="w-4 h-4 mr-1.5" />
-                            Nuevo Registro
-                        </Button>
-                    </div>
-                }
-            />
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
+            <div className="px-6 pt-4 shrink-0 mb-4">
+                <PageHeader
+                    title="BI Egresos"
+                    breadcrumbs={[
+                        { label: 'Egresos', path: '/budget' },
+                        { label: 'Tablero' }
+                    ]}
+                    icon={<PresentationChartLineIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex items-center gap-2 h-10">
+                            <DateNavigator
+                                value={selectedMonth}
+                                onChange={(newDate) => setSelectedMonth(newDate)}
+                            />
+                            <Button
+                                onClick={() => openForm()}
+                                size="md"
+                            >
+                                <PlusIcon className="w-4 h-4 mr-1.5" />
+                                Nuevo Registro
+                            </Button>
+                        </div>
+                    }
+                />
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
-                {/* Stats Cards Row */}
-                <div className="lg:col-span-12">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {stats.map((stat) => (
-                            <Card key={stat.name} className="p-5 transition-all hover:shadow-md" noPadding>
-                                <div className="flex items-center justify-between">
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">{formatCurrency(stat.value)}</p>
+            <main className="flex-1 px-4 pb-4 overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Stats Cards Row */}
+                    <div className="lg:col-span-12">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {stats.map((stat) => (
+                                <Card key={stat.name} className="p-5 transition-all hover:shadow-md" noPadding>
+                                    <div className="flex items-center justify-between">
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider leading-none mb-2">{stat.name}</p>
+                                            <p className="text-xl font-bold text-gray-900 dark:text-white tracking-tight truncate">{formatCurrency(stat.value)}</p>
+                                        </div>
+                                        <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.bgDark} shrink-0`}>
+                                            <stat.icon className={`w-5 h-5 ${stat.color} ${stat.colorDark}`} />
+                                        </div>
                                     </div>
-                                    <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.bgDark} shrink-0`}>
-                                        <stat.icon className={`w-5 h-5 ${stat.color} ${stat.colorDark}`} />
-                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="lg:col-span-8 flex flex-col gap-6">
+                        {/* Weekly Bar Chart */}
+                        <Card>
+                            <div className="flex items-center justify-between mb-8">
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Evolución Semanal</h3>
+                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">{format(selectedMonth, 'MMMM yyyy', { locale: es })}</p>
                                 </div>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Main Content Area */}
-                <div className="lg:col-span-8 flex flex-col gap-6">
-                    {/* Weekly Bar Chart */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Evolución Semanal</h3>
-                                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">{format(selectedMonth, 'MMMM yyyy', { locale: es })}</p>
                             </div>
-                        </div>
-                        <div className="h-[300px] w-full mt-2">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `$${val / 1000}k`} />
-                                    <Tooltip
-                                        formatter={(value: number) => [`$${value.toLocaleString()}`, 'Total']}
-                                        labelFormatter={(label, payload) => {
-                                            if (payload && payload.length > 0) {
-                                                return `${label} (${payload[0].payload.fullLabel})`;
-                                            }
-                                            return label;
-                                        }}
-                                        cursor={{ fill: '#f8fafc' }}
-                                        contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                                    />
-                                    <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} fill="#4f46e5" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </Card>
-
-                    {/* Category Distribution */}
-                    <Card>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6">Concentración por Categoría</h3>
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={categoryData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {categoryData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        formatter={(value: number) => [`$${value.toLocaleString()}`, 'Monto']}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                                    />
-                                    <Legend
-                                        layout="vertical"
-                                        verticalAlign="middle"
-                                        align="right"
-                                        formatter={(value) => <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">{value}</span>}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Right Column: Tables */}
-                <div className="lg:col-span-4 flex flex-col gap-4">
-
-                    {/* ── Cartera en Mora ── */}
-                    {overdueStats.count > 0 && (
-                        <Card className="overflow-hidden" noPadding>
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-rose-100 dark:border-rose-900/30 bg-rose-50/60 dark:bg-rose-900/10">
-                                <h3 className="text-xs2 font-bold text-rose-600 uppercase tracking-caps flex items-center gap-1.5">
-                                    <ExclamationCircleIcon className="w-3.5 h-3.5" />
-                                    Cartera en Mora
-                                </h3>
-                                <span className="text-xs2 font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
-                                    {overdueStats.count}
-                                </span>
-                            </div>
-                            <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
-                                <table className="w-full border-collapse">
-                                    <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
-                                        <tr className="border-b border-gray-100 dark:border-slate-700">
-                                            <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Concepto</th>
-                                            <th className="text-center text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5 w-12">Días</th>
-                                            <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {overdueStats.chartData.map((item, idx) => (
-                                            <tr key={`mora-${idx}`} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-rose-50/30 dark:hover:bg-rose-900/5 transition-colors">
-                                                <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px]">{item.name}</td>
-                                                <td className="px-2 py-1.5 text-center">
-                                                    <span className={`text-xs2 font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
-                                                        {item.days}
-                                                    </span>
-                                                </td>
-                                                <td className="px-3 py-1.5 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600">
-                                        <tr>
-                                            <td className="px-3 py-2 text-xs2 font-bold text-gray-500 uppercase tracking-wider">Total</td>
-                                            <td className="px-2 py-2 text-center text-xs2 font-bold text-gray-400">{overdueStats.count}</td>
-                                            <td className="px-3 py-2 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div className="h-[300px] w-full mt-2">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `$${val / 1000}k`} />
+                                        <Tooltip
+                                            formatter={(value: number) => [`$${value.toLocaleString()}`, 'Total']}
+                                            labelFormatter={(label, payload) => {
+                                                if (payload && payload.length > 0) {
+                                                    return `${label} (${payload[0].payload.fullLabel})`;
+                                                }
+                                                return label;
+                                            }}
+                                            cursor={{ fill: '#f8fafc' }}
+                                            contentStyle={{ borderRadius: '8px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                                        />
+                                        <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} fill="#4f46e5" />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         </Card>
-                    )}
 
-                    {/* ── Próximos Vencimientos ── */}
-                    <Card className="overflow-hidden" noPadding>
-                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-700/30">
-                            <h3 className="text-xs2 font-bold text-gray-600 dark:text-gray-300 uppercase tracking-caps flex items-center gap-1.5">
-                                <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
-                                Próximos Vencimientos
-                            </h3>
-                            <span className="text-xs2 font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full tabular-nums">
-                                {upcomingList.length}
-                            </span>
-                        </div>
-                        {upcomingList.length === 0 ? (
-                            <div className="py-8 text-center">
-                                <p className="text-xs2 font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
+                        {/* Category Distribution */}
+                        <Card>
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6">Concentración por Categoría</h3>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={categoryData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {categoryData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value: number) => [`$${value.toLocaleString()}`, 'Monto']}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                                        />
+                                        <Legend
+                                            layout="vertical"
+                                            verticalAlign="middle"
+                                            align="right"
+                                            formatter={(value) => <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">{value}</span>}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
-                        ) : (
-                            <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
-                                <table className="w-full border-collapse">
-                                    <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
-                                        <tr className="border-b border-gray-100 dark:border-slate-700">
-                                            <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5 w-14">Fecha</th>
-                                            <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5">Concepto</th>
-                                            <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {upcomingList.map((item) => (
-                                            <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/5 transition-colors cursor-pointer group">
-                                                <td className="px-3 py-1.5 text-xs2 font-bold text-indigo-500 tabular-nums whitespace-nowrap">
-                                                    {format(parseISO(item.dueDate), 'd MMM', { locale: es })}
-                                                </td>
-                                                <td className="px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px] group-hover:text-primary transition-colors">{item.title}</td>
-                                                <td className="px-3 py-1.5 text-right text-xs font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                        </Card>
+                    </div>
+
+                    {/* Right Column: Tables */}
+                    <div className="lg:col-span-4 flex flex-col gap-4">
+
+                        {/* ── Cartera en Mora ── */}
+                        {overdueStats.count > 0 && (
+                            <Card className="overflow-hidden" noPadding>
+                                <div className="flex items-center justify-between px-4 py-2.5 border-b border-rose-100 dark:border-rose-900/30 bg-rose-50/60 dark:bg-rose-900/10">
+                                    <h3 className="text-xs2 font-bold text-rose-600 uppercase tracking-caps flex items-center gap-1.5">
+                                        <ExclamationCircleIcon className="w-3.5 h-3.5" />
+                                        Cartera en Mora
+                                    </h3>
+                                    <span className="text-xs2 font-bold text-rose-500 bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                                        {overdueStats.count}
+                                    </span>
+                                </div>
+                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
+                                    <table className="w-full border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
+                                            <tr className="border-b border-gray-100 dark:border-slate-700">
+                                                <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Concepto</th>
+                                                <th className="text-center text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5 w-12">Días</th>
+                                                <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {overdueStats.chartData.map((item, idx) => (
+                                                <tr key={`mora-${idx}`} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-rose-50/30 dark:hover:bg-rose-900/5 transition-colors">
+                                                    <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px]">{item.name}</td>
+                                                    <td className="px-2 py-1.5 text-center">
+                                                        <span className={`text-xs2 font-bold tabular-nums ${item.days > 30 ? 'text-rose-600' : 'text-amber-500'}`}>
+                                                            {item.days}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-1.5 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600">
+                                            <tr>
+                                                <td className="px-3 py-2 text-xs2 font-bold text-gray-500 uppercase tracking-wider">Total</td>
+                                                <td className="px-2 py-2 text-center text-xs2 font-bold text-gray-400">{overdueStats.count}</td>
+                                                <td className="px-3 py-2 text-right text-xs font-bold text-rose-600 dark:text-rose-400 tabular-nums">{formatCurrency(overdueStats.total)}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </Card>
                         )}
-                    </Card>
 
-                    {/* Diagnostic Tool */}
-                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 border-dashed">
-                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span>🔍 Diagnóstico</span>
-                        </h3>
-                        <p className="text-xs2 text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
-                            Registro maestro (2024-2027) para conciliación.
-                        </p>
-                        <GhostBuster />
+                        {/* ── Próximos Vencimientos ── */}
+                        <Card className="overflow-hidden" noPadding>
+                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-700/30">
+                                <h3 className="text-xs2 font-bold text-gray-600 dark:text-gray-300 uppercase tracking-caps flex items-center gap-1.5">
+                                    <CalendarDaysIcon className="w-3.5 h-3.5 text-primary" />
+                                    Próximos Vencimientos
+                                </h3>
+                                <span className="text-xs2 font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full tabular-nums">
+                                    {upcomingList.length}
+                                </span>
+                            </div>
+                            {upcomingList.length === 0 ? (
+                                <div className="py-8 text-center">
+                                    <p className="text-xs2 font-bold text-gray-400 uppercase tracking-widest">Sin vencimientos próximos</p>
+                                </div>
+                            ) : (
+                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
+                                    <table className="w-full border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-white dark:bg-slate-800">
+                                            <tr className="border-b border-gray-100 dark:border-slate-700">
+                                                <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5 w-14">Fecha</th>
+                                                <th className="text-left text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-2 py-1.5">Concepto</th>
+                                                <th className="text-right text-xs2 uppercase tracking-wider text-gray-400 font-semibold px-3 py-1.5">Monto</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {upcomingList.map((item) => (
+                                                <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/5 transition-colors cursor-pointer group">
+                                                    <td className="px-3 py-1.5 text-xs2 font-bold text-indigo-500 tabular-nums whitespace-nowrap">
+                                                        {format(parseISO(item.dueDate), 'd MMM', { locale: es })}
+                                                    </td>
+                                                    <td className="px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[180px] group-hover:text-primary transition-colors">{item.title}</td>
+                                                    <td className="px-3 py-1.5 text-right text-xs font-bold text-gray-800 dark:text-white tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Diagnostic Tool */}
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 border-dashed">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <span>🔍 Diagnóstico</span>
+                            </h3>
+                            <p className="text-xs2 text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+                                Registro maestro (2024-2027) para conciliación.
+                            </p>
+                            <GhostBuster />
+                        </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };

@@ -22,6 +22,7 @@ import { getNextDate } from './mappers';
 export const budgetService = {
     // Commitments
     getCommitments: commitments.getCommitments,
+    getCommitmentsByTransaction: commitments.getCommitmentsByTransaction,
     getOverduePendingCommitments: commitments.getOverduePendingCommitments,
     addCommitment: commitments.addCommitment,
     updateCommitment: commitments.updateCommitment,
@@ -44,6 +45,7 @@ export const budgetService = {
     // Execution
     addExecutionLog: execution.addExecutionLog,
     getExecutionLogs: execution.getExecutionLogs,
+    deleteExecutionLog: execution.deleteExecutionLog,
     reconcileTodayLog: execution.reconcileTodayLog,
 
     // Weekly Availability

@@ -17,7 +17,7 @@ module.exports = {
         },
         extend: {
             fontFamily: {
-                sans: ['"Segoe UI"', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
+                sans: ['"Inter"', 'sans-serif'],
             },
             fontSize: {
                 '4xs': ['7px', { lineHeight: '10px' }],

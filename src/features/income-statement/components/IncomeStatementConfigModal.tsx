@@ -141,7 +141,7 @@ export const IncomeStatementConfigModal: React.FC<IncomeStatementConfigModalProp
                 <div className="px-10 py-4 bg-blue-600 dark:bg-blue-500/10 flex items-center justify-between text-white dark:text-blue-400">
                     <div className="flex items-center gap-3">
                         <InformationCircleIcon className="h-5 w-5 shrink-0 animate-pulse" />
-                        <p className="text-xs font-bold uppercase tracking-widest">
+                        <p className="text-xs2 font-semibold uppercase tracking-caps">
                             IMPORTANTE: El sistema agrupa automáticamente los códigos (e.g. 5105 suma todos los 5105XX). Las filas sin código son consideradas totales matemáticos.
                         </p>
                     </div>

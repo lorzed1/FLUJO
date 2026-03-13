@@ -11,6 +11,7 @@ import {
     startOfDay,
     differenceInDays
 } from 'date-fns';
+import { FormGroup } from '../../../components/ui/FormGroup';
 import { es } from 'date-fns/locale';
 import {
     BanknotesIcon,
@@ -204,27 +205,8 @@ const BudgetExecutionContent: React.FC = () => {
                 setAlertModal({ isOpen: false, message: '' });
                 await handleSaveAvailability();
                 try {
-                    const promises = Array.from(selectedIds).map(async (id) => {
-                        const c = commitments.find(x => x.id === id);
-                        if (!c || c.status !== 'pending') return;
-                        if (id.startsWith('projected-')) {
-                            return budgetService.addCommitment({
-                                title: c.title.replace(' (Proyectado)', ''),
-                                amount: c.amount, dueDate: c.dueDate,
-                                status: 'paid', category: c.category,
-                                recurrenceRuleId: c.recurrenceRuleId,
-                                paidDate: format(new Date(), 'yyyy-MM-dd'),
-                                description: c.description
-                            });
-                        }
-                        return budgetService.updateCommitment(id, {
-                            status: 'paid', paidDate: format(new Date(), 'yyyy-MM-dd')
-                        });
-                    });
-                    await Promise.all(promises);
-
                     const startStr = format(startDate, 'yyyy-MM-dd');
-                    await budgetService.addExecutionLog({
+                    const logId = await budgetService.addExecutionLog({
                         executionDate: new Date().toISOString(),
                         weekStartDate: startStr,
                         initialState: {
@@ -240,6 +222,26 @@ const BudgetExecutionContent: React.FC = () => {
                         finalBalance: remainingBalance,
                         itemsCount: selectedIds.size
                     });
+
+                    const promises = Array.from(selectedIds).map(async (id) => {
+                        const c = commitments.find(x => x.id === id);
+                        if (!c || c.status !== 'pending') return;
+                        if (id.startsWith('projected-')) {
+                            return budgetService.addCommitment({
+                                title: c.title.replace(' (Proyectado)', ''),
+                                amount: c.amount, dueDate: c.dueDate,
+                                status: 'paid', category: c.category,
+                                recurrenceRuleId: c.recurrenceRuleId,
+                                paidDate: format(new Date(), 'yyyy-MM-dd'),
+                                description: c.description,
+                                transactionId: logId
+                            });
+                        }
+                        return budgetService.updateCommitment(id, {
+                            status: 'paid', paidDate: format(new Date(), 'yyyy-MM-dd'), transactionId: logId
+                        });
+                    });
+                    await Promise.all(promises);
 
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Pagos registrados y snapshot guardado.' });
                     localStorage.removeItem(`budget_selection_${startStr}`);
@@ -296,8 +298,8 @@ const BudgetExecutionContent: React.FC = () => {
                         </svg>
                     </button>
                     <div className="px-3 text-center min-w-[140px]">
-                        <span className="block text-xs2 text-purple-500 uppercase font-bold tracking-widest leading-tight">Semana</span>
-                        <span className="text-sm- font-bold text-slate-800 dark:text-white">
+                        <span className="block text-xs2 text-purple-500 uppercase font-semibold tracking-caps leading-tight">Semana</span>
+                        <span className="text-sm- font-semibold text-slate-800 dark:text-white">
                             {format(startDate, 'd MMM', { locale: es })} — {format(endDate, 'd MMM', { locale: es })}
                         </span>
                     </div>
@@ -315,35 +317,29 @@ const BudgetExecutionContent: React.FC = () => {
             {/* ── Disponibilidad (Tank) ─ Card Aliaddo ── */}
             <Card className="p-5" noPadding>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 items-end">
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Corriente</label>
+                    <FormGroup label="Cta Corriente">
                         <CurrencyInput value={ctaCorriente} onChange={val => setCtaCorriente(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Ahorros J</label>
+                    </FormGroup>
+                    <FormGroup label="Cta Ahorros J">
                         <CurrencyInput value={ctaAhorrosJ} onChange={val => setCtaAhorrosJ(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Ahorros N</label>
+                    </FormGroup>
+                    <FormGroup label="Cta Ahorros N">
                         <CurrencyInput value={ctaAhorrosN} onChange={val => setCtaAhorrosN(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Cta Nequi</label>
+                    </FormGroup>
+                    <FormGroup label="Cta Nequi">
                         <CurrencyInput value={ctaNequi} onChange={val => setCtaNequi(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Otros Ingresos</label>
+                    </FormGroup>
+                    <FormGroup label="Otros Ingresos">
                         <CurrencyInput value={otrosIngresos} onChange={val => setOtrosIngresos(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
-                    </div>
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Efectivo</label>
+                    </FormGroup>
+                    <FormGroup label="Efectivo">
                         <CurrencyInput value={efectivo} onChange={val => setEfectivo(val.toString())} onBlur={handleSaveAvailability} placeholder="0" />
-                    </div>
+                    </FormGroup>
                     {/* Total disponible - inline summary */}
                     <div className="flex items-center justify-center md:justify-end gap-2 py-1">
                         {isSaving && <ArrowPathIcon className="animate-spin h-3.5 w-3.5 text-purple-600" />}
                         <div className="text-right">
-                            <span className="block text-xs2 text-emerald-600 font-bold uppercase tracking-widest">Disponible</span>
+                            <span className="block text-xs2 text-emerald-600 font-semibold uppercase tracking-caps">Disponible</span>
                             <span className="text-lg font-bold text-emerald-600 font-mono tracking-tight">{fmt(totalAvailable)}</span>
                         </div>
                     </div>
@@ -357,7 +353,7 @@ const BudgetExecutionContent: React.FC = () => {
                 <Card className="lg:col-span-2 overflow-hidden flex flex-col" noPadding>
                     {/* Card Header (Section 5 / Aliaddo) */}
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 flex justify-between items-center">
-                        <h3 className="text-sm font-bold uppercase tracking-wide text-gray-800 dark:text-white">
+                        <h3 className="text-sm- font-semibold uppercase tracking-caps text-gray-800 dark:text-white">
                             Compromisos Pendientes
                         </h3>
                         <div className="flex items-center gap-3">
@@ -382,11 +378,11 @@ const BudgetExecutionContent: React.FC = () => {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 w-10"></th>
-                                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Concepto</th>
-                                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Categoría</th>
-                                    <th className="text-center text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Vencimiento</th>
-                                    <th className="text-right text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Monto</th>
+                                    <th className="text-left text-xs2 font-medium uppercase tracking-caps text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 w-10"></th>
+                                    <th className="text-left text-xs2 font-medium uppercase tracking-caps text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Concepto</th>
+                                    <th className="text-left text-xs2 font-medium uppercase tracking-caps text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Categoría</th>
+                                    <th className="text-center text-xs2 font-medium uppercase tracking-caps text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Vencimiento</th>
+                                    <th className="text-right text-xs2 font-medium uppercase tracking-caps text-gray-400 dark:text-slate-500 py-3 px-4 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">Monto</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -395,7 +391,7 @@ const BudgetExecutionContent: React.FC = () => {
                                         <td colSpan={5} className="py-16 text-center">
                                             <div className="flex flex-col items-center gap-3">
                                                 <Spinner size="md" />
-                                                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-widest">Cargando compromisos...</span>
+                                                <span className="text-xs2 font-medium text-purple-600 dark:text-purple-400 uppercase tracking-caps">Cargando compromisos...</span>
                                             </div>
                                         </td>
                                     </tr>
@@ -536,7 +532,7 @@ const BudgetExecutionContent: React.FC = () => {
                                                 <td className="px-4 py-3 text-sm- font-medium text-gray-500 line-through">{c.title}</td>
                                                 <td className="px-4 py-3 text-sm- text-gray-400">{c.category}</td>
                                                 <td className="px-4 py-3 text-center">
-                                                    <span className="text-xs2 text-green-600 font-bold uppercase tracking-tighter">Liquidado</span>
+                                                    <span className="text-xs2 text-green-600 font-semibold uppercase tracking-caps">Liquidado</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right text-sm- font-bold text-gray-400">{fmt(c.amount)}</td>
                                             </tr>
@@ -551,7 +547,7 @@ const BudgetExecutionContent: React.FC = () => {
                 {/* ── Panel Resumen (Sticky) ── */}
                 <div className="lg:col-span-1">
                     <Card className="sticky top-6 p-6 shadow-lg" noPadding>
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-micro mb-6 flex items-center gap-2">
+                        <h4 className="text-xs2 font-semibold text-gray-400 uppercase tracking-caps mb-6 flex items-center gap-2">
                             <CurrencyDollarIcon className="h-4 w-4" />
                             Resumen de Operación
                         </h4>
@@ -567,7 +563,7 @@ const BudgetExecutionContent: React.FC = () => {
                             </div>
                             <div className="pt-4 border-t border-gray-100 dark:border-slate-700">
                                 <div className="flex justify-between items-end">
-                                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase">Balance Residual</span>
+                                    <span className="text-xs2 font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-caps">Balance Residual</span>
                                     <span className={`text-2xl font-bold font-mono tracking-tighter ${isDeficit ? 'text-red-600' : 'text-emerald-600'}`}>
                                         {fmt(remainingBalance)}
                                     </span>
@@ -577,7 +573,7 @@ const BudgetExecutionContent: React.FC = () => {
 
                         {/* Progreso */}
                         <div className="mb-6">
-                            <div className="flex justify-between text-xs mb-2 font-bold uppercase tracking-wider">
+                            <div className="flex justify-between text-xs2 mb-2 font-semibold uppercase tracking-caps">
                                 <span className="text-gray-400">Uso de recursos</span>
                                 <span className={isDeficit ? 'text-red-500' : 'text-purple-600'}>
                                     {totalAvailable > 0 ? Math.round((totalSelected / totalAvailable) * 100) : 0}%
@@ -628,55 +624,24 @@ const BudgetExecutionContent: React.FC = () => {
    Design System §5: Sub-Navigation en el área de Actions
    ══════════════════════════════════════════════════════════ */
 export const BudgetExecution: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'execution' | 'history'>('execution');
-
     return (
-        <div className="flex flex-col h-full space-y-4">
-            {/* PageHeader con ZONA A: Segmented Control + Week Nav (§5) */}
-            <PageHeader
-                title="Ejecución Presupuestal"
-                breadcrumbs={[
-                    { label: 'Egresos', path: '/budget' },
-                    { label: 'Pagos Semanales' }
-                ]}
-                icon={<BanknotesIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex items-center gap-2 h-10">
-                        {/* Segmented Control – Aliaddo §4 */}
-                        <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-full">
-                            <button
-                                onClick={() => setActiveTab('execution')}
-                                className={`
-                                    flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors border-r border-slate-200 dark:border-slate-700
-                                    ${activeTab === 'execution'
-                                        ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                        : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
-                                    }
-                                `}
-                            >
-                                Pagos Semanal
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('history')}
-                                className={`
-                                    flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors
-                                    ${activeTab === 'history'
-                                        ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                        : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
-                                    }
-                                `}
-                            >
-                                Historial de Pagos
-                            </button>
-                        </div>
-                    </div>
-                }
-            />
-
-            {/* Content */}
-            <div className="flex-1 overflow-hidden h-full">
-                {activeTab === 'execution' ? <BudgetExecutionContent /> : <BudgetHistory hideHeader={false} />}
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
+            {/* PageHeader – SmartDataPage standard padding */}
+            <div className="px-6 pt-4 shrink-0 mb-4">
+                <PageHeader
+                    title="Ejecución Presupuestal"
+                    breadcrumbs={[
+                        { label: 'Egresos', path: '/budget' },
+                        { label: 'Pagos Semanales' }
+                    ]}
+                    icon={<BanknotesIcon className="h-6 w-6" />}
+                />
             </div>
+
+            {/* Content – SmartDataPage standard padding */}
+            <main className="flex-1 px-4 pb-4 overflow-auto flex flex-col min-h-0">
+                <BudgetExecutionContent />
+            </main>
         </div>
     );
 };

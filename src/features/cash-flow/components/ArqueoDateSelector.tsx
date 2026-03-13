@@ -58,7 +58,7 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
                     <div>
                         <label
                             htmlFor="date-selector"
-                            className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1"
+                            className="block text-xs2 font-medium uppercase tracking-caps text-gray-500 dark:text-gray-400 mb-1"
                         >
                             Fecha de Registro
                         </label>

@@ -160,7 +160,7 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                         <div className="flex justify-between items-start mb-3">
                             <div>
                                 <div className="flex items-center gap-1.5 mb-1">
-                                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{kpi.title}</p>
+                                    <p className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">{kpi.title}</p>
                                     {kpi.tooltip && (
                                         <div className="relative z-50">
                                             <InfoTooltip
@@ -202,7 +202,7 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                 <Card className="p-4 w-full">
                     <div className="mb-4 flex items-start gap-2">
                         <div>
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ventas vs Visitas (Año)</h3>
+                            <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">Ventas vs Visitas (Año)</h3>
                             <p className="text-xs2 text-gray-400 mt-0.5">Evolución mensual</p>
                         </div>
                         <InfoTooltip
@@ -236,7 +236,7 @@ export const OverviewView: React.FC<{ selectedDate: Date }> = ({ selectedDate })
                 <Card className="p-4 w-full">
                     <div className="mb-4 flex items-start gap-2">
                         <div>
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ventas vs Visitas (Semanas)</h3>
+                            <h3 className="text-xs2 font-semibold uppercase tracking-caps text-gray-500 dark:text-gray-400">Ventas vs Visitas (Semanas)</h3>
                             <p className="text-xs2 text-gray-400 mt-0.5">Evolución semanal</p>
                         </div>
                         <InfoTooltip

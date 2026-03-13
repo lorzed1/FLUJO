@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { getISOWeek, parseISO } from 'date-fns';
 import {
     ClockIcon,
     ArrowTrendingDownIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    EyeIcon
 } from '../../../components/ui/Icons';
 import { BudgetExecutionLog } from '../../../types/budget';
 import { budgetService } from '../../../services/budget';
@@ -12,6 +14,7 @@ import { Card } from '../../../components/ui/Card';
 import { SmartDataTable, Column } from '../../../components/ui/SmartDataTable';
 import { useUI } from '../../../context/UIContext';
 import { Spinner } from '../../../components/ui/Spinner';
+import { PaymentGroupDetailModal } from '../components/PaymentGroupDetailModal';
 
 interface BudgetHistoryProps {
     hideHeader?: boolean;
@@ -21,7 +24,8 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
     const { setAlertModal } = useUI();
     const [logs, setLogs] = useState<BudgetExecutionLog[]>([]);
     const [loading, setLoading] = useState(false);
-    const [detailLog, setDetailLog] = useState<BudgetExecutionLog | null>(null);
+    const [paymentGroupDetail, setPaymentGroupDetail] = useState<{ id: string, dateText: string } | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const loadLogs = async () => {
         setLoading(true);
@@ -70,6 +74,62 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
         });
     };
 
+    const handleDeleteLog = async (log: BudgetExecutionLog) => {
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Eliminar Registro',
+            message: `¿Estás seguro de eliminar el registro de ejecución de la fecha ${formatCurrency(log.totalPaid)}? Esta acción no se puede deshacer.`,
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                setLoading(true);
+                try {
+                    await budgetService.deleteExecutionLog(log.id);
+                    await loadLogs();
+                    setSelectedIds(prev => {
+                        const next = new Set(prev);
+                        next.delete(log.id);
+                        return next;
+                    });
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registro eliminado exitosamente.' });
+                } catch (error: any) {
+                    console.error("Error deleting log:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: `Error al eliminar el registro: ${error.message || 'Error desconocido'}` });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
+
+    const handleBulkDelete = async (ids: Set<string>) => {
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Eliminar Registros',
+            message: `¿Estás seguro de eliminar los ${ids.size} registros seleccionados? Esta acción no se puede deshacer.`,
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                setAlertModal({ isOpen: false, message: '' });
+                setLoading(true);
+                try {
+                    await Promise.all(Array.from(ids).map(id => budgetService.deleteExecutionLog(id)));
+                    await loadLogs();
+                    setSelectedIds(new Set());
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registros eliminados exitosamente.' });
+                } catch (error: any) {
+                    console.error("Error deleting logs:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: `Error al eliminar registros: ${error.message || 'Error desconocido'}` });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-CO', {
             style: 'currency',
@@ -82,9 +142,9 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
     const columns: Column<BudgetExecutionLog>[] = [
         {
             key: 'executionDate',
-            label: 'Fecha Ejecución',
+            label: 'Fecha',
             sortable: true,
-            width: 'w-32',
+            width: 'w-24',
             render: (value: string) => {
                 try {
                     const parts = value.split('T')[0].split('-');
@@ -94,26 +154,108 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
             }
         },
         {
-            key: 'weekStartDate',
-            label: 'Semana Del',
+            key: 'week_number',
+            label: 'Semana',
             sortable: true,
-            width: 'w-24',
-            render: (value: string) => {
+            width: 'w-20',
+            align: 'text-center',
+            getValue: (item) => {
                 try {
-                    const parts = value.split('T')[0].split('-');
-                    if (parts.length === 3) return <span>{parts[2]}/{parts[1]}/{parts[0]}</span>;
-                } catch (e) { }
-                return <span>{value}</span>;
+                    return getISOWeek(parseISO(item.weekStartDate || item.executionDate));
+                } catch (e) {
+                    return 0;
+                }
+            },
+            render: (_, item) => {
+                try {
+                    const week = getISOWeek(parseISO(item.weekStartDate || item.executionDate));
+                    return <span>{week}</span>;
+                } catch (e) {
+                    return <span>-</span>;
+                }
             }
         },
         {
-            key: 'itemsCount',
-            label: 'Items',
-            align: 'text-center',
+            key: 'cta_corriente',
+            label: 'Cta Corriente',
+            align: 'text-right',
             sortable: true,
-            render: (value: number) => (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-blue-200 bg-blue-50 text-xs2 font-semibold text-blue-600 tracking-widest dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400">
-                    {value} ITEMS
+            getValue: (item) => item.initialState?.ctaCorriente || 0,
+            render: (_, item) => (
+                <span className="tabular-nums">
+                    {formatCurrency(item.initialState?.ctaCorriente || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'cta_ahorros_j',
+            label: 'Cta Ahorros J',
+            align: 'text-right',
+            sortable: true,
+            getValue: (item) => item.initialState?.ctaAhorrosJ || 0,
+            render: (_, item) => (
+                <span className="tabular-nums">
+                    {formatCurrency(item.initialState?.ctaAhorrosJ || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'cta_ahorros_n',
+            label: 'Cta Ahorros N',
+            align: 'text-right',
+            sortable: true,
+            getValue: (item) => item.initialState?.ctaAhorrosN || 0,
+            render: (_, item) => (
+                <span className="tabular-nums">
+                    {formatCurrency(item.initialState?.ctaAhorrosN || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'cta_nequi',
+            label: 'Cta Nequi',
+            align: 'text-right',
+            sortable: true,
+            getValue: (item) => item.initialState?.ctaNequi || 0,
+            render: (_, item) => (
+                <span className="tabular-nums">
+                    {formatCurrency(item.initialState?.ctaNequi || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'efectivo',
+            label: 'Efectivo',
+            align: 'text-right',
+            sortable: true,
+            getValue: (item) => item.initialState?.efectivo || 0,
+            render: (_, item) => (
+                <span className="tabular-nums">
+                    {formatCurrency(item.initialState?.efectivo || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'otros_ingresos',
+            label: 'Otros Ingresos',
+            align: 'text-right',
+            sortable: true,
+            getValue: (item) => item.initialState?.otrosIngresos || 0,
+            render: (_, item) => (
+                <span className="tabular-nums">
+                    {formatCurrency(item.initialState?.otrosIngresos || 0)}
+                </span>
+            )
+        },
+        {
+            key: 'total_disponible',
+            label: 'Total Disponible',
+            align: 'text-right',
+            sortable: true,
+            getValue: (item) => item.initialState?.totalAvailable || 0,
+            render: (_, item) => (
+                <span className="tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(item.initialState?.totalAvailable || 0)}
                 </span>
             )
         },
@@ -123,144 +265,68 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
             align: 'text-right',
             sortable: true,
             render: (value: number) => (
-                <span className="tabular-nums text-rose-600 dark:text-rose-400">
-                    - {formatCurrency(value)}
-                </span>
-            )
-        },
-        {
-            key: 'finalBalance',
-            label: 'Saldo Final',
-            align: 'text-right',
-            sortable: true,
-            render: (value: number) => (
-                <span className={`tabular-nums ${value < 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                <span className="tabular-nums text-rose-600 dark:text-rose-400 font-medium">
                     {formatCurrency(value)}
                 </span>
-            )
-        },
-        {
-            key: 'id',
-            label: 'Detalle',
-            align: 'text-center',
-            width: 'w-16',
-            filterable: false,
-            render: (_, item) => (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDetailLog(item)}
-                    className="p-1 h-6 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-purple-600 dark:text-purple-400 group"
-                    title="Ver saldos iniciales"
-                >
-                    <ClockIcon className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                </Button>
             )
         }
     ];
 
     return (
-        <div className="flex flex-col h-full space-y-6">
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
             {!hideHeader && (
-                <PageHeader
-                    title="Historial de Pagos"
-                    breadcrumbs={[
-                        { label: 'Egresos', path: '/budget' },
-                        { label: 'Historial' }
-                    ]}
-                    icon={<ClockIcon className="h-6 w-6" />}
-                    actions={
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="secondary"
-                                onClick={handleReconcileToday}
-                                className="bg-white border-gray-200 text-gray-600 hover:text-purple-600 hover:border-purple-200"
-                                title="Buscar pagos hechos hoy que no tengan log"
-                            >
-                                <ArrowTrendingDownIcon className="h-4 w-4 mr-2" />
-                                Sincronizar Hoy
-                            </Button>
-                            <Button
-                                onClick={loadLogs}
-                                variant="primary"
-                            >
-                                <ArrowPathIcon className="h-4 w-4 mr-2" />
-                                Actualizar
-                            </Button>
-                        </div>
-                    }
-                />
-            )}
-
-            <Card className="overflow-hidden flex-1 relative flex flex-col" noPadding>
-                {loading && (
-                    <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex justify-center items-center z-20 backdrop-blur-sm">
-                        <Spinner size="md" />
-                    </div>
-                )}
-
-                <SmartDataTable
-                    data={logs}
-                    columns={columns}
-                    enableSearch={true}
-                    enableColumnConfig={true}
-                    enableExport={true}
-                    searchPlaceholder="Buscar por fecha..."
-                    containerClassName="border-none shadow-none"
-                    id="budget-history-table"
-                />
-            </Card>
-
-            {/* Modal de Detalle Manual */}
-            {detailLog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <Card className="w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl" noPadding>
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                            <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2 uppercase tracking-wide">
-                                <ClockIcon className="h-5 w-5 text-purple-600" />
-                                Saldos Iniciales
-                            </h3>
-                            <Button variant="ghost" size="sm" onClick={() => setDetailLog(null)} className="p-1 h-6 w-6 text-gray-400 rounded-full">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </Button>
-                        </div>
-
-                        <div className="p-6 space-y-3">
-                            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Cta Corriente</span>
-                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaCorriente || 0)}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Cta Ahorros J</span>
-                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaAhorrosJ || 0)}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Cta Ahorros N</span>
-                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.ctaAhorrosN || 0)}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-900/30 rounded-lg border border-gray-100 dark:border-slate-700">
-                                <span className="text-xs2 uppercase tracking-wider text-gray-500 font-bold">Efectivo</span>
-                                <span className="font-mono font-bold text-sm- text-gray-900 dark:text-white">{formatCurrency(detailLog.initialState?.efectivo || 0)}</span>
-                            </div>
-                            <div className="mt-4 flex justify-between items-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30 shadow-sm">
-                                <div className="flex flex-col">
-                                    <span className="text-2xs uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-black">Disponibilidad Total</span>
-                                    <span className="text-xs2 text-emerald-600/70 dark:text-emerald-400/50">Al momento del pago</span>
-                                </div>
-                                <span className="font-mono font-black text-lg text-emerald-700 dark:text-emerald-300">
-                                    {formatCurrency(detailLog.initialState?.totalAvailable || 0)}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700 flex justify-end">
-                            <Button variant="secondary" onClick={() => setDetailLog(null)} className="h-9 px-6 text-xs font-bold">
-                                Cerrar
-                            </Button>
-                        </div>
-                    </Card>
+                <div className="px-6 pt-4 shrink-0 mb-4">
+                    <PageHeader
+                        title="Historial de Pagos"
+                        breadcrumbs={[
+                            { label: 'Egresos', path: '/budget' },
+                            { label: 'Historial' }
+                        ]}
+                        icon={<ClockIcon className="h-6 w-6" />}
+                    />
                 </div>
             )}
+
+            <main className="flex-1 px-4 pb-4 overflow-hidden flex flex-col min-h-0">
+                <div className="flex-1 flex flex-col font-sans bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden relative">
+                    {loading && (
+                        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex justify-center items-center z-20 backdrop-blur-sm">
+                            <Spinner size="md" />
+                        </div>
+                    )}
+
+                    <SmartDataTable
+                        data={logs}
+                        columns={columns}
+                        enableSearch={true}
+                        enableColumnConfig={true}
+                        enableExport={true}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onView={(item) => {
+                            let dText = item.executionDate;
+                            try {
+                                const parts = item.executionDate.split('T')[0].split('-');
+                                if (parts.length === 3) dText = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                            } catch (e) { }
+                            setPaymentGroupDetail({ id: item.id, dateText: dText });
+                        }}
+                        onDelete={handleDeleteLog}
+                        onBulkDelete={handleBulkDelete}
+                        searchPlaceholder="Buscar por fecha..."
+                        containerClassName="border-none shadow-none"
+                        id="budget-history-table"
+                    />
+                </div>
+            </main>
+
+            {/* Modal de Detalle de Pagos de la Transacción */}
+            <PaymentGroupDetailModal
+                isOpen={!!paymentGroupDetail}
+                onClose={() => setPaymentGroupDetail(null)}
+                transactionId={paymentGroupDetail?.id || ''}
+                dateText={paymentGroupDetail?.dateText}
+            />
         </div>
     );
 };

@@ -30,7 +30,7 @@ export const IncomeStatementDashboard: React.FC = () => {
                         />
                         <Button
                             variant="primary"
-                            className="!px-4 !text-xs font-bold uppercase tracking-wider shadow-sm"
+                            className="!px-4 !text-xs2 font-semibold uppercase tracking-caps shadow-sm"
                         >
                             <ArrowTrendingUpIcon className="w-4 h-4 mr-1.5" />
                             Generar Reporte

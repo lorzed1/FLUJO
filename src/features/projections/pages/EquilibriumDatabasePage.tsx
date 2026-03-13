@@ -193,48 +193,52 @@ export const EquilibriumDatabasePage: React.FC<EquilibriumDatabasePageProps> = (
     ], []);
 
     return (
-        <div className="flex flex-col space-y-6">
-            <PageHeader
-                title="Punto de Equilibrio (PE)"
-                breadcrumbs={[
-                    { label: 'Proyeccion de ventas', path: '/projections' },
-                    { label: 'Análisis PE (Semanal)' }
-                ]}
-                icon={<ChartBarIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex flex-wrap items-center gap-2 h-10">
-                        {/* Selector de Mes – Aliaddo §4 Z2 */}
-                        <DateNavigator
-                            value={currentDate}
-                            onChange={setCurrentDate}
-                        />
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
+            <div className="px-6 pt-4 shrink-0 mb-4">
+                <PageHeader
+                    title="Punto de Equilibrio (PE)"
+                    breadcrumbs={[
+                        { label: 'Proyeccion de ventas', path: '/projections' },
+                        { label: 'Análisis PE (Semanal)' }
+                    ]}
+                    icon={<ChartBarIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex flex-wrap items-center gap-2 h-10">
+                            {/* Selector de Mes – Aliaddo §4 Z2 */}
+                            <DateNavigator
+                                value={currentDate}
+                                onChange={setCurrentDate}
+                            />
 
-                        {/* Config Button */}
-                        <Button
-                            variant="secondary"
-                            onClick={() => setIsConfigOpen(true)}
-                            className="h-10 flex items-center gap-2 px-4 shadow-sm"
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                            Configurar
-                        </Button>
-                    </div>
-                }
-            />
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
-                <SmartDataTable
-                    id="equilibrium-table"
-                    data={data}
-                    columns={columns}
-                    enableColumnConfig={true}
-                    enableExport={true}
-                    enableSelection={true}
-                    onInfoClick={() => setIsHelpOpen(true)}
-                    searchPlaceholder="Buscar semana..."
-                    containerClassName="border-none shadow-none"
+                            {/* Config Button */}
+                            <Button
+                                variant="secondary"
+                                onClick={() => setIsConfigOpen(true)}
+                                className="h-10 flex items-center gap-2 px-4 shadow-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                                Configurar
+                            </Button>
+                        </div>
+                    }
                 />
             </div>
+
+            <main className="flex-1 px-4 pb-4 overflow-hidden flex flex-col min-h-0">
+                <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col relative min-h-[400px]">
+                    <SmartDataTable
+                        id="equilibrium-table"
+                        data={data}
+                        columns={columns}
+                        enableColumnConfig={true}
+                        enableExport={true}
+                        enableSelection={true}
+                        onInfoClick={() => setIsHelpOpen(true)}
+                        searchPlaceholder="Buscar semana..."
+                        containerClassName="border-none shadow-none"
+                    />
+                </div>
+            </main>
         </div>
     );
 };

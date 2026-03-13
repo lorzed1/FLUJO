@@ -210,7 +210,7 @@ export const ProjectionsDashboardPage: React.FC<ProjectionsDashboardProps> = ({
                 <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1.5 rounded-xl shadow-inner mx-auto border border-slate-200 dark:border-slate-700">
                     <button
                         onClick={() => setDashboardMode('statistical')}
-                        className={`px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${dashboardMode === 'statistical'
+                        className={`px-6 py-2 rounded-lg text-xs2 font-semibold uppercase tracking-caps transition-all ${dashboardMode === 'statistical'
                             ? 'bg-white dark:bg-slate-700 text-purple-600 shadow-sm transform scale-[1.02]'
                             : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
@@ -219,7 +219,7 @@ export const ProjectionsDashboardPage: React.FC<ProjectionsDashboardProps> = ({
                     </button>
                     <button
                         onClick={() => setDashboardMode('financial')}
-                        className={`px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${dashboardMode === 'financial'
+                        className={`px-6 py-2 rounded-lg text-xs2 font-semibold uppercase tracking-caps transition-all ${dashboardMode === 'financial'
                             ? 'bg-emerald-500 text-white shadow-sm transform scale-[1.02]'
                             : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}

@@ -53,9 +53,9 @@ export const ProjectionsView: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col font-sans">
+        <div className="flex flex-col font-sans h-full">
             {/* Area de Contenido - Delegada a las páginas para consistencia de Layout */}
-            <div className="relative">
+            <div className="relative flex-1 min-h-0">
                 <Routes>
                     <Route index element={<Navigate to="calendar" replace />} />
 

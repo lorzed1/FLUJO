@@ -97,111 +97,115 @@ export const BudgetCategories: React.FC<BudgetCategoriesProps> = ({ hideHeader =
     ], [deleteCategory, setAlertModal]);
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
             {!hideHeader && (
-                <PageHeader
-                    title="Categorías"
-                    breadcrumbs={[
-                        { label: 'Egresos', path: '/budget' },
-                        { label: 'Categorías' }
-                    ]}
-                    icon={<TagIcon className="h-6 w-6" />}
-                    actions={
-                        onSwitchToRecurrentes ? (
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={onSwitchToRecurrentes}
-                                className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700"
-                            >
-                                <ArrowPathIcon className="w-3.5 h-3.5 mr-2" />
-                                Gastos Recurrentes
-                            </Button>
-                        ) : undefined
-                    }
-                />
+                <div className="px-6 pt-4 shrink-0 mb-4">
+                    <PageHeader
+                        title="Categorías"
+                        breadcrumbs={[
+                            { label: 'Egresos', path: '/budget' },
+                            { label: 'Categorías' }
+                        ]}
+                        icon={<TagIcon className="h-6 w-6" />}
+                        actions={
+                            onSwitchToRecurrentes ? (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={onSwitchToRecurrentes}
+                                    className="bg-white border-gray-200 hover:bg-gray-50 text-gray-700"
+                                >
+                                    <ArrowPathIcon className="w-3.5 h-3.5 mr-2" />
+                                    Gastos Recurrentes
+                                </Button>
+                            ) : undefined
+                        }
+                    />
+                </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Panel lateral de creación */}
-                <div className="lg:col-span-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 sticky top-6">
-                        <div className="flex items-center gap-2 mb-1">
-                            <PlusIcon className="w-4 h-4 text-primary" />
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Nueva Categoría</h3>
-                        </div>
-                        <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2 tracking-tight">Registro Maestro</h4>
-                        <p className="text-gray-500 dark:text-gray-400 text-xs mb-6 leading-relaxed">
-                            Añade etiquetas para clasificar compromisos de pago y fuentes de ingreso.
-                        </p>
+            <main className="flex-1 px-4 pb-4 overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Panel lateral de creación */}
+                    <div className="lg:col-span-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 sticky top-6">
+                            <div className="flex items-center gap-2 mb-1">
+                                <PlusIcon className="w-4 h-4 text-primary" />
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Nueva Categoría</h3>
+                            </div>
+                            <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-2 tracking-tight">Registro Maestro</h4>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs mb-6 leading-relaxed">
+                                Añade etiquetas para clasificar compromisos de pago y fuentes de ingreso.
+                            </p>
 
-                        <form onSubmit={handleAdd} className="space-y-5">
-                            <FormGroup label="Nombre de la Etiqueta" required>
-                                <Input
-                                    type="text"
-                                    value={newCategoryName}
-                                    onChange={(e) => setNewCategoryName(e.target.value)}
-                                    placeholder="Marketing, Nómina, etc."
-                                    className="text-sm- font-medium"
-                                    required
+                            <form onSubmit={handleAdd} className="space-y-5">
+                                <FormGroup label="Nombre de la Etiqueta" required>
+                                    <Input
+                                        type="text"
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder="Marketing, Nómina, etc."
+                                        className="text-sm- font-medium"
+                                        required
+                                    />
+                                </FormGroup>
+
+                                <FormGroup label="Tipo de Movimiento">
+                                    <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-slate-900/50 p-1 rounded-lg border border-gray-100 dark:border-slate-800">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewCategoryType(TransactionType.EXPENSE)}
+                                            className={`px-4 py-2 rounded-md text-xs2 font-semibold uppercase tracking-caps transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.EXPENSE
+                                                ? 'bg-white dark:bg-slate-800 text-rose-600 shadow-sm border border-rose-100 dark:border-rose-900/30'
+                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                                }`}
+                                        >
+                                            <div className={`w-1.5 h-1.5 rounded-full ${newCategoryType === TransactionType.EXPENSE ? 'bg-rose-500' : 'bg-gray-300'}`} />
+                                            Gasto
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewCategoryType(TransactionType.INCOME)}
+                                            className={`px-4 py-2 rounded-md text-xs2 font-semibold uppercase tracking-caps transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.INCOME
+                                                ? 'bg-white dark:bg-slate-800 text-emerald-600 shadow-sm border border-emerald-100 dark:border-emerald-900/30'
+                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                                }`}
+                                        >
+                                            <div className={`w-1.5 h-1.5 rounded-full ${newCategoryType === TransactionType.INCOME ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                            Ingreso
+                                        </button>
+                                    </div>
+                                </FormGroup>
+
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    disabled={!newCategoryName.trim()}
+                                    className="w-full !py-3 font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-100 dark:shadow-none"
+                                >
+                                    <PlusIcon className="w-4 h-4 mr-1" />
+                                    Confirmar Registro
+                                </Button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* Tabla de resultados */}
+                    <div className="lg:col-span-8">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[500px] flex flex-col">
+                            <div className="flex-1">
+                                <SmartDataTable
+                                    data={categories}
+                                    columns={columns}
+                                    enableSearch={true}
+                                    searchPlaceholder="Filtrar por nombre o tipo..."
+                                    id="budget-categories"
                                 />
-                            </FormGroup>
-
-                            <FormGroup label="Tipo de Movimiento">
-                                <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-slate-900/50 p-1 rounded-lg border border-gray-100 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewCategoryType(TransactionType.EXPENSE)}
-                                        className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.EXPENSE
-                                            ? 'bg-white dark:bg-slate-800 text-rose-600 shadow-sm border border-rose-100 dark:border-rose-900/30'
-                                            : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                                            }`}
-                                    >
-                                        <div className={`w-1.5 h-1.5 rounded-full ${newCategoryType === TransactionType.EXPENSE ? 'bg-rose-500' : 'bg-gray-300'}`} />
-                                        Gasto
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewCategoryType(TransactionType.INCOME)}
-                                        className={`px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${newCategoryType === TransactionType.INCOME
-                                            ? 'bg-white dark:bg-slate-800 text-emerald-600 shadow-sm border border-emerald-100 dark:border-emerald-900/30'
-                                            : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                                            }`}
-                                    >
-                                        <div className={`w-1.5 h-1.5 rounded-full ${newCategoryType === TransactionType.INCOME ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                                        Ingreso
-                                    </button>
-                                </div>
-                            </FormGroup>
-
-                            <Button
-                                type="submit"
-                                variant="primary"
-                                disabled={!newCategoryName.trim()}
-                                className="w-full !py-3 font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-100 dark:shadow-none"
-                            >
-                                <PlusIcon className="w-4 h-4 mr-1" />
-                                Confirmar Registro
-                            </Button>
-                        </form>
-                    </div>
-                </div>
-
-                {/* Tabla de resultados */}
-                <div className="lg:col-span-8">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[500px] flex flex-col">
-                        <div className="flex-1">
-                            <SmartDataTable
-                                data={categories}
-                                columns={columns}
-                                enableSearch={true}
-                                searchPlaceholder="Filtrar por nombre o tipo..."
-                                id="budget-categories"
-                            />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };

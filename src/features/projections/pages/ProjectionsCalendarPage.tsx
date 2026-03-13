@@ -50,74 +50,78 @@ export const ProjectionsCalendarPage: React.FC<ProjectionsCalendarPageProps> = (
     }, [expenseProjections]);
 
     return (
-        <div className="flex flex-col space-y-6">
-            <PageHeader
-                title="Calendario de Metas de Venta"
-                breadcrumbs={[
-                    { label: 'Proyección de ventas', path: '/projections' },
-                    { label: 'Calendario' }
-                ]}
-                icon={<CalendarIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex flex-wrap items-center gap-3 h-10">
-                        {/* Indicadores de Categoría – Aliaddo §4 Z1 (Contextual) */}
-                        <div className="hidden xl:flex items-center gap-4 px-4 h-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md">
-                            {[
-                                { dot: 'bg-amber-400', label: 'Quincenal' },
-                                { dot: 'bg-red-400', label: 'Festivo' },
-                                { dot: 'bg-purple-400', label: 'Evento' },
-                            ].map(item => (
-                                <span key={item.label} className="flex items-center gap-1.5 text-xs2 font-bold text-slate-400 uppercase tracking-widest">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
-                                    {item.label}
-                                </span>
-                            ))}
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
+            <div className="px-6 pt-4 shrink-0 mb-4">
+                <PageHeader
+                    title="Calendario de Metas de Venta"
+                    breadcrumbs={[
+                        { label: 'Proyección de ventas', path: '/projections' },
+                        { label: 'Calendario' }
+                    ]}
+                    icon={<CalendarIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex flex-wrap items-center gap-3 h-10">
+                            {/* Indicadores de Categoría – Aliaddo §4 Z1 (Contextual) */}
+                            <div className="hidden xl:flex items-center gap-4 px-4 h-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-md">
+                                {[
+                                    { dot: 'bg-amber-400', label: 'Quincenal' },
+                                    { dot: 'bg-red-400', label: 'Festivo' },
+                                    { dot: 'bg-purple-400', label: 'Evento' },
+                                ].map(item => (
+                                    <span key={item.label} className="flex items-center gap-1.5 text-xs2 font-bold text-slate-400 uppercase tracking-widest">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${item.dot}`} />
+                                        {item.label}
+                                    </span>
+                                ))}
+                            </div>
+
+                            {/* Selector de Mes – Aliaddo §4 Z2 (Centro) */}
+                            <DateNavigator
+                                value={currentDate}
+                                onChange={setCurrentDate}
+                            />
+
+                            {/* Botones de Acción – Aliaddo §4 Z3 (Derecha) */}
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setIsConfigOpen(true)}
+                                    className="h-10 flex items-center gap-2 px-4 shadow-sm"
+                                    title="Configuración de metas"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                                    <span>Configurar</span>
+                                </Button>
+
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setIsHelpOpen(true)}
+                                    className="h-10 w-10 flex items-center justify-center p-0 shadow-sm"
+                                    title="Ayuda"
+                                >
+                                    <QuestionMarkCircleIcon className="h-5 w-5" />
+                                </Button>
+                            </div>
                         </div>
-
-                        {/* Selector de Mes – Aliaddo §4 Z2 (Centro) */}
-                        <DateNavigator
-                            value={currentDate}
-                            onChange={setCurrentDate}
-                        />
-
-                        {/* Botones de Acción – Aliaddo §4 Z3 (Derecha) */}
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="secondary"
-                                onClick={() => setIsConfigOpen(true)}
-                                className="h-10 flex items-center gap-2 px-4 shadow-sm"
-                                title="Configuración de metas"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                                <span>Configurar</span>
-                            </Button>
-
-                            <Button
-                                variant="secondary"
-                                onClick={() => setIsHelpOpen(true)}
-                                className="h-10 w-10 flex items-center justify-center p-0 shadow-sm"
-                                title="Ayuda"
-                            >
-                                <QuestionMarkCircleIcon className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    </div>
-                }
-            />
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 flex flex-col">
-                <ProjectionsCalendar
-                    currentDate={currentDate}
-                    events={events}
-                    calculatedProjections={calculatedProjections}
-                    financialProjections={financialProjections}
-                    storedProjections={storedProjections}
-                    realSales={realSales}
-                    loading={loading}
-                    onAddEvent={onAddEvent}
-                    onDeleteEvent={onDeleteEvent}
+                    }
                 />
             </div>
+
+            <main className="flex-1 px-4 pb-4 overflow-hidden flex flex-col min-h-0">
+                <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 flex flex-col min-h-[500px]">
+                    <ProjectionsCalendar
+                        currentDate={currentDate}
+                        events={events}
+                        calculatedProjections={calculatedProjections}
+                        financialProjections={financialProjections}
+                        storedProjections={storedProjections}
+                        realSales={realSales}
+                        loading={loading}
+                        onAddEvent={onAddEvent}
+                        onDeleteEvent={onDeleteEvent}
+                    />
+                </div>
+            </main>
         </div>
     );
 };

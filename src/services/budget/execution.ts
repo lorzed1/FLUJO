@@ -56,6 +56,20 @@ export async function getExecutionLogs(): Promise<BudgetExecutionLog[]> {
     }
 }
 
+/** Elimina un log de ejecución */
+export async function deleteExecutionLog(id: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('budget_execution_logs')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+    } catch (error) {
+        console.error('Error deleting execution log:', error);
+        throw error;
+    }
+}
+
 // ============================================
 // Weekly Availability
 // ============================================

@@ -323,11 +323,11 @@ export const PurchaseImportWizard: React.FC<PurchaseImportWizardProps> = ({ onBa
                     <div className="flex gap-4">
                         <div className="flex-1 bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
                             <div className="text-2xl font-bold text-primary">{parsedRows.length}</div>
-                            <div className="text-xs2 font-bold uppercase tracking-widest text-primary/70">Registros Listos</div>
+                            <div className="text-xs2 font-semibold uppercase tracking-caps text-primary/70">Registros Listos</div>
                         </div>
                         <div className="flex-1 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 text-center">
                             <div className="text-lg font-bold text-blue-700 dark:text-blue-400">Importador Universal</div>
-                            <div className="text-xs2 font-bold uppercase tracking-widest text-blue-600/70">Modo Sin Restricciones</div>
+                            <div className="text-xs2 font-semibold uppercase tracking-caps text-blue-600/70">Modo Sin Restricciones</div>
                         </div>
                     </div>
 

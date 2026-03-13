@@ -254,210 +254,214 @@ export const BudgetCalendar: React.FC = () => {
     }), [openForm, onSelectEvent, setPaymentModal]);
 
     return (
-        <div className="flex flex-col h-full">
-            <PageHeader
-                title="Calendario de pagos"
-                breadcrumbs={[
-                    { label: 'Egresos', path: '/budget' },
-                    { label: 'Calendario' }
-                ]}
-                icon={<CalendarDaysIcon className="h-6 w-6" />}
-                actions={
-                    <div className="flex flex-wrap items-center gap-4 h-10">
-                        {/* Segmented Control Mes/Semana – Aliaddo §4 Z1 (View Modes) */}
-                        <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-full">
-                            <button
-                                onClick={() => setView('month')}
-                                className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors border-r border-slate-200 dark:border-slate-700 ${view === 'month'
-                                    ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                    : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
-                                    }`}
+        <div className="flex flex-col h-full bg-transparent dark:bg-slate-900/20 overflow-hidden">
+            <div className="px-6 pt-4 shrink-0 mb-4">
+                <PageHeader
+                    title="Calendario de pagos"
+                    breadcrumbs={[
+                        { label: 'Egresos', path: '/budget' },
+                        { label: 'Calendario' }
+                    ]}
+                    icon={<CalendarDaysIcon className="h-6 w-6" />}
+                    actions={
+                        <div className="flex flex-wrap items-center gap-4 h-10">
+                            {/* Segmented Control Mes/Semana – Aliaddo §4 Z1 (View Modes) */}
+                            <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm overflow-hidden h-full">
+                                <button
+                                    onClick={() => setView('month')}
+                                    className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors border-r border-slate-200 dark:border-slate-700 ${view === 'month'
+                                        ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                        : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Mes
+                                </button>
+                                <button
+                                    onClick={() => setView('week')}
+                                    className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors ${view === 'week'
+                                        ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                                        : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Semana
+                                </button>
+                            </div>
+
+                            {/* Selector de Fecha Aliaddo §4 Z2 (Centro/Filtro Temporal) */}
+                            <DateNavigator
+                                value={date}
+                                onChange={(newDate) => setDate(newDate)}
+                            />
+
+                            {/* Botón Primario – Aliaddo §3/§4 Z3 (Acciones) */}
+                            <Button
+                                onClick={() => openForm(date)}
+                                variant="primary"
+                                size="md"
                             >
-                                Mes
-                            </button>
-                            <button
-                                onClick={() => setView('week')}
-                                className={`flex items-center justify-center px-4 h-full text-sm- font-semibold transition-colors ${view === 'week'
-                                    ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                                    : 'bg-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700'
-                                    }`}
-                            >
-                                Semana
-                            </button>
+                                <PlusIcon className="h-4 w-4 mr-1.5" />
+                                Registrar Gasto
+                            </Button>
                         </div>
+                    }
+                />
+            </div>
 
-                        {/* Selector de Fecha Aliaddo §4 Z2 (Centro/Filtro Temporal) */}
-                        <DateNavigator
-                            value={date}
-                            onChange={(newDate) => setDate(newDate)}
-                        />
-
-                        {/* Botón Primario – Aliaddo §3/§4 Z3 (Acciones) */}
-                        <Button
-                            onClick={() => openForm(date)}
-                            variant="primary"
-                            size="md"
-                        >
-                            <PlusIcon className="h-4 w-4 mr-1.5" />
-                            Registrar Gasto
-                        </Button>
-                    </div>
-                }
-            />
-
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 overflow-visible flex flex-col mt-2">
-                <style>{`
+            <main className="flex-1 px-4 pb-4 overflow-hidden flex flex-col min-h-0">
+                <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 overflow-visible flex flex-col relative">
+                    <style>{`
                     .rbc-calendar { font-family: inherit; }
                     .rbc-time-view { border: none; }
                     .rbc-time-content { border-top: 1px solid #f1f5f9; }
                 `}</style>
-                <div className="flex-1 relative overflow-auto">
-                    <div className="flex flex-col h-full min-w-[800px]">
-                        {/* Header Días Semana – Aliaddo §4 Style */}
-                        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700">
-                            {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => (
-                                <div key={day} className="py-2.5 text-xs2 font-bold text-slate-400 uppercase tracking-spread text-center">
-                                    {day}
-                                </div>
-                            ))}
-                        </div>
+                    <div className="flex-1 relative overflow-auto">
+                        <div className="flex flex-col h-full min-w-[800px]">
+                            {/* Header Días Semana – Aliaddo §4 Style */}
+                            <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-700">
+                                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((day) => (
+                                    <div key={day} className="py-2.5 text-xs2 font-bold text-slate-400 uppercase tracking-spread text-center">
+                                        {day}
+                                    </div>
+                                ))}
+                            </div>
 
-                        {/* Grid Días */}
-                        <div className="grid grid-cols-7 auto-rows-auto bg-slate-200 dark:bg-slate-700 gap-px border border-slate-200 dark:border-slate-700">
-                            {(() => {
-                                let days: Date[] = [];
-                                if (view === 'month') {
-                                    const startMonth = startOfMonth(date);
-                                    const endMonth = endOfMonth(date);
-                                    const startDate = startOfWeek(startMonth, { weekStartsOn: 1 });
-                                    const endDate = endOfWeek(endMonth, { weekStartsOn: 1 });
+                            {/* Grid Días */}
+                            <div className="grid grid-cols-7 auto-rows-auto bg-slate-200 dark:bg-slate-700 gap-px border border-slate-200 dark:border-slate-700">
+                                {(() => {
+                                    let days: Date[] = [];
+                                    if (view === 'month') {
+                                        const startMonth = startOfMonth(date);
+                                        const endMonth = endOfMonth(date);
+                                        const startDate = startOfWeek(startMonth, { weekStartsOn: 1 });
+                                        const endDate = endOfWeek(endMonth, { weekStartsOn: 1 });
 
-                                    let day = startDate;
-                                    while (day <= endDate) {
-                                        days.push(day);
-                                        day = addDays(day, 1);
+                                        let day = startDate;
+                                        while (day <= endDate) {
+                                            days.push(day);
+                                            day = addDays(day, 1);
+                                        }
+                                    } else {
+                                        // Vista Semana: 7 días exactos
+                                        const startDate = startOfWeek(date, { weekStartsOn: 1 });
+                                        for (let i = 0; i < 7; i++) {
+                                            days.push(addDays(startDate, i));
+                                        }
                                     }
-                                } else {
-                                    // Vista Semana: 7 días exactos
-                                    const startDate = startOfWeek(date, { weekStartsOn: 1 });
-                                    for (let i = 0; i < 7; i++) {
-                                        days.push(addDays(startDate, i));
-                                    }
-                                }
 
-                                return days.map((dayItem, idx) => {
-                                    const dayEvents = events.filter(e => isSameDay(e.start, dayItem));
-                                    const isCurrentMonth = isSameMonth(dayItem, date);
-                                    const isSelectedMonth = view === 'month' ? isCurrentMonth : true;
-                                    const isToday = isSameDay(dayItem, new Date());
-                                    const dailyTotal = dayEvents.reduce((sum, e) => sum + e.resource.amount, 0);
+                                    return days.map((dayItem, idx) => {
+                                        const dayEvents = events.filter(e => isSameDay(e.start, dayItem));
+                                        const isCurrentMonth = isSameMonth(dayItem, date);
+                                        const isSelectedMonth = view === 'month' ? isCurrentMonth : true;
+                                        const isToday = isSameDay(dayItem, new Date());
+                                        const dailyTotal = dayEvents.reduce((sum, e) => sum + e.resource.amount, 0);
 
-                                    const today = new Date();
-                                    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-                                    const currentWeekEnd = endOfWeek(today, { weekStartsOn: 1 });
-                                    const isCurrentWeek = dayItem >= currentWeekStart && dayItem <= currentWeekEnd;
+                                        const today = new Date();
+                                        const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+                                        const currentWeekEnd = endOfWeek(today, { weekStartsOn: 1 });
+                                        const isCurrentWeek = dayItem >= currentWeekStart && dayItem <= currentWeekEnd;
 
-                                    // Assign the ref to the Monday of the current week (or any day in that week, but Monday is best)
-                                    const isFirstDayOfCurrentWeek = isCurrentWeek && dayItem.getDay() === 1;
+                                        // Assign the ref to the Monday of the current week (or any day in that week, but Monday is best)
+                                        const isFirstDayOfCurrentWeek = isCurrentWeek && dayItem.getDay() === 1;
 
-                                    return (
-                                        <div
-                                            key={idx}
-                                            ref={isFirstDayOfCurrentWeek ? currentWeekRef : null}
-                                            className={`
+                                        return (
+                                            <div
+                                                key={idx}
+                                                ref={isFirstDayOfCurrentWeek ? currentWeekRef : null}
+                                                className={`
                                                   min-h-[120px] p-2 bg-white dark:bg-slate-800 flex flex-col gap-1 transition-colors
                                                   ${!isSelectedMonth ? '!bg-slate-50/50 dark:!bg-slate-900/50' : ''}
                                                   ${isToday ? '!bg-purple-50/20 dark:!bg-purple-900/10' : ''}
                                                   hover:bg-slate-50 dark:hover:bg-slate-750/50
                                                 `}
-                                            onClick={() => openForm(dayItem)}
-                                        >
-                                            <div className="flex justify-between items-start mb-1 h-8">
-                                                <div className="flex flex-col items-center">
-                                                    <span className={`
+                                                onClick={() => openForm(dayItem)}
+                                            >
+                                                <div className="flex justify-between items-start mb-1 h-8">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={`
                                                           text-sm- font-semibold w-6 h-6 flex items-center justify-center rounded-lg transition-all
                                                           ${isToday
-                                                            ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
-                                                            : isSelectedMonth ? 'text-slate-600 dark:text-gray-300' : 'text-slate-300 dark:text-slate-600'}
+                                                                ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                                                                : isSelectedMonth ? 'text-slate-600 dark:text-gray-300' : 'text-slate-300 dark:text-slate-600'}
                                                         `}>
-                                                        {format(dayItem, 'd')}
-                                                    </span>
-                                                    {isToday && <span className="text-3xs font-bold text-purple-600 uppercase tracking-widest mt-0.5">Hoy</span>}
+                                                            {format(dayItem, 'd')}
+                                                        </span>
+                                                        {isToday && <span className="text-3xs font-bold text-purple-600 uppercase tracking-widest mt-0.5">Hoy</span>}
+                                                    </div>
+
+                                                    {dailyTotal > 0 && (
+                                                        <div className="flex flex-col items-end pt-0.5">
+                                                            <span className="text-2xs font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Total</span>
+                                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-200 tabular-nums leading-none">
+                                                                ${dailyTotal.toLocaleString('es-CO')}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {dailyTotal > 0 && (
-                                                    <div className="flex flex-col items-end pt-0.5">
-                                                        <span className="text-2xs font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Total</span>
-                                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-200 tabular-nums leading-none">
-                                                            ${dailyTotal.toLocaleString('es-CO')}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                <div className="flex flex-col gap-1">
+                                                    {dayEvents.map((event) => {
+                                                        const isPaid = event.resource.status === 'paid';
+                                                        const isProjected = event.isProjected;
+                                                        const visualStatus = resolveCommitmentVisualStatus(
+                                                            event.resource.status, event.start, isProjected
+                                                        );
+                                                        const { bgColor, borderColor, textColor } = getCommitmentColors(visualStatus);
 
-                                            <div className="flex flex-col gap-1">
-                                                {dayEvents.map((event) => {
-                                                    const isPaid = event.resource.status === 'paid';
-                                                    const isProjected = event.isProjected;
-                                                    const visualStatus = resolveCommitmentVisualStatus(
-                                                        event.resource.status, event.start, isProjected
-                                                    );
-                                                    const { bgColor, borderColor, textColor } = getCommitmentColors(visualStatus);
-
-                                                    return (
-                                                        <div
-                                                            key={event.id}
-                                                            style={{
-                                                                backgroundColor: bgColor,
-                                                                borderLeft: `3px solid ${borderColor}`,
-                                                                color: textColor,
-                                                            }}
-                                                            className={`
+                                                        return (
+                                                            <div
+                                                                key={event.id}
+                                                                style={{
+                                                                    backgroundColor: bgColor,
+                                                                    borderLeft: `3px solid ${borderColor}`,
+                                                                    color: textColor,
+                                                                }}
+                                                                className={`
                                                               rounded-md px-2 py-0.5 text-xs font-semibold cursor-pointer
                                                               hover:shadow-sm transition-all relative group flex flex-col gap-0
                                                               ${isProjected ? 'opacity-85' : 'opacity-100'}
                                                               leading-tight
                                                             `}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onSelectEvent(event);
-                                                            }}
-                                                        >
-                                                            <div className="flex justify-between items-start">
-                                                                <span className="truncate leading-tight pr-4 font-semibold">{event.title}</span>
-                                                                {isPaid && <CheckCircleIcon className="w-3 h-3 flex-shrink-0 text-emerald-600 mt-0.5" />}
-                                                            </div>
-                                                            <span className="opacity-80 tabular-nums text-xs2 font-medium">
-                                                                ${event.resource.amount.toLocaleString('es-CO')}
-                                                            </span>
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onSelectEvent(event);
+                                                                }}
+                                                            >
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="truncate leading-tight pr-4 font-semibold">{event.title}</span>
+                                                                    {isPaid && <CheckCircleIcon className="w-3 h-3 flex-shrink-0 text-emerald-600 mt-0.5" />}
+                                                                </div>
+                                                                <span className="opacity-80 tabular-nums text-xs2 font-medium">
+                                                                    ${event.resource.amount.toLocaleString('es-CO')}
+                                                                </span>
 
-                                                            {/* Actions Hover */}
-                                                            <div className="absolute top-1 right-1 hidden group-hover:flex gap-1 bg-inherit pl-2">
-                                                                {!isPaid && (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setPaymentModal({ isOpen: true, commitment: event.resource });
-                                                                        }}
-                                                                        className="text-emerald-600 hover:text-emerald-700 bg-white dark:bg-slate-800 rounded-full p-0.5 shadow-sm"
-                                                                        title="Pagar"
-                                                                    >
-                                                                        <CreditCardIcon className="w-3 h-3" />
-                                                                    </button>
-                                                                )}
+                                                                {/* Actions Hover */}
+                                                                <div className="absolute top-1 right-1 hidden group-hover:flex gap-1 bg-inherit pl-2">
+                                                                    {!isPaid && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setPaymentModal({ isOpen: true, commitment: event.resource });
+                                                                            }}
+                                                                            className="text-emerald-600 hover:text-emerald-700 bg-white dark:bg-slate-800 rounded-full p-0.5 shadow-sm"
+                                                                            title="Pagar"
+                                                                        >
+                                                                            <CreditCardIcon className="w-3 h-3" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                });
-                            })()}
+                                        );
+                                    });
+                                })()}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
 
             <BudgetPaymentModal
                 isOpen={paymentModal.isOpen}

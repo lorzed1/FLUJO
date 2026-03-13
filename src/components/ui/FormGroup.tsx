@@ -29,7 +29,7 @@ export const FormGroup: React.FC<FormGroupProps> = ({
             {label && (
                 <label
                     htmlFor={inputId}
-                    className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest"
+                    className="block text-xs2 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-caps"
                 >
                     {label}
                     {required && <span className="text-red-500 ml-1" title="Campo requerido">*</span>}

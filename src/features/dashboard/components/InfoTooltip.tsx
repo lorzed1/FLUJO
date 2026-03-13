@@ -117,7 +117,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
                         <div className="relative">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                <h4 className="text-xs2 font-semibold uppercase tracking-caps text-purple-600 dark:text-purple-400">
                                     {title}
                                 </h4>
                                 <button
