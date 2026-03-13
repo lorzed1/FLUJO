@@ -45,8 +45,10 @@ export const budgetService = {
     // Execution
     addExecutionLog: execution.addExecutionLog,
     getExecutionLogs: execution.getExecutionLogs,
+    getExecutionLogById: execution.getExecutionLogById,
     deleteExecutionLog: execution.deleteExecutionLog,
     reconcileTodayLog: execution.reconcileTodayLog,
+    syncExecutionLogTotals: execution.syncExecutionLogTotals,
 
     // Weekly Availability
     getWeeklyAvailability: execution.getWeeklyAvailability,

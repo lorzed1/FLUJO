@@ -56,6 +56,31 @@ export async function getExecutionLogs(): Promise<BudgetExecutionLog[]> {
     }
 }
 
+/** Obtiene un log específico por ID */
+export async function getExecutionLogById(id: string): Promise<BudgetExecutionLog | null> {
+    try {
+        const { data, error } = await supabase
+            .from('budget_execution_logs')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return null;
+        return {
+             id: data.id,
+             executionDate: data.execution_date,
+             weekStartDate: data.week_start_date,
+             initialState: data.initial_state,
+             totalPaid: Number(data.total_paid),
+             finalBalance: Number(data.final_balance),
+             itemsCount: data.items_count,
+        };
+    } catch (error) {
+        console.error('Error fetching execution log:', error);
+        return null;
+    }
+}
+
 /** Elimina un log de ejecución */
 export async function deleteExecutionLog(id: string): Promise<void> {
     try {
@@ -227,6 +252,55 @@ export async function reconcileTodayLog(): Promise<string | null> {
 
     } catch (error) {
         console.error('Error reconciling log:', error);
+        throw error;
+    }
+}
+
+/** Recalcula los totales de una transacción luego de añadir/remover pagos vinculados */
+export async function syncExecutionLogTotals(transactionId: string): Promise<void> {
+    try {
+        // 1. Obtener todos los compromisos vinculados a este log
+        const { data: commitments, error: cError } = await supabase
+            .from('budget_commitments')
+            .select('amount')
+            .eq('transaction_id', transactionId);
+
+        if (cError) throw cError;
+
+        const totalPaid = (commitments || []).reduce((sum, item) => sum + Number(item.amount), 0);
+        const itemsCount = (commitments || []).length;
+
+        // 2. Obtener el log actual
+        const { data: log, error: logError } = await supabase
+            .from('budget_execution_logs')
+            .select('initial_state')
+            .eq('id', transactionId)
+            .single();
+
+        if (logError) throw logError;
+        
+        let initialTotal = 0;
+        if (log && log.initial_state && typeof log.initial_state === 'object') {
+            const state = log.initial_state as any;
+            initialTotal = state.totalAvailable || 0;
+        }
+
+        const finalBalance = initialTotal - totalPaid;
+
+        // 3. Actualizar el log
+        const { error: updateError } = await supabase
+            .from('budget_execution_logs')
+            .update({
+                total_paid: totalPaid,
+                items_count: itemsCount,
+                final_balance: finalBalance
+            })
+            .eq('id', transactionId);
+
+        if (updateError) throw updateError;
+        
+    } catch (error) {
+        console.error('Error synchronizing execution log totals:', error);
         throw error;
     }
 }

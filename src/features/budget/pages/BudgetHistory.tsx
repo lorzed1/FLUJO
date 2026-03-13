@@ -326,6 +326,7 @@ export const BudgetHistory: React.FC<BudgetHistoryProps> = ({ hideHeader = false
                 onClose={() => setPaymentGroupDetail(null)}
                 transactionId={paymentGroupDetail?.id || ''}
                 dateText={paymentGroupDetail?.dateText}
+                onUpdate={loadLogs}
             />
         </div>
     );

@@ -250,16 +250,17 @@ export async function updateCommitment(id: string, updates: Partial<BudgetCommit
             mapped.parsed_due_date = updates.dueDate; // Sync parsed_due_date
         }
         if (updates.status !== undefined) mapped.status = updates.status;
-        if (updates.paidDate !== undefined) {
-            mapped.paid_date = updates.paidDate;
-            mapped.parsed_paid_date = updates.paidDate; // Sync parsed_paid_date
+        // Campos nulleables: usar 'in' para detectar intención de limpiar (undefined → null)
+        if ('paidDate' in updates) {
+            mapped.paid_date = updates.paidDate ?? null;
+            mapped.parsed_paid_date = updates.paidDate ?? null;
         }
         if (updates.category !== undefined) mapped.category = updates.category;
-        if (updates.description !== undefined) mapped.description = updates.description;
-        if (updates.recurrenceRuleId !== undefined) mapped.recurrence_rule_id = updates.recurrenceRuleId;
-        if (updates.transactionId !== undefined) mapped.transaction_id = updates.transactionId;
-        if (updates.providerName !== undefined) mapped.provider_name = updates.providerName;
-        if (updates.contactInfo !== undefined) mapped.contact_info = updates.contactInfo;
+        if ('description' in updates) mapped.description = updates.description ?? null;
+        if ('recurrenceRuleId' in updates) mapped.recurrence_rule_id = updates.recurrenceRuleId ?? null;
+        if ('transactionId' in updates) mapped.transaction_id = updates.transactionId ?? null;
+        if ('providerName' in updates) mapped.provider_name = updates.providerName ?? null;
+        if ('contactInfo' in updates) mapped.contact_info = updates.contactInfo ?? null;
         if (updates.isProjected !== undefined) mapped.is_projected = updates.isProjected;
 
         const { error } = await supabase
