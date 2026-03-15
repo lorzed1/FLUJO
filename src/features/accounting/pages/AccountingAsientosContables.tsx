@@ -30,6 +30,7 @@ export const AccountingAsientosContables: React.FC = () => {
                 { label: 'Contabilidad', href: '/accounting/consolidated' },
                 { label: 'Asientos Contables' }
             ]}
+            importMatchFields={['documento', 'cuenta', 'identificacion', 'descripcion_movimiento']}
             columns={[
                 { key: 'cuenta', label: 'Cuenta', type: 'text', sortable: true },
                 { key: 'contacto', label: 'Contacto', type: 'text', sortable: true },
@@ -83,21 +84,30 @@ export const AccountingAsientosContables: React.FC = () => {
                 }
             ]}
             mapImportRow={(row) => {
-                let fecha = row['Fecha'] || row['fecha'] || row['Date'] || row['date'] || new Date().toISOString().split('T')[0];
+                const getVal = (keys: string[]) => {
+                    const foundKey = Object.keys(row).find(k => 
+                        keys.includes(k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, '_'))
+                    );
+                    return foundKey ? row[foundKey] : undefined;
+                };
+
+                let fecha = getVal(['fecha', 'date', 'fecha_movimiento']) || new Date().toISOString().split('T')[0];
+                let fDate = new Date(fecha);
+                
                 return {
-                    cuenta: row['Cuenta'] || row['cuenta'] || '',
-                    contacto: row['Contacto'] || row['contacto'] || '',
-                    identificacion: row['Identificación'] || row['Identificacion'] || row['identificacion'] || '',
-                    centro_costo: row['Centro de Costo'] || row['Centro de costo'] || row['centro_costo'] || '',
-                    documento: row['Documento'] || row['documento'] || '',
-                    fecha: new Date(fecha).toISOString().split('T')[0],
-                    descripcion: row['Descripción'] || row['Descripcion'] || row['descripcion'] || '',
-                    descripcion_movimiento: row['Descripción del movimiento'] || row['Descripción del Movimiento'] || row['descripcion_movimiento'] || '',
-                    base: parseFloat(row['Base'] || row['base'] || '0') || 0,
-                    saldo_inicial: parseFloat(row['Saldo Inicial'] || row['saldo_inicial'] || '0') || 0,
-                    debito: parseFloat(row['Debito'] || row['debito'] || '0') || 0,
-                    credito: parseFloat(row['Credito'] || row['credito'] || '0') || 0,
-                    saldo_final: parseFloat(row['Saldo Final'] || row['saldo_final'] || '0') || 0,
+                    cuenta: String(getVal(['cuenta', 'codigo_cuenta']) || ''),
+                    contacto: String(getVal(['contacto', 'tercero']) || ''),
+                    identificacion: String(getVal(['identificacion', 'nit', 'cc', 'id']) || ''),
+                    centro_costo: String(getVal(['centro_de_costo', 'centro_costo']) || ''),
+                    documento: String(getVal(['documento', 'comprobante']) || ''),
+                    fecha: (!isNaN(fDate.getTime()) ? fDate : new Date()).toISOString().split('T')[0],
+                    descripcion: String(getVal(['descripcion', 'detalle']) || ''),
+                    descripcion_movimiento: String(getVal(['descripcion_del_movimiento', 'descripcion_movimiento']) || ''),
+                    base: parseFloat(getVal(['base']) || '0') || 0,
+                    saldo_inicial: parseFloat(getVal(['saldo_inicial']) || '0') || 0,
+                    debito: parseFloat(getVal(['debito', 'debitos']) || '0') || 0,
+                    credito: parseFloat(getVal(['credito', 'creditos']) || '0') || 0,
+                    saldo_final: parseFloat(getVal(['saldo_final']) || '0') || 0,
                 };
             }}
         />

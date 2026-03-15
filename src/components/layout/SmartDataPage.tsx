@@ -431,19 +431,53 @@ export function SmartDataPage<T extends Record<string, any>>({
                     onImport={handleImportData}
                     onCheckDuplicate={
                         importMatchFields && mapImportRow && data
-                            ? (row) => {
-                                const mapped = mapImportRow(row);
-                                const hash = importMatchFields.map(f => String((mapped as any)[f] || '').trim().toLowerCase()).join('|');
+                            ? (row: Record<string, any>) => {
+                                // Normalización ultra-robusta
+                                const normalize = (val: any, fieldName: string): string => {
+                                    if (val === null || val === undefined || val === '') return '';
+                                    
+                                    // 1. Si es un campo de valor (valor, saldo, base, etc), normalizar como número puro
+                                    const isNumericField = /valor|monto|total|saldo|base|impuesto/i.test(fieldName);
+                                    if (isNumericField || typeof val === 'number') {
+                                        // Si es string, limpiar formatos comunes pero mantener el punto decimal si parece uno
+                                        let numStr = String(val).trim();
+                                        // Si tiene coma y punto, asumimos punto decimal final (ej: 1,234.56)
+                                        if (numStr.includes(',') && numStr.includes('.')) {
+                                            numStr = numStr.replace(/,/g, '');
+                                        } else if (numStr.includes(',')) {
+                                            // Si solo tiene coma, ¿es decimal o mil? 
+                                            // Si tiene 1 o 2 dígitos tras la coma, suele ser decimal. Si tiene 3, suele ser mil.
+                                            const parts = numStr.split(',');
+                                            if (parts[parts.length - 1].length === 3) numStr = numStr.replace(/,/g, '');
+                                            else numStr = numStr.replace(',', '.');
+                                        }
+                                        const n = Number(numStr.replace(/[^0-9.\-]/g, ''));
+                                        return isNaN(n) ? '0' : String(Number(n.toFixed(2))); // Normalizar a 2 decimales y quitar ceros extra
+                                    }
 
-                                // Buscar si en nuestra base actual existe algún registro con estos mismos campos clave
+                                    // 2. Si es fecha, normalizar a ISO YYYY-MM-DD
+                                    if (val instanceof Date) return val.toISOString().split('T')[0];
+                                    const str = String(val).trim();
+                                    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+                                    
+                                    // 3. Texto general
+                                    return str.toLowerCase().replace(/\s+/g, ' '); // Colapsar espacios múltiples
+                                };
+
+                                const mapped = mapImportRow(row);
+                                const hash = importMatchFields.map(f => normalize((mapped as any)[f], f)).join('|');
+
+                                // Buscar coincidencia exacta
                                 const existingItem = data.find(item => {
-                                    const itemHash = importMatchFields.map(f => String((item as any)[f] || '').trim().toLowerCase()).join('|');
+                                    const itemHash = importMatchFields.map(f => normalize((item as any)[f], f)).join('|');
                                     return itemHash === hash;
                                 });
 
                                 return {
                                     isDuplicate: !!existingItem,
-                                    existingId: existingItem?.id // Pasar el UUID real a DataImportWizard
+                                    existingId: existingItem?.id,
+                                    existingRecord: existingItem,
+                                    mappedRecord: mapped
                                 };
                             }
                             : undefined

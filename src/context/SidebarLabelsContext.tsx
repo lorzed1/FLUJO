@@ -35,6 +35,8 @@ const DEFAULT_LABELS: Record<string, string> = {
     // Hijos — Contabilidad
     'accounting-consolidated': 'Consloidado PYG',
     'accounting-cta-natalia': 'Cta Natalia',
+    'accounting-cta-ahorros-julian': 'Cta Ahorros Julian',
+    'accounting-cta-corriente': 'Cta Corriente',
     'accounting-asientos-contables': 'Asientos Contables',
     // Hijos — Usuarios
     'users-list': 'Lista de Usuarios',

@@ -21,7 +21,7 @@ export interface DataImportWizardProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (data: ParsedRow[]) => Promise<void>;
-    onCheckDuplicate?: (row: Record<string, any>) => { isDuplicate: boolean; existingId?: string };
+    onCheckDuplicate?: (row: Record<string, any>) => { isDuplicate: boolean; existingId?: string; existingRecord?: any; mappedRecord?: any };
     title?: string;
 }
 
@@ -39,7 +39,9 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
     const [columnsConfig, setColumnsConfig] = useState<ColumnConfig[]>([]);
     const [finalData, setFinalData] = useState<ParsedRow[]>([]);
     const [importDuplicates, setImportDuplicates] = useState<Set<string>>(new Set());
+    const [importUpdates, setImportUpdates] = useState<Set<string>>(new Set());
     const [importSelection, setImportSelection] = useState<Set<string>>(new Set());
+    const [activeFilter, setActiveFilter] = useState<'all' | 'new' | 'updates' | 'identical'>('all');
     // UX States
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -79,7 +81,9 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
             try {
                 const dataBuffer = new Uint8Array(evt.target?.result as ArrayBuffer);
                 const wb = XLSX.read(dataBuffer, { type: 'array', cellDates: true });
+                console.log('📚 HOJAS EN EL EXCEL:', wb.SheetNames);
                 const wsname = wb.SheetNames[0];
+                console.log('📖 LEYENDO HOJA:', wsname);
                 const ws = wb.Sheets[wsname];
 
                 // Reparación del rango !ref por fallos en archivos exportados de ERP's
@@ -205,8 +209,56 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
     };
 
     const processData = () => {
+        // DEBUG DE EMERGENCIA: Ver qué hay en el archivo realmente
+        console.group('📄 DATOS CRUDOS DEL EXCEL');
+        console.log('Primeras 5 filas del archivo (JSON):', JSON.stringify(originalData.slice(0, 5), null, 2));
+        console.log('Índice de cabecera detectado:', headerRowIndex);
+        if (headerRowIndex !== -1) {
+            console.log('Columnas encontradas en cabecera:', JSON.stringify(originalData[headerRowIndex]));
+        }
+        console.groupEnd();
+        
+        // Helper to check if row has changes compared to database
+        const normalizeForCompare = (val: any) => {
+            if (val === null || val === undefined || val === '') return '';
+            
+            if (typeof val === 'number') return val.toFixed(2);
+
+            if (val instanceof Date) {
+                if (!isNaN(val.getTime())) return val.toISOString().split('T')[0];
+            }
+
+            return String(val).trim().toLowerCase().replace(/\s+/g, ' ');
+        };
+
+        const isRowChanged = (mappedImport: Record<string, any>, existing: Record<string, any>) => {
+            console.groupCollapsed(`🔍 Comparando registro ID: ${existing.id || 'N/A'}`);
+            let changed = false;
+
+            // Comparar usando las llaves del registro mapeado (las reales de la DB)
+            Object.keys(mappedImport).forEach(dbKey => {
+                if (dbKey === 'id' || dbKey === 'created_at' || dbKey === 'updated_at') return;
+
+                const importedVal = mappedImport[dbKey];
+                const existingVal = existing[dbKey];
+
+                const normImported = normalizeForCompare(importedVal);
+                const normExisting = normalizeForCompare(existingVal);
+
+                if (normImported !== normExisting) {
+                    console.log(`❌ CAMBIO en [${dbKey}]: Excel_Mapeado("${normImported}") vs DB("${normExisting}")`);
+                    changed = true;
+                }
+            });
+
+            if (!changed) console.log('✅ Registros idénticos');
+            console.groupEnd();
+            return changed;
+        };
+
         const result: ParsedRow[] = [];
         const duplicates = new Set<string>();
+        const updates = new Set<string>();
         const selection = new Set<string>();
 
         for (let i = headerRowIndex + 1; i < originalData.length; i++) {
@@ -225,12 +277,25 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                         val = Number(val);
                         if (isNaN(val)) val = 0;
                     } else if (col.type === 'date') {
+                        if (typeof val === 'number') {
+                            // Convert Excel serial date to JS Date
+                            val = new Date(Math.round((val - 25569) * 86400 * 1000));
+                        }
                         if (val instanceof Date) {
                             val = val.toISOString().split('T')[0];
-                        } else {
-                            const d = new Date(val);
-                            if (!isNaN(d.getTime())) val = d.toISOString().split('T')[0];
-                            else val = String(val);
+                        } else if (typeof val === 'string' && val.trim()) {
+                            const str = val.trim();
+                            // Intentar parsear DD/MM/YYYY o DD-MM-YYYY
+                            const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                            if (dmyMatch) {
+                                const [_, d, m, y] = dmyMatch;
+                                val = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                            } else {
+                                // Fallback al parseo nativo si no es el formato esperado
+                                const d = new Date(val);
+                                if (!isNaN(d.getTime())) val = d.toISOString().split('T')[0];
+                                else val = str;
+                            }
                         }
                     } else if (col.type === 'boolean') {
                         if (typeof val === 'string') {
@@ -251,8 +316,9 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                 let uniqueId = defaultGenerateId({ ...cleanRowContent, _rowIdx: i });
                 let isDup = false;
 
+                let dupInfo = null;
                 if (onCheckDuplicate) {
-                    const dupInfo = onCheckDuplicate(cleanRowContent);
+                    dupInfo = onCheckDuplicate(cleanRowContent);
                     if (dupInfo?.isDuplicate) {
                         isDup = true;
                         if (dupInfo.existingId) {
@@ -270,16 +336,36 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
 
                 if (isDup) {
                     duplicates.add(uniqueId);
+                    
+                    // DEEP COMPARE: Check if something changed
+                    if (dupInfo?.existingRecord && dupInfo?.mappedRecord) {
+                        if (isRowChanged(dupInfo.mappedRecord, dupInfo.existingRecord)) {
+                            updates.add(uniqueId);
+                        }
+                    }
                 }
             }
         }
 
-        if (result.length === 0) {
-            alert(`No se detectaron datos válidos después de la fila de encabezados.\nTotal de filas analizadas en el archivo: ${originalData.length}.\nSi tu archivo tiene datos, asegúrate de que no haya filas totalmente en blanco entre los encabezados y la información.`);
-            return;
+        // DEBUG: Resumen del procesamiento
+        console.group('📊 RESUMEN IMPORT WIZARD');
+        console.log('Total filas raw en archivo (incluyendo header):', originalData.length);
+        console.log('Total registros procesados (con datos):', result.length);
+        console.log('Total DUPLICADOS detectados:', duplicates.size);
+        console.log('Total ACTUALIZACIONES detectadas:', updates.size);
+        console.log('Total NUEVOS:', result.length - duplicates.size);
+        
+        if (result.length > 0) {
+            console.log('Keys del primer registro:', Object.keys(result[0]));
         }
+        
+        const allKeys = result.length > 0 ? Object.keys(result[0]) : [];
+        const dateKey = allKeys.find(k => k.toLowerCase().includes('fecha')) || 'fecha';
+        console.log('Campo fecha detectado:', dateKey);
+        console.groupEnd();
 
         setImportDuplicates(duplicates);
+        setImportUpdates(updates);
         setImportSelection(selection);
         setFinalData(result);
         setStep(3);
@@ -291,7 +377,9 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
         setColumnsConfig([]);
         setFinalData([]);
         setImportDuplicates(new Set());
+        setImportUpdates(new Set());
         setImportSelection(new Set());
+        setActiveFilter('all');
     };
 
     const handleClose = () => {
@@ -340,20 +428,78 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
             key: 'import_status',
             label: 'Estado',
             sortable: false,
-            render: (_: any, item: ParsedRow) => importDuplicates.has(item.id)
-                ? <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase whitespace-nowrap">Duplicado (Actualizará)</span>
-                : <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase">Nuevo</span>
+            render: (_: any, item: ParsedRow) => {
+                if (importUpdates.has(item.id)) {
+                    return <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase whitespace-nowrap">Con Cambios (Actualizará)</span>;
+                }
+                if (importDuplicates.has(item.id)) {
+                    return <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase whitespace-nowrap">Duplicado Idéntico</span>;
+                }
+                return <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold text-xs2 uppercase">Nuevo</span>;
+            }
         };
 
         return [statusCol, ...configColumns];
-    }, [columnsConfig, importDuplicates]);
+    }, [columnsConfig, importDuplicates, importUpdates]);
+
+    const stats = useMemo(() => {
+        const _stats = { 
+            new: { total: 0, selected: 0 }, 
+            updates: { total: 0, selected: 0 }, 
+            identical: { total: 0, selected: 0 } 
+        };
+        finalData.forEach(row => {
+            const selected = importSelection.has(row.id);
+            if (importUpdates.has(row.id)) {
+                _stats.updates.total++;
+                if (selected) _stats.updates.selected++;
+            } else if (importDuplicates.has(row.id)) {
+                _stats.identical.total++;
+                if (selected) _stats.identical.selected++;
+            } else {
+                _stats.new.total++;
+                if (selected) _stats.new.selected++;
+            }
+        });
+        return _stats;
+    }, [finalData, importSelection, importDuplicates, importUpdates]);
+
+    const displayedData = useMemo(() => {
+        if (activeFilter === 'all') return finalData;
+        return finalData.filter(row => {
+            if (activeFilter === 'updates') return importUpdates.has(row.id);
+            if (activeFilter === 'identical') return importDuplicates.has(row.id);
+            if (activeFilter === 'new') return !importUpdates.has(row.id) && !importDuplicates.has(row.id);
+            return true;
+        });
+    }, [finalData, activeFilter, importUpdates, importDuplicates]);
+
+    const handleToggleCategory = (category: 'new' | 'updates' | 'identical') => {
+        setImportSelection(prev => {
+            const next = new Set(prev);
+            const isFullySelected = stats[category].selected === stats[category].total && stats[category].total > 0;
+            const targetState = !isFullySelected; // Si todos están seleccionados, deseleccionamos. Si no, seleccionamos todos.
+
+            finalData.forEach(row => {
+                let rowCategory: 'new' | 'updates' | 'identical' = 'new';
+                if (importUpdates.has(row.id)) rowCategory = 'updates';
+                else if (importDuplicates.has(row.id)) rowCategory = 'identical';
+
+                if (rowCategory === category) {
+                    if (targetState) next.add(row.id);
+                    else next.delete(row.id);
+                }
+            });
+            return next;
+        });
+    };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] flex bg-black/60 backdrop-blur-[2px] items-center justify-center p-4 md:p-8 overflow-hidden pointer-events-auto" onClick={handleClose}>
+        <div className="fixed inset-0 z-[200] flex bg-black/60 backdrop-blur-[2px] items-center justify-center p-4 md:p-6 overflow-hidden pointer-events-auto" onClick={handleClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 w-full xl:w-[85%] 2xl:w-[70%] h-full max-h-[90vh] min-h-[550px]"
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 w-full max-w-6xl h-full max-h-[85vh] min-h-[500px]"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Stepper Header */}
@@ -392,7 +538,7 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col overflow-hidden relative">
+                <div className="flex-1 flex flex-col overflow-hidden relative min-h-0">
                     {/* STEP 1 */}
                     <div
                         className={`absolute inset-0 p-8 transition-transform duration-300 flex flex-col ${step === 1 ? 'translate-x-0 opacity-100 pointer-events-auto overflow-y-auto' : '-translate-x-full opacity-0 pointer-events-none'}`}
@@ -548,74 +694,138 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                     </div>
 
                     {/* STEP 3 */}
-                    <div className={`absolute inset-0 flex flex-col bg-white dark:bg-slate-800 transition-transform duration-300 ${step === 3 ? 'translate-x-0 opacity-100 pointer-events-auto' : 'translate-x-full opacity-0 pointer-events-none'}`}>
+                    <div className={`absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-900/50 transition-transform duration-300 ${step === 3 ? 'translate-x-0 opacity-100 pointer-events-auto' : 'translate-x-full opacity-0 pointer-events-none'}`}>
                         {/* Toolbar de visualización */}
-                        <div className="px-6 md:px-8 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between shrink-0 bg-white dark:bg-slate-800 z-10 shadow-sm">
+                        <div className="px-6 py-3 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-white dark:bg-slate-800 z-10 shadow-sm">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                    <CheckCircleIcon className="w-6 h-6 text-emerald-500" />
-                                    Resumen de Previsualización
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                    <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
+                                    Confirmación Final
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Se importarán <strong>{importSelection.size}</strong> registros de <strong>{finalData.length}</strong> encontrados.
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Importarás <strong className="text-emerald-600 dark:text-emerald-400">{importSelection.size}</strong> registros de {finalData.length} leídos.
                                 </p>
                             </div>
                             <Button
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-lg shadow-emerald-600/20 px-6 h-10 rounded-lg text-sm font-semibold transition-transform active:scale-95 sm:w-auto w-full"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm px-5 h-9 rounded-md text-sm font-semibold transition-transform active:scale-95"
                                 onClick={handleFinalizeImport}
                                 disabled={isProcessing}
                             >
                                 {isProcessing ? (
                                     <>
                                         <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                        Guardando datos...
+                                        Guardando...
                                     </>
                                 ) : (
                                     <>
                                         <ArrowUpTrayIcon className="w-4 h-4" />
-                                        Importar Datos Confirmados
+                                        Importar Datos
                                     </>
                                 )}
                             </Button>
                         </div>
 
-                        {/* SmartDataTable embebida */}
-                        <div className="flex-1 overflow-hidden flex flex-col p-6 max-h-full">
-                            {importDuplicates.size > 0 && (
-                                <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 shrink-0 shadow-sm rounded-r-lg mb-4">
-                                    <div className="flex gap-4 items-start">
-                                        <div className="flex-1">
-                                            <p className="text-sm text-amber-800 dark:text-amber-200">
-                                                <strong>¡Atención!</strong> Hemos detectado <strong>{importDuplicates.size} registro(s)</strong> duplicados que ya existen en tu base de datos.
-                                                Están marcados con una etiqueta naranja en la tabla. Si los dejas seleccionados, se <strong>sobreescribirán</strong> con la información de este archivo para actualizarlos.
-                                            </p>
-                                            <button
-                                                onClick={() => {
-                                                    const next = new Set(importSelection);
-                                                    importDuplicates.forEach(id => next.delete(id));
-                                                    setImportSelection(next);
-                                                }}
-                                                className="mt-2 text-xs font-bold text-amber-700 dark:text-amber-400 hover:text-amber-900 underline transition-colors focus:outline-none"
-                                            >
-                                                Desmarcar todos los duplicados e ignorarlos
-                                            </button>
-                                        </div>
-                                    </div>
+                        <div className="flex-1 overflow-hidden flex flex-col p-4 w-full">
+                            
+                            {/* Panel de control de selección COMPACTO */}
+                            <div className="flex flex-wrap items-center gap-3 shrink-0 mb-4 p-2 px-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm">
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-400 mr-2 uppercase tracking-wider">Acciones en Lote:</span>
+                                
+                                {/* Nuevos */}
+                                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/50 rounded-md py-1.5 px-3">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 whitespace-nowrap">Nuevos ({stats.new.total})</span>
+                                    <div className="h-4 w-px bg-emerald-200 dark:bg-emerald-800/50 mx-1"></div>
+                                    <button 
+                                        onClick={() => handleToggleCategory('new')} 
+                                        disabled={stats.new.total === 0} 
+                                        className="text-[10px] uppercase font-bold text-emerald-700 hover:text-emerald-900 disabled:opacity-50 transition-colors"
+                                    >
+                                        {stats.new.selected > 0 ? 'Deseleccionar' : 'Seleccionar'}
+                                    </button>
+                                    <div className="h-4 w-px bg-emerald-200 dark:bg-emerald-800/50 mx-1"></div>
+                                    <button 
+                                        onClick={() => setActiveFilter(activeFilter === 'new' ? 'all' : 'new')} 
+                                        disabled={stats.new.total === 0} 
+                                        className={`text-[10px] uppercase font-bold transition-colors ${activeFilter === 'new' ? 'text-purple-600' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        {activeFilter === 'new' ? 'VER TODOS' : '👀 VER'}
+                                    </button>
                                 </div>
-                            )}
 
-                            <div className="flex-1 w-full relative min-h-0 bg-white dark:bg-slate-800 border-x border-b border-gray-200 dark:border-slate-700 rounded-b-xl">
-                                <SmartDataTable
-                                    data={finalData}
-                                    columns={wizardTableColumns}
-                                    enableSelection={true}
-                                    selectedIds={importSelection}
-                                    onSelectionChange={setImportSelection}
-                                    enableExport={false}
-                                    enableSearch={true}
-                                    searchPlaceholder="Buscar en los datos previstos para importar..."
-                                    containerClassName="h-full border-0 shadow-none -mt-px rounded-none"
-                                />
+                                {/* Con Cambios */}
+                                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-md py-1.5 px-3">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <span className="text-xs font-semibold text-blue-800 dark:text-blue-400 whitespace-nowrap">Cambios ({stats.updates.total})</span>
+                                    <div className="h-4 w-px bg-blue-200 dark:bg-blue-800/50 mx-1"></div>
+                                    <button 
+                                        onClick={() => handleToggleCategory('updates')} 
+                                        disabled={stats.updates.total === 0} 
+                                        className="text-[10px] uppercase font-bold text-blue-700 hover:text-blue-900 disabled:opacity-50 transition-colors"
+                                    >
+                                        {stats.updates.selected > 0 ? 'Deseleccionar' : 'Seleccionar'}
+                                    </button>
+                                    <div className="h-4 w-px bg-blue-200 dark:bg-blue-800/50 mx-1"></div>
+                                    <button 
+                                        onClick={() => setActiveFilter(activeFilter === 'updates' ? 'all' : 'updates')} 
+                                        disabled={stats.updates.total === 0} 
+                                        className={`text-[10px] uppercase font-bold transition-colors ${activeFilter === 'updates' ? 'text-purple-600' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        {activeFilter === 'updates' ? 'VER TODOS' : '👀 VER'}
+                                    </button>
+                                </div>
+
+                                {/* Idénticos */}
+                                <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-md py-1.5 px-3">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    <span className="text-xs font-semibold text-amber-800 dark:text-amber-400 whitespace-nowrap">Idénticos ({stats.identical.total})</span>
+                                    <div className="h-4 w-px bg-amber-200 dark:bg-amber-800/50 mx-1"></div>
+                                    <button 
+                                        onClick={() => handleToggleCategory('identical')} 
+                                        disabled={stats.identical.total === 0} 
+                                        className="text-[10px] uppercase font-bold text-amber-700 hover:text-amber-900 disabled:opacity-50 transition-colors"
+                                    >
+                                        {stats.identical.selected > 0 ? 'Deseleccionar' : 'Seleccionar'}
+                                    </button>
+                                    <div className="h-4 w-px bg-amber-200 dark:bg-amber-800/50 mx-1"></div>
+                                    <button 
+                                        onClick={() => setActiveFilter(activeFilter === 'identical' ? 'all' : 'identical')} 
+                                        disabled={stats.identical.total === 0} 
+                                        className={`text-[10px] uppercase font-bold transition-colors ${activeFilter === 'identical' ? 'text-purple-600' : 'text-gray-500 hover:text-gray-800'}`}
+                                    >
+                                        {activeFilter === 'identical' ? 'VER TODOS' : '👀 VER'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 w-full min-h-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl flex flex-col overflow-hidden shadow-sm">
+                                {activeFilter !== 'all' && (
+                                    <div className="bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800 px-4 py-2 flex items-center justify-between shrink-0">
+                                        <span className="text-xs font-semibold text-purple-800 dark:text-purple-300">
+                                            Viendo registros filtrados: <strong className="uppercase">{activeFilter === 'new' ? 'Nuevos' : activeFilter === 'updates' ? 'Con Cambios' : 'Idénticos'}</strong> ({displayedData.length})
+                                        </span>
+                                        <button 
+                                            onClick={() => setActiveFilter('all')}
+                                            className="text-xs text-purple-700 font-bold hover:text-purple-900 underline transition-colors focus:outline-none"
+                                        >
+                                            Quitar filtro (Ver {finalData.length})
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex-1 min-h-0 overflow-hidden flex flex-col relative w-full h-full">
+                                    <SmartDataTable
+                                        data={displayedData}
+                                        columns={wizardTableColumns}
+                                        enableSelection={true}
+                                        selectedIds={importSelection}
+                                        onSelectionChange={setImportSelection}
+                                        enableExport={false}
+                                        enableSearch={true}
+                                        searchPlaceholder={`Buscar en ${activeFilter === 'all' ? 'todos los' : 'estos'} datos...`}
+                                        containerClassName="flex-1 min-h-0 overflow-hidden border-0 shadow-none rounded-none w-full"
+                                        scrollContainerClassName="flex-1 overflow-auto bg-white min-h-0 custom-scrollbar relative px-0 md:px-0 lg:px-0"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -24,7 +24,8 @@ import {
   MinusIcon,
   ChevronDownIcon,
   WalletIcon,
-  SwatchIcon
+  SwatchIcon,
+  ArrowsRightLeftIcon
 } from './ui/Icons';
 import { useUI } from '../context/UIContext';
 import { useSidebarLabels } from '../context/SidebarLabelsContext';
@@ -185,7 +186,10 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       children: [
         { id: 'accounting-consolidated', label: 'Consloidado PYG', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/consolidated' },
         { id: 'accounting-cta-natalia', label: 'Cta Natalia', icon: <WalletIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/cta-natalia' },
+        { id: 'accounting-cta-ahorros-julian', label: 'Cta Ahorros Julian', icon: <WalletIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/cta-ahorros-julian' },
+        { id: 'accounting-cta-corriente', label: 'Cta Corriente', icon: <WalletIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/cta-corriente' },
         { id: 'accounting-asientos-contables', label: 'Asientos Contables', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/asientos-contables' },
+        { id: 'accounting-reconciliation', label: 'Conciliación', icon: <ArrowsRightLeftIcon className="h-4 w-4" />, roles: ['admin'], path: '/accounting/reconciliation' },
       ]
     },
     {

@@ -2,7 +2,7 @@ import React from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { WalletIcon } from '../../../components/ui/Icons';
 
-export interface CtaNataliaRow {
+export interface CtaCorrienteRow {
     id: string;
     fecha: string;
     descripcion: string;
@@ -10,13 +10,13 @@ export interface CtaNataliaRow {
     valor: number;
 }
 
-export const AccountingCtaNatalia: React.FC = () => {
+export const AccountingCtaCorriente: React.FC = () => {
     return (
-        <SmartDataPage<CtaNataliaRow>
-            title="Cta Natalia"
-            breadcrumbs={[{ label: 'Contabilidad' }, { label: 'Cta Natalia' }]}
+        <SmartDataPage<CtaCorrienteRow>
+            title="Cta Corriente"
+            breadcrumbs={[{ label: 'Contabilidad' }, { label: 'Cta Corriente' }]}
             icon={<WalletIcon className="h-7 w-7 text-primary" />}
-            supabaseTableName="accounting_cta_natalia"
+            supabaseTableName="accounting_cta_corriente"
             importMatchFields={['fecha', 'valor', 'descripcion']}
             enableMonthDelete={true}
             dateFieldMode="date"
@@ -49,7 +49,7 @@ export const AccountingCtaNatalia: React.FC = () => {
             mapImportRow={(row) => {
                 // Safely extract the date
                 let rawFecha = row['Fecha'] || row['fecha'] || row['Date'] || row['date'];
-                
+
                 if (!rawFecha) {
                     console.error('❌ Fila sin fecha detectada:', row);
                     return { valor: 0, descripcion: 'ERROR: SIN FECHA', fecha: '1900-01-01' } as any;
@@ -77,7 +77,7 @@ export const AccountingCtaNatalia: React.FC = () => {
                     descripcion,
                     referencia,
                     valor
-                } as Partial<CtaNataliaRow>;
+                } as Partial<CtaCorrienteRow>;
             }}
             columns={[
                 {

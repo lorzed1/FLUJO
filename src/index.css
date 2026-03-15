@@ -84,11 +84,13 @@
 }
 
 /* Custom Scrollbar Hide Utility */
-.scrollbar-hide::-webkit-scrollbar {
+.scrollbar-hide::-webkit-scrollbar,
+.scroller-hide::-webkit-scrollbar {
   display: none;
 }
 
-.scrollbar-hide {
+.scrollbar-hide,
+.scroller-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }

@@ -40,7 +40,10 @@ const IncomeStatementTable = lazy(() => import('../features/income-statement/pag
 const AccountingLayout = lazy(() => import('../features/accounting/layouts/AccountingLayout').then(m => ({ default: m.AccountingLayout })));
 const AccountingConsolidatedPYG = lazy(() => import('../features/accounting/pages/AccountingConsolidatedPYG').then(m => ({ default: m.AccountingConsolidatedPYG })));
 const AccountingCtaNatalia = lazy(() => import('../features/accounting/pages/AccountingCtaNatalia').then(m => ({ default: m.AccountingCtaNatalia })));
+const AccountingCtaAhorrosJulian = lazy(() => import('../features/accounting/pages/AccountingCtaAhorrosJulian').then(m => ({ default: m.AccountingCtaAhorrosJulian })));
+const AccountingCtaCorriente = lazy(() => import('../features/accounting/pages/AccountingCtaCorriente').then(m => ({ default: m.AccountingCtaCorriente })));
 const AccountingAsientosContables = lazy(() => import('../features/accounting/pages/AccountingAsientosContables').then(m => ({ default: m.AccountingAsientosContables })));
+const ReconciliationView = lazy(() => import('../features/accounting/pages/ReconciliationView').then(m => ({ default: m.ReconciliationView })));
 
 const AppRouter: React.FC = () => {
     // Contextos especializados
@@ -155,7 +158,10 @@ const AppRouter: React.FC = () => {
                 <Route path="/accounting" element={userRole === 'admin' ? <AccountingLayout /> : <Navigate to="/arqueo" replace />}>
                     <Route path="consolidated" element={<AccountingConsolidatedPYG />} />
                     <Route path="cta-natalia" element={<AccountingCtaNatalia />} />
+                    <Route path="cta-ahorros-julian" element={<AccountingCtaAhorrosJulian />} />
+                    <Route path="cta-corriente" element={<AccountingCtaCorriente />} />
                     <Route path="asientos-contables" element={<AccountingAsientosContables />} />
+                    <Route path="reconciliation" element={<ReconciliationView />} />
                 </Route>
 
                 <Route path="/rescate" element={<RescueData />} />
