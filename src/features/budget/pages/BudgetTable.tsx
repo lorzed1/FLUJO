@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { BanknotesIcon, TableCellsIcon } from '../../../components/ui/Icons';
+import { useNavigate } from 'react-router-dom';
+import { BanknotesIcon, TableCellsIcon, TagIcon } from '../../../components/ui/Icons';
+import { Button } from '../../../components/ui/Button';
 import { Column } from '../../../components/ui/SmartDataTable';
 import { CategoryBadge } from '../../../components/ui/CategoryBadge';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
@@ -12,6 +14,7 @@ import { DateSelectionModal } from '../components/DateSelectionModal';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 
 export const BudgetTable: React.FC = () => {
+    const navigate = useNavigate();
     const { openForm, refreshTrigger } = useBudgetContext();
     const { setAlertModal } = useUI();
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
@@ -288,6 +291,12 @@ export const BudgetTable: React.FC = () => {
                 columns={columns}
                 enableAdd={true}
                 onAdd={() => openForm()}
+                customActions={
+                    <Button variant="secondary" onClick={() => navigate('/budget/categories')}>
+                        <TagIcon className="w-5 h-5 mr-2" />
+                        <span className="hidden sm:inline text-xs font-semibold uppercase tracking-widest">Categorías</span>
+                    </Button>
+                }
                 onEdit={handleEdit}
                 onDelete={(item) => handleDelete(item.id)}
                 onBulkDelete={handleBulkDelete}

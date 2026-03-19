@@ -198,6 +198,31 @@ export const ReconciliationView: React.FC = () => {
     // --- Búsqueda (por cuenta) ---
     const [sourceSearch, setSourceSearch] = useState(() => getAccountConfig(selectedAccountId, 'sourceSearch', ''));
     const [targetSearch, setTargetSearch] = useState(() => getAccountConfig(selectedAccountId, 'targetSearch', ''));
+    const [targetExcludeAccounts, setTargetExcludeAccounts] = useState(() => getAccountConfig(selectedAccountId, 'targetExcludeAccounts', ''));
+
+    const uniqueAccounts = useMemo(() => {
+        const set = new Set<string>();
+        targetRecords.forEach(r => {
+            if (r.raw?.cuenta) {
+                set.add(r.raw.cuenta.toString().trim());
+            }
+        });
+        return Array.from(set).sort();
+    }, [targetRecords]);
+
+    const excludedAccountsSet = useMemo(() => new Set(
+        targetExcludeAccounts.split(',').map(s => s.trim()).filter(Boolean)
+    ), [targetExcludeAccounts]);
+
+    const toggleExcludedAccount = useCallback((account: string, checked: boolean) => {
+        const newSet = new Set(excludedAccountsSet);
+        if (checked) {
+            newSet.add(account);
+        } else {
+            newSet.delete(account);
+        }
+        setTargetExcludeAccounts(Array.from(newSet).join(','));
+    }, [excludedAccountsSet]);
 
     // --- Sospechosos / Registrados (por cuenta) ---
     const [showOnlySuspected, setShowOnlySuspected] = useState(false);
@@ -240,6 +265,7 @@ export const ReconciliationView: React.FC = () => {
         }));
         setSourceSearch(getAccountConfig(selectedAccountId, 'sourceSearch', ''));
         setTargetSearch(getAccountConfig(selectedAccountId, 'targetSearch', ''));
+        setTargetExcludeAccounts(getAccountConfig(selectedAccountId, 'targetExcludeAccounts', ''));
 
         // Limpiar estados de marcas
         try {
@@ -267,6 +293,7 @@ export const ReconciliationView: React.FC = () => {
     useEffect(() => { setAccountConfig(selectedAccountId, 'visibleMatchCols', visibleMatchCols); }, [selectedAccountId, visibleMatchCols]);
     useEffect(() => { setAccountConfig(selectedAccountId, 'sourceSearch', sourceSearch); }, [selectedAccountId, sourceSearch]);
     useEffect(() => { setAccountConfig(selectedAccountId, 'targetSearch', targetSearch); }, [selectedAccountId, targetSearch]);
+    useEffect(() => { setAccountConfig(selectedAccountId, 'targetExcludeAccounts', targetExcludeAccounts); }, [selectedAccountId, targetExcludeAccounts]);
 
     // Persistir sospechosos/registrados por cuenta
     useEffect(() => {
@@ -458,6 +485,11 @@ export const ReconciliationView: React.FC = () => {
                 return true;
             })
             .filter(r => {
+                if (excludedAccountsSet.size === 0) return true;
+                const account = (r.raw?.cuenta || '').toString().trim();
+                return !excludedAccountsSet.has(account);
+            })
+            .filter(r => {
                 if (!targetSearch) return true;
                 const searchLower = targetSearch.toLowerCase();
                 return (
@@ -471,7 +503,7 @@ export const ReconciliationView: React.FC = () => {
                     (r.raw?.documento || '').toLowerCase().includes(searchLower)
                 );
             }),
-        [targetRecords, conciliatedIds, flowFilter, targetSearch]
+        [targetRecords, conciliatedIds, flowFilter, targetSearch, targetExcludeAccounts]
     );
 
     const activeHistory = useMemo(() => history.filter(h => h.status === 'active'), [history]);
@@ -1620,6 +1652,54 @@ export const ReconciliationView: React.FC = () => {
                                             className="block w-full pl-7 pr-2 py-1 text-xs border border-blue-200 dark:border-blue-800 rounded bg-white dark:bg-blue-900/20 text-slate-800 dark:text-slate-200 placeholder-blue-400 dark:placeholder-blue-600 outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
                                         />
                                     </div>
+
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button
+                                                title="Excluir Cuentas"
+                                                className={`h-7 px-2.5 ml-2 rounded text-xs flex items-center gap-1.5 transition-colors border ${
+                                                    excludedAccountsSet.size > 0
+                                                        ? 'bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-900/30 dark:border-rose-700 dark:text-rose-400 font-semibold'
+                                                        : 'bg-white border-blue-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-blue-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                                                }`}
+                                            >
+                                                <FunnelIcon className="h-3.5 w-3.5" />
+                                                <span className="hidden sm:inline">Excluir</span>
+                                                {excludedAccountsSet.size > 0 && (
+                                                    <span className="bg-rose-500 text-white text-[10px] rounded-full px-1.5 leading-tight">{excludedAccountsSet.size}</span>
+                                                )}
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-64 bg-white dark:bg-slate-800 z-50">
+                                            <DropdownMenuLabel className="text-xs uppercase tracking-wider text-slate-500 flex justify-between items-center pr-2">
+                                                <span>Cuentas a Excluir</span>
+                                                {excludedAccountsSet.size > 0 && (
+                                                    <button 
+                                                        onClick={(e) => { e.preventDefault(); setTargetExcludeAccounts(''); }}
+                                                        className="text-rose-500 hover:text-rose-600 font-semibold normal-case"
+                                                    >
+                                                        Limpiar
+                                                    </button>
+                                                )}
+                                            </DropdownMenuLabel>
+                                            <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                                                {uniqueAccounts.length === 0 ? (
+                                                    <div className="px-2 py-4 text-center text-xs text-slate-400">Sin cuentas</div>
+                                                ) : (
+                                                    uniqueAccounts.map(account => (
+                                                        <DropdownMenuCheckboxItem
+                                                            key={account}
+                                                            checked={excludedAccountsSet.has(account)}
+                                                            onCheckedChange={v => toggleExcludedAccount(account, v)}
+                                                            onSelect={e => e.preventDefault()}
+                                                        >
+                                                            {account || '(Sin cuenta)'}
+                                                        </DropdownMenuCheckboxItem>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
 
                                     {isManualMode && (
                                         <span className="text-2xs text-blue-500 font-medium ml-2 whitespace-nowrap">— click para vincular</span>

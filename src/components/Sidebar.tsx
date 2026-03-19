@@ -151,6 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
         { id: 'budget-calendar', label: 'Calendario de gastos', icon: <CalendarIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/calendar' },
         { id: 'budget-recurrent', label: 'Gastos recurrentes', icon: <ArrowPathIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/recurrent' },
         { id: 'budget-list', label: 'BD de gastos', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/list' },
+        { id: 'budget-categories', label: 'Categorías', icon: <TagIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/categories' },
         { id: 'budget-purchases', label: 'Compras', icon: <TagIcon className="h-4 w-4" />, roles: ['admin'], path: '/budget/purchases' },
       ]
     },
