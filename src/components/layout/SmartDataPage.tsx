@@ -9,6 +9,7 @@ import { useUI } from '../../context/UIContext';
 import { supabase } from '../../services/supabaseClient';
 import { InfoModal } from '../ui/InfoModal';
 import { InformationCircleIcon } from '@/components/ui/Icons';
+import { ReconciliationBankService } from '../../services/reconciliationBankService';
 
 export interface SmartDataPageProps<T extends Record<string, any>> {
     title: string;
@@ -83,25 +84,43 @@ export function SmartDataPage<T extends Record<string, any>>({
             if (fetchData) {
                 records = await fetchData();
             } else {
-                let query = supabase.from(supabaseTableName).select('*');
+                let allData: any[] = [];
+                let from = 0;
+                const step = 1000;
+                let fetchMore = true;
 
-                // Apply default sorting if provided
-                if (defaultSort && defaultSort.length > 0) {
-                    defaultSort.forEach(sort => {
-                        query = query.order(sort.key, { ascending: sort.ascending });
-                    });
-                } else if (dateFieldMode === 'year-month') {
-                    query = query.order(yearField, { ascending: false }).order(monthField, { ascending: false });
-                } else if (dateFieldMode === 'date') {
-                    query = query.order(dateField, { ascending: false });
-                }
+                while (fetchMore) {
+                    let query = supabase.from(supabaseTableName).select('*').range(from, from + step - 1);
 
-                const { data: qData, error } = await query;
-                if (error) {
-                    console.error(`Error fetching data from ${supabaseTableName}:`, error);
-                    throw error;
+                    // Apply default sorting if provided
+                    if (defaultSort && defaultSort.length > 0) {
+                        defaultSort.forEach(sort => {
+                            query = query.order(sort.key, { ascending: sort.ascending });
+                        });
+                    } else if (dateFieldMode === 'year-month') {
+                        query = query.order(yearField, { ascending: false }).order(monthField, { ascending: false });
+                    } else if (dateFieldMode === 'date') {
+                        query = query.order(dateField, { ascending: false });
+                    }
+
+                    const { data: qData, error } = await query;
+                    if (error) {
+                        console.error(`Error fetching data from ${supabaseTableName}:`, error);
+                        throw error;
+                    }
+                    
+                    if (qData && qData.length > 0) {
+                        allData = [...allData, ...qData];
+                        if (qData.length < step) {
+                            fetchMore = false; // Got less than requested, no more data
+                        } else {
+                            from += step;
+                        }
+                    } else {
+                        fetchMore = false;
+                    }
                 }
-                records = qData || [];
+                records = allData;
             }
 
             setData(records as T[]);
@@ -156,16 +175,13 @@ export function SmartDataPage<T extends Record<string, any>>({
                 if (row.id && !String(row.id).startsWith('imported-') && !String(row.id).startsWith('uni-')) {
                     finalRow.id = row.id;
                 } else {
-                    // Si es nueva, debemos proveerle un UUID válido a Supabase, 
-                    // ya que el UPSERT masivo exige que todos los objetos tengan las mismas llaves 
-                    // y no le asigne "null" al id de los nuevos.
+                    // Si es nueva, debemos proveerle un UUID válido a Supabase
                     finalRow.id = crypto.randomUUID();
                 }
 
                 return finalRow;
             });
 
-            // Upsert actualiza los registros que tengan un ID (Duplicados), o inserta si no lo tienen o no colisiona
             const { error } = await supabase
                 .from(supabaseTableName)
                 .upsert(recordsToUpsert, { onConflict: 'id' });
@@ -237,8 +253,20 @@ export function SmartDataPage<T extends Record<string, any>>({
                 setIsLoading(true);
                 setAlertModal({ isOpen: false, message: '' });
                 try {
-                    let query = supabase.from(supabaseTableName).delete();
+                    let selQuery = supabase.from(supabaseTableName).select('id');
+                    if (dateFieldMode === 'year-month') {
+                        const [year, month] = period.split('-');
+                        selQuery = selQuery.eq(yearField, Number(year)).eq(monthField, month);
+                    } else if (dateFieldMode === 'date') {
+                        selQuery = selQuery.like(dateField, `${period}%`);
+                    }
+                    const { data: recordsToDel } = await selQuery;
+                    if (recordsToDel && recordsToDel.length > 0) {
+                        const ids = recordsToDel.map((r: any) => r.id);
+                        await ReconciliationBankService.cleanOrphanedReconciliationsByRecords(ids);
+                    }
 
+                    let query = supabase.from(supabaseTableName).delete();
                     if (dateFieldMode === 'year-month') {
                         const [year, month] = period.split('-');
                         query = query.eq(yearField, Number(year)).eq(monthField, month);
@@ -271,10 +299,12 @@ export function SmartDataPage<T extends Record<string, any>>({
                 setIsLoading(true);
                 setAlertModal({ isOpen: false, message: '' });
                 try {
+                    await supabase.from('reconciliation_history').delete().eq('source_table', supabaseTableName);
+
                     const { error } = await supabase
                         .from(supabaseTableName)
                         .delete()
-                        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all trick
+                        .neq('id', '00000000-0000-0000-0000-000000000000'); 
 
                     if (error) throw error;
                     await loadData();
@@ -304,7 +334,6 @@ export function SmartDataPage<T extends Record<string, any>>({
         );
     }
 
-    // Generic delete single row via the prop `onDelete` for the SmartDataTable
     const handleDeleteRow = async (item: T) => {
         setAlertModal({
             isOpen: true,
@@ -316,6 +345,7 @@ export function SmartDataPage<T extends Record<string, any>>({
                 setAlertModal({ isOpen: false, message: '' });
                 setIsLoading(true);
                 try {
+                    await ReconciliationBankService.cleanOrphanedReconciliationsByRecords([item.id]);
                     const { error } = await supabase.from(supabaseTableName).delete().eq('id', item.id);
                     if (error) throw error;
                     await loadData();
@@ -347,7 +377,12 @@ export function SmartDataPage<T extends Record<string, any>>({
                 setAlertModal({ isOpen: false, message: '' });
                 setIsLoading(true);
                 try {
-                    const { error } = await supabase.from(supabaseTableName).delete().in('id', Array.from(ids));
+                    const idsArr = Array.from(ids);
+                    if (idsArr.length > 0) {
+                        await ReconciliationBankService.cleanOrphanedReconciliationsByRecords(idsArr);
+                    }
+
+                    const { error } = await supabase.from(supabaseTableName).delete().in('id', idsArr);
                     if (error) throw error;
                     await loadData();
                 } catch (err: any) {
@@ -430,56 +465,97 @@ export function SmartDataPage<T extends Record<string, any>>({
                     onClose={() => setImportOpen(false)}
                     onImport={handleImportData}
                     onCheckDuplicate={
-                        importMatchFields && mapImportRow && data
-                            ? (row: Record<string, any>) => {
-                                // Normalización ultra-robusta
-                                const normalize = (val: any, fieldName: string): string => {
-                                    if (val === null || val === undefined || val === '') return '';
-                                    
-                                    // 1. Si es un campo de valor (valor, saldo, base, etc), normalizar como número puro
-                                    const isNumericField = /valor|monto|total|saldo|base|impuesto/i.test(fieldName);
-                                    if (isNumericField || typeof val === 'number') {
-                                        // Si es string, limpiar formatos comunes pero mantener el punto decimal si parece uno
-                                        let numStr = String(val).trim();
-                                        // Si tiene coma y punto, asumimos punto decimal final (ej: 1,234.56)
-                                        if (numStr.includes(',') && numStr.includes('.')) {
-                                            numStr = numStr.replace(/,/g, '');
-                                        } else if (numStr.includes(',')) {
-                                            // Si solo tiene coma, ¿es decimal o mil? 
-                                            // Si tiene 1 o 2 dígitos tras la coma, suele ser decimal. Si tiene 3, suele ser mil.
-                                            const parts = numStr.split(',');
-                                            if (parts[parts.length - 1].length === 3) numStr = numStr.replace(/,/g, '');
-                                            else numStr = numStr.replace(',', '.');
-                                        }
-                                        const n = Number(numStr.replace(/[^0-9.\-]/g, ''));
-                                        return isNaN(n) ? '0' : String(Number(n.toFixed(2))); // Normalizar a 2 decimales y quitar ceros extra
-                                    }
+                        (importMatchFields && mapImportRow && data)
+                            ? (() => {
+                                 // --- MOTOR DE NORMALIZACIÓN ---
+                                 const norm = (v: any) => String(v ?? '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, ' ');
+                                 const parseN = (v: any) => {
+                                     const n = Number(String(v || '0').replace(/[^0-9.\-]/g, ''));
+                                     return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+                                 };
+                                 
+                                 const normInt = (v: any) => {
+                                     const s = norm(v);
+                                     if (/^\d+$/.test(s)) return s.replace(/^0+/, '') || '0';
+                                     return s;
+                                 };
 
-                                    // 2. Si es fecha, normalizar a ISO YYYY-MM-DD
-                                    if (val instanceof Date) return val.toISOString().split('T')[0];
-                                    const str = String(val).trim();
-                                    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
-                                    
-                                    // 3. Texto general
-                                    return str.toLowerCase().replace(/\s+/g, ' '); // Colapsar espacios múltiples
-                                };
+                                 // Determinar estrategia (Asientos vs Otros)
+                                 const isAccounting = supabaseTableName.toLowerCase().includes('asientos') || 
+                                                     (data.length > 0 && ('debito' in (data[0] as any) || 'credito' in (data[0] as any)));
 
-                                const mapped = mapImportRow(row);
-                                const hash = importMatchFields.map(f => normalize((mapped as any)[f], f)).join('|');
+                                 return (row: Record<string, any>) => {
+                                     const mapped = mapImportRow!(row);
+                                     const hash = importMatchFields!.map(f => {
+                                         const v = mapped[f];
+                                         if (f === 'identificacion' || f === 'cuenta' || f === 'documento') return normInt(v);
+                                         return norm(v);
+                                     }).join('|');
+                                     
+                                     // 1. BUSQUEDA EXACTA (Identidad Total por hash)
+                                     const identical = data.find(dbRow => {
+                                         const dbItem = dbRow as any;
+                                         return importMatchFields!.every(field => {
+                                             const v1 = dbItem[field];
+                                             const v2 = mapped[field];
+                                             if (field === 'identificacion' || field === 'cuenta' || field === 'documento') return normInt(v1) === normInt(v2);
+                                             return norm(v1) === norm(v2);
+                                         });
+                                     });
 
-                                // Buscar coincidencia exacta
-                                const existingItem = data.find(item => {
-                                    const itemHash = importMatchFields.map(f => normalize((item as any)[f], f)).join('|');
-                                    return itemHash === hash;
-                                });
+                                     if (identical) {
+                                         return { isDuplicate: true, existingId: (identical as any).id, existingRecord: identical, mappedRecord: mapped, hash };
+                                     }
 
-                                return {
-                                    isDuplicate: !!existingItem,
-                                    existingId: existingItem?.id,
-                                    existingRecord: existingItem,
-                                    mappedRecord: mapped
-                                };
-                            }
+                                     // 2. BUSQUEDA INTELIGENTE (Candidatos por campos clave)
+                                     let candidate: any = null;
+
+                                     if (isAccounting) {
+                                         // ESTRATEGIA CONTABLE: Doc + Cuenta + Montos + (Fecha || ID)
+                                         candidate = data.find(dbRow => {
+                                             const item = dbRow as any;
+                                             
+                                             // Criterios estructurales obligatorios
+                                             const docMatch = normInt(item.documento) === normInt(mapped.documento);
+                                             const accMatch = normInt(item.cuenta) === normInt(mapped.cuenta);
+                                             const debMatch = parseN(item.debito) === parseN(mapped.debito);
+                                             const creMatch = parseN(item.credito) === parseN(mapped.credito);
+                                             
+                                             const dateMatch = norm(item.fecha) === norm(mapped.fecha);
+                                             const idMatch = normInt(item.identificacion) === normInt(mapped.identificacion);
+
+                                             return (docMatch && accMatch && debMatch && creMatch) && (dateMatch || idMatch);
+                                         });
+                                     } else {
+                                         // ESTRATEGIA BANCARIA: Fecha + Valor + Fuzzy Desc
+                                         const rowValue = parseN(mapped.valor || mapped.debito || mapped.credito || 0);
+                                         if (rowValue !== 0) {
+                                             const candidates = data.filter(dbRow => {
+                                                 const dbItem = dbRow as any;
+                                                 const dbValue = parseN(dbItem.valor || dbItem.debito || dbItem.credito || 0);
+                                                 return norm(dbItem.fecha) === norm(mapped.fecha) && dbValue === rowValue;
+                                             });
+
+                                             if (candidates.length === 1) {
+                                                 const dbRow = candidates[0] as any;
+                                                 const dbDesc = norm(dbRow.descripcion || dbRow.descripcion_movimiento);
+                                                 const rowDesc = norm(mapped.descripcion || mapped.descripcion_movimiento);
+                                                 
+                                                 const isSimilar = dbDesc.includes(rowDesc) || rowDesc.includes(dbDesc) || 
+                                                                  (dbDesc.substring(0, 12) === rowDesc.substring(0, 12));
+                                                 
+                                                 if (isSimilar) candidate = dbRow;
+                                             }
+                                         }
+                                     }
+
+                                     if (candidate) {
+                                         return { isDuplicate: true, existingId: candidate.id, existingRecord: candidate, mappedRecord: mapped, hash };
+                                     }
+
+                                     return { isDuplicate: false, hash };
+                                 };
+                             })()
                             : undefined
                     }
                     title={`Importar a ${title}`}

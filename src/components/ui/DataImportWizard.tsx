@@ -21,7 +21,7 @@ export interface DataImportWizardProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (data: ParsedRow[]) => Promise<void>;
-    onCheckDuplicate?: (row: Record<string, any>) => { isDuplicate: boolean; existingId?: string; existingRecord?: any; mappedRecord?: any };
+    onCheckDuplicate?: (row: Record<string, any>) => { isDuplicate: boolean; existingId?: string; existingRecord?: any; mappedRecord?: any; hash?: string };
     title?: string;
 }
 
@@ -222,13 +222,38 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
         const normalizeForCompare = (val: any) => {
             if (val === null || val === undefined || val === '') return '';
             
-            if (typeof val === 'number') return val.toFixed(2);
-
-            if (val instanceof Date) {
-                if (!isNaN(val.getTime())) return val.toISOString().split('T')[0];
+            if (typeof val === 'number') {
+                // Si es un número entero o muy cercano, evitamos decimales.
+                // Importante: No aplicamos toFixed(2) si el número es entero para coincidir con IDs o códigos.
+                if (Math.abs(val - Math.round(val)) < 0.0001) return String(Math.round(val));
+                return val.toFixed(2);
             }
 
-            return String(val).trim().toLowerCase().replace(/\s+/g, ' ');
+            if (val instanceof Date) {
+                // Forzar formato YYYY-MM-DD sin importar la zona horaria del sistema.
+                if (!isNaN(val.getTime())) {
+                    const year = val.getFullYear();
+                    const month = String(val.getMonth() + 1).padStart(2, '0');
+                    const day = String(val.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+                return '';
+            }
+
+            // Normalización de texto: eliminar acentos, espacios extra y pasar a minúsculas
+            let str = String(val).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' ');
+            
+            // Si el string parece ser una fecha ISO YYYY-MM-DDTHH:mm:ss.sssZ, extraer solo la fecha
+            if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+                return str.split('t')[0].split(' ')[0];
+            }
+
+            // Identificadores y Documentos: Si el string es puramente numérico, 
+            // quitamos ceros a la izquierda para que '00123' sea igual a '123'
+            if (/^\d+$/.test(str)) {
+                str = str.replace(/^0+/, '') || '0';
+            }
+            return str;
         };
 
         const isRowChanged = (mappedImport: Record<string, any>, existing: Record<string, any>) => {
@@ -260,6 +285,8 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
         const duplicates = new Set<string>();
         const updates = new Set<string>();
         const selection = new Set<string>();
+        const seenHashes = new Set<string>();
+        const seenExistingIds = new Set<string>();
 
         for (let i = headerRowIndex + 1; i < originalData.length; i++) {
             const row = originalData[i];
@@ -274,15 +301,32 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                 if (val !== undefined && val !== null && val !== '') {
                     hasData = true;
                     if (col.type === 'number' || col.type === 'currency') {
-                        val = Number(val);
-                        if (isNaN(val)) val = 0;
+                        if (typeof val === 'string') {
+                            const originalVal = val;
+                            let numStr = val.trim();
+                            if (numStr.includes(',') && numStr.includes('.')) {
+                                numStr = numStr.replace(/,/g, '');
+                            } else if (numStr.includes(',')) {
+                                const parts = numStr.split(',');
+                                if (parts[parts.length - 1].length === 3) numStr = numStr.replace(/,/g, '');
+                                else numStr = numStr.replace(',', '.');
+                            }
+                            const n = Number(numStr.replace(/[^0-9.\-]/g, ''));
+                            val = isNaN(n) ? originalVal : n; // Keep original if parsing completely fails!
+                        } else {
+                            const n = Number(val);
+                            val = isNaN(n) ? val : n;
+                        }
                     } else if (col.type === 'date') {
                         if (typeof val === 'number') {
                             // Convert Excel serial date to JS Date
                             val = new Date(Math.round((val - 25569) * 86400 * 1000));
                         }
                         if (val instanceof Date) {
-                            val = val.toISOString().split('T')[0];
+                            const year = val.getFullYear();
+                            const month = String(val.getMonth() + 1).padStart(2, '0');
+                            const day = String(val.getDate()).padStart(2, '0');
+                            val = `${year}-${month}-${day}`;
                         } else if (typeof val === 'string' && val.trim()) {
                             const str = val.trim();
                             // Intentar parsear DD/MM/YYYY o DD-MM-YYYY
@@ -315,29 +359,52 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
                 // Generar ID por defecto
                 let uniqueId = defaultGenerateId({ ...cleanRowContent, _rowIdx: i });
                 let isDup = false;
+                let isIntraFileDuplicate = false;
 
                 let dupInfo = null;
                 if (onCheckDuplicate) {
                     dupInfo = onCheckDuplicate(cleanRowContent);
+                    const currentHash = dupInfo?.hash;
+
+                    // 1. Detectar duplicados IDENTICOS dentro del mismo archivo Excel (por hash)
+                    if (currentHash) {
+                        if (seenHashes.has(currentHash)) {
+                            isIntraFileDuplicate = true;
+                        } else {
+                            seenHashes.add(currentHash);
+                        }
+                    }
+
+                    if (isIntraFileDuplicate) continue;
+
+                    // 2. Detectar si es un duplicado contra la base de datos (Update o Identical)
                     if (dupInfo?.isDuplicate) {
                         isDup = true;
+                        
+                        // 3. Importante: Prevenir colisiones de ON CONFLICT si dos registros distintos del Excel 
+                        // apuntan al MISMO ID de la base de datos (por ejemplo, en un match de N-1 campos)
                         if (dupInfo.existingId) {
-                            uniqueId = dupInfo.existingId; // Transfiere el UUID real de la DB a la tabla temporal
+                            if (seenExistingIds.has(dupInfo.existingId)) {
+                                console.warn(`⚠️ Conflicto detected: Múltiples registros del Excel apuntan al mismo ID DB (${dupInfo.existingId}). Se ignorará la repetición para evitar error de base de datos.`);
+                                continue; 
+                            }
+                            seenExistingIds.add(dupInfo.existingId);
+                            uniqueId = dupInfo.existingId;
                         }
                     }
                 }
 
                 const parsedRow: ParsedRow = {
-                    id: uniqueId,
-                    ...cleanRowContent
+                    ...cleanRowContent,
+                    id: uniqueId
                 };
                 result.push(parsedRow);
                 selection.add(uniqueId);
 
                 if (isDup) {
                     duplicates.add(uniqueId);
-                    
-                    // DEEP COMPARE: Check if something changed
+
+                    // DEEP COMPARE: verificar si hubo cambios
                     if (dupInfo?.existingRecord && dupInfo?.mappedRecord) {
                         if (isRowChanged(dupInfo.mappedRecord, dupInfo.existingRecord)) {
                             updates.add(uniqueId);
@@ -347,22 +414,6 @@ export const DataImportWizard: React.FC<DataImportWizardProps> = ({
             }
         }
 
-        // DEBUG: Resumen del procesamiento
-        console.group('📊 RESUMEN IMPORT WIZARD');
-        console.log('Total filas raw en archivo (incluyendo header):', originalData.length);
-        console.log('Total registros procesados (con datos):', result.length);
-        console.log('Total DUPLICADOS detectados:', duplicates.size);
-        console.log('Total ACTUALIZACIONES detectadas:', updates.size);
-        console.log('Total NUEVOS:', result.length - duplicates.size);
-        
-        if (result.length > 0) {
-            console.log('Keys del primer registro:', Object.keys(result[0]));
-        }
-        
-        const allKeys = result.length > 0 ? Object.keys(result[0]) : [];
-        const dateKey = allKeys.find(k => k.toLowerCase().includes('fecha')) || 'fecha';
-        console.log('Campo fecha detectado:', dateKey);
-        console.groupEnd();
 
         setImportDuplicates(duplicates);
         setImportUpdates(updates);

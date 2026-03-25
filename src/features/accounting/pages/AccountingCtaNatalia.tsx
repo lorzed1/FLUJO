@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { WalletIcon } from '../../../components/ui/Icons';
+import { BankDuplicateDetector } from '../components/BankDuplicateDetector';
 
 export interface CtaNataliaRow {
     id: string;
@@ -11,19 +12,28 @@ export interface CtaNataliaRow {
 }
 
 export const AccountingCtaNatalia: React.FC = () => {
+    const [reloadKey, setReloadKey] = useState(0);
+
     return (
         <SmartDataPage<CtaNataliaRow>
+            key={reloadKey}
             title="Cta Natalia"
             breadcrumbs={[{ label: 'Contabilidad' }, { label: 'Cta Natalia' }]}
             icon={<WalletIcon className="h-7 w-7 text-primary" />}
             supabaseTableName="accounting_cta_natalia"
-            importMatchFields={['fecha', 'valor', 'descripcion']}
+            importMatchFields={['fecha', 'valor', 'descripcion', 'referencia']}
             enableMonthDelete={true}
             dateFieldMode="date"
             dateField="fecha"
             searchPlaceholder="Buscar en cuenta..."
             defaultSort={[{ key: 'fecha', ascending: false }]}
             enableAdd={true}
+            customActions={
+                <BankDuplicateDetector 
+                    tableName="accounting_cta_natalia" 
+                    onDuplicatedDeleted={() => setReloadKey(k => k + 1)} 
+                />
+            }
             infoDefinitions={[
                 {
                     label: 'Fecha',
@@ -59,8 +69,8 @@ export const AccountingCtaNatalia: React.FC = () => {
 
                 // If it's an excel serial date, convert it
                 if (typeof fecha === 'number' || (!isNaN(Number(fecha)) && String(fecha).length <= 6)) {
-                    const excelEpoch = new Date(1899, 11, 30);
-                    const dateObj = new Date(excelEpoch.getTime() + Number(fecha) * 86400000);
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    const dateObj = new Date(excelEpoch.getTime() + Math.round(Number(fecha) * 86400000));
                     fecha = dateObj.toISOString().split('T')[0];
                 } else if (fecha instanceof Date) {
                     fecha = fecha.toISOString().split('T')[0];

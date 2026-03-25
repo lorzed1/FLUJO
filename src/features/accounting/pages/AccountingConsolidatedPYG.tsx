@@ -9,6 +9,7 @@ export const AccountingConsolidatedPYG: React.FC = () => {
             breadcrumbs={[{ label: 'Contabilidad' }, { label: 'Consolidado PYG' }]}
             icon={<PresentationChartLineIcon className="h-7 w-7 text-primary" />}
             supabaseTableName="accounting_consolidated_pyg"
+            importMatchFields={['year', 'month', 'account']}
             enableMonthDelete={true}
             dateFieldMode="year-month"
             searchPlaceholder="Buscar en consolidado..."

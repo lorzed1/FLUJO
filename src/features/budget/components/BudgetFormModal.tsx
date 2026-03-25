@@ -191,7 +191,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                 </Select>
                             </FormGroup>
 
-                            {formData.status === 'paid' ? (
+                            {formData.status === 'paid' && (
                                 <FormGroup label="Fecha de Liquidación">
                                     <DatePicker
                                         value={formData.paymentDate}
@@ -199,57 +199,57 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                                         className="text-sm- font-medium border-emerald-100 bg-emerald-50/10"
                                     />
                                 </FormGroup>
-                            ) : (
-                                <FormGroup label="Categoría" required>
-                                    <div className="flex gap-2">
-                                        <div className="flex-1">
-                                            {isAddingCategory ? (
-                                                <div className="flex items-center gap-1.5 animate-in slide-in-from-right-2">
-                                                    <Input
-                                                        value={newCategoryName}
-                                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                                        placeholder="Nombre..."
-                                                        autoFocus
-                                                        className="!text-xs"
-                                                    />
-                                                    <Button type="button" onClick={handleAddCategory} className="!w-10 !p-0">
-                                                        <CheckIcon className="w-5 h-5" />
-                                                    </Button>
-                                                    <Button type="button" variant="secondary" onClick={() => setIsAddingCategory(false)} className="!w-10 !p-0">
-                                                        <XMarkIcon className="w-5 h-5" />
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <Select
-                                                    value={formData.category}
-                                                    className="text-sm- font-medium"
-                                                    onChange={e => handleChange('category', e.target.value)}
-                                                    required
-                                                >
-                                                    <option value="">Seleccionar categoría...</option>
-                                                    {expenseCategories.map(cat => (
-                                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                                    ))}
-                                                    {formData.category && !expenseCategories.some(c => c.name === formData.category) && (
-                                                        <option value={formData.category}>{formData.category}</option>
-                                                    )}
-                                                </Select>
-                                            )}
-                                        </div>
-                                        {!isAddingCategory && (
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                onClick={() => setIsAddingCategory(true)}
-                                                className="!w-10 !p-0 border-dashed"
-                                                title="Añadir categoría"
+                            )}
+
+                            <FormGroup label="Categoría" required>
+                                <div className="flex gap-2">
+                                    <div className="flex-1">
+                                        {isAddingCategory ? (
+                                            <div className="flex items-center gap-1.5 animate-in slide-in-from-right-2">
+                                                <Input
+                                                    value={newCategoryName}
+                                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                                    placeholder="Nombre..."
+                                                    autoFocus
+                                                    className="!text-xs"
+                                                />
+                                                <Button type="button" onClick={handleAddCategory} className="!w-10 !p-0">
+                                                    <CheckIcon className="w-5 h-5" />
+                                                </Button>
+                                                <Button type="button" variant="secondary" onClick={() => setIsAddingCategory(false)} className="!w-10 !p-0">
+                                                    <XMarkIcon className="w-5 h-5" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={formData.category}
+                                                className="text-sm- font-medium"
+                                                onChange={e => handleChange('category', e.target.value)}
+                                                required
                                             >
-                                                <PlusIcon className="w-5 h-5" />
-                                            </Button>
+                                                <option value="">Seleccionar categoría...</option>
+                                                {expenseCategories.map(cat => (
+                                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                                ))}
+                                                {formData.category && !expenseCategories.some(c => c.name === formData.category) && (
+                                                    <option value={formData.category}>{formData.category}</option>
+                                                )}
+                                            </Select>
                                         )}
                                     </div>
-                                </FormGroup>
-                            )}
+                                    {!isAddingCategory && (
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={() => setIsAddingCategory(true)}
+                                            className="!w-10 !p-0 border-dashed"
+                                            title="Añadir categoría"
+                                        >
+                                            <PlusIcon className="w-5 h-5" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </FormGroup>
                         </div>
                     </div>
 

@@ -236,6 +236,7 @@ export const TipsPage: React.FC = () => {
             columns={columns}
             dateFieldMode="date"
             dateField="fecha"
+            importMatchFields={['fecha', 'total_propinas']}
             enableAdd={true}
             searchPlaceholder="Buscar por fecha..."
             customActions={

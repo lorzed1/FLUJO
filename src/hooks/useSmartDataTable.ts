@@ -55,6 +55,7 @@ export interface SmartDataTableProps<T extends Record<string, any>> {
     exportDateField?: string;
     footerMessage?: React.ReactNode;
     loading?: boolean;
+    getRowClassName?: (item: T) => string | undefined;
 }
 
 // ============================================
@@ -219,10 +220,30 @@ export function useSmartDataTable<T extends Record<string, any>>({
         // Search
         if (enableSearch && searchTerm) {
             const lowerTerm = searchTerm.toLowerCase();
+            const termSinPuntuacion = lowerTerm.replace(/[\$\.\,\s]/g, '');
+            const isNumericSearch = termSinPuntuacion.length > 0 && !isNaN(Number(termSinPuntuacion));
+
             result = result.filter(item =>
-                initialColumns.some(col =>
-                    getRenderedStringValue(item, col).toLowerCase().includes(lowerTerm)
-                )
+                initialColumns.some(col => {
+                    // 1. Búsqueda literal en el string renderizado (ej: "459.197" o "Nat")
+                    const rendered = getRenderedStringValue(item, col).toLowerCase();
+                    if (rendered.includes(lowerTerm)) return true;
+                    
+                    // 2. Búsqueda en el valor crudo en memoria (ej: 459197)
+                    const raw = getCellValue(item, col);
+                    if (raw !== undefined && raw !== null && typeof raw !== 'object') {
+                        const rawString = String(raw).toLowerCase();
+                        if (rawString.includes(lowerTerm)) return true;
+                        
+                        // 3. Fallback inteligente: Búsqueda sin formato (ej: usuario digita "$4500" y raw es 4500)
+                        if (isNumericSearch && (col.type?.startsWith('currency') || col.type === 'number')) {
+                            // Buscar el término limpio en el valor numérico limpio
+                            // Esto evita los problemas de separadores ignorando símbolos
+                            if (termSinPuntuacion && rawString.includes(termSinPuntuacion)) return true;
+                        }
+                    }
+                    return false;
+                })
             );
         }
 

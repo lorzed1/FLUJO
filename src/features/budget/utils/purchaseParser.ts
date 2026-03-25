@@ -103,8 +103,8 @@ export function parsePurchaseRows(
             } else if (type === 'date') {
                 const num = Number(cellValue);
                 if (!isNaN(num) && num > 30000 && num < 60000) {
-                    const epoch = new Date(1899, 11, 30);
-                    processed = new Date(epoch.getTime() + num * 86400000).toISOString().split('T')[0];
+                    const epoch = new Date(Date.UTC(1899, 11, 30));
+                    processed = new Date(epoch.getTime() + Math.round(num * 86400000)).toISOString().split('T')[0];
                 } else {
                     processed = parseSpanishDate(cellValue) || cellValue;
                 }

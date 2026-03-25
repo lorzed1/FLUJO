@@ -49,6 +49,7 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
         renderSelectionActions,
         loading = false,
         onInfoClick,
+        getRowClassName,
     } = props;
 
     const table = useSmartDataTable(props);
@@ -378,7 +379,8 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                                         ? "bg-purple-50 dark:bg-purple-900/40"
                                                         : index % 2 === 0
                                                             ? "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                                                            : "bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80"
+                                                            : "bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80",
+                                                    getRowClassName && getRowClassName(item)
                                                 )}
                                             >
                                                 {enableSelection && (

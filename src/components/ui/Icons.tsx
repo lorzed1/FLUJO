@@ -410,4 +410,7 @@ export {
   DocumentDuplicateIcon,
   SwatchIcon,
   CreditCardIcon as HeroCreditCardIcon,
+  ChatBubbleLeftEllipsisIcon,
+  PencilSquareIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';

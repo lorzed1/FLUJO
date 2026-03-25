@@ -4,6 +4,7 @@ import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Spinner } from '../../../components/ui/Spinner';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Modal } from '../../../components/ui/Modal';
+import { FormGroup } from '../../../components/ui/FormGroup';
 import { SmartDataTable, type Column } from '../../../components/ui/SmartDataTable';
 import {
     ArrowsRightLeftIcon,
@@ -23,6 +24,9 @@ import {
     EyeIcon,
     MagnifyingGlassIcon,
     ExclamationTriangleIcon,
+    ArrowDownTrayIcon,
+    ChatBubbleLeftEllipsisIcon,
+    PencilSquareIcon,
 } from '../../../components/ui/Icons';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel } from '../../../components/ui/DropdownMenu';
 import {
@@ -32,6 +36,7 @@ import {
     ReconciliationMatchResult,
     ReconciliationHistoryRow,
     ReconciliationConfig,
+    InternalTransfer,
 } from '../../../services/reconciliationBankService';
 
 // =============================================
@@ -40,11 +45,16 @@ import {
 
 const fmtDate = (d: string) => {
     if (!d) return '—';
+    // Si viene en formato YYYY-MM-DD, extraer directamente para no iteractuar con la zona horaria del motor JS
+    const isoMatch = d.split('T')[0].split('-');
+    if (isoMatch.length === 3) {
+        return `${isoMatch[2]}/${isoMatch[1]}/${isoMatch[0]}`;
+    }
     const date = new Date(d);
     if (isNaN(date.getTime())) return d;
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    return `${dd}/${mm}/${date.getFullYear()}`;
+    const dd = String(date.getUTCDate()).padStart(2, '0');
+    const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${date.getUTCFullYear()}`;
 };
 
 const fmt = (n: number) =>
@@ -94,11 +104,18 @@ const setLocalConfig = (key: string, val: any) => {
     try { localStorage.setItem(`conciliacion_${key}`, JSON.stringify(val)); } catch {}
 };
 
-type ActiveTab = 'conciliar' | 'historial';
+type ActiveTab = 'conciliar' | 'historial' | 'transferencias';
 
-type SourceColumn = 'fecha' | 'valor' | 'sucursal' | 'referencia' | 'descripcion' | 'doc_banco';
-type TargetColumn = 'fecha' | 'valor' | 'cuenta' | 'contacto' | 'identificacion' | 'centro_costo' | 'documento' | 'descripcion';
-type MatchColumn = 'fecha' | 'valor' | 'descripcion' | 'score' | 'diff_valor' | 'diff_dias';
+interface ReverseMatch {
+    accountId: string;
+    accountLabel: string;
+    record: ReconciliationRecord;
+    alreadyConciliated: boolean;
+}
+
+type SourceColumn = 'fecha' | 'valor' | 'sucursal' | 'referencia' | 'descripcion' | 'doc_banco' | 'notas';
+type TargetColumn = 'fecha' | 'valor' | 'cuenta' | 'contacto' | 'identificacion' | 'centro_costo' | 'documento' | 'descripcion' | 'notas';
+type MatchColumn = 'fecha' | 'valor' | 'descripcion' | 'score' | 'diff_valor' | 'diff_dias' | 'notas';
 
 const MATCH_COLS_DEFS: { key: MatchColumn; label: string }[] = [
     { key: 'fecha',       label: 'Fecha' },
@@ -116,6 +133,7 @@ const SOURCE_COLS_DEFS: { key: SourceColumn; label: string }[] = [
     { key: 'sucursal', label: 'Sucursal' },
     { key: 'referencia', label: 'Referencia' },
     { key: 'doc_banco', label: 'Doc. Banco' },
+    { key: 'notas', label: 'Notas' },
 ];
 
 const TARGET_COLS_DEFS: { key: TargetColumn; label: string }[] = [
@@ -127,6 +145,7 @@ const TARGET_COLS_DEFS: { key: TargetColumn; label: string }[] = [
     { key: 'identificacion', label: 'Identificación' },
     { key: 'centro_costo', label: 'Centro de Costo' },
     { key: 'documento', label: 'Documento' },
+    { key: 'notas', label: 'Notas' },
 ];
 
 // Helper: obtener config ligada a cuenta
@@ -163,9 +182,46 @@ export const ReconciliationView: React.FC = () => {
     const [history, setHistory] = useState<ReconciliationHistoryRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    
+    // --- Notas ---
+    const [editingNoteRecord, setEditingNoteRecord] = useState<{ record: ReconciliationRecord; type: 'source' | 'target' } | null>(null);
+    const [noteText, setNoteText] = useState('');
+    const [savingNote, setSavingNote] = useState(false);
+    
+    // --- Transferencias Internas ---
+    const [internalTransfers, setInternalTransfers] = useState<InternalTransfer[]>([]);
+    const [loadingTransfers, setLoadingTransfers] = useState(false);
+    const [registeredTransferIds, setRegisteredTransferIds] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('conciliacion_registered_transfers');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
+
+    useEffect(() => {
+        localStorage.setItem('conciliacion_registered_transfers', JSON.stringify(Array.from(registeredTransferIds)));
+    }, [registeredTransferIds]);
+
+    const toggleTransferRegistered = useCallback((id: string) => {
+        setRegisteredTransferIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+    // --- Historial UI ---
+    const [historySearch, setHistorySearch] = useState('');
+    const [historyDetailRow, setHistoryDetailRow] = useState<ReconciliationHistoryRow | null>(null);
+
+    // --- Modo Invertido: búsqueda desde asientos contables hacia cuentas bancarias ---
+    const [reverseMode, setReverseMode] = useState(false);
+    // Registros target seleccionados en modo invertido (para búsqueda por suma)
+    const [selectedReverseTargetIds, setSelectedReverseTargetIds] = useState<Set<string>>(new Set());
+    // Registros de TODAS las cuentas bancarias: map cuenta_id -> registros
+    const [allBankRecords, setAllBankRecords] = useState<Record<string, ReconciliationRecord[]>>({});
+    const [loadingAllBanks, setLoadingAllBanks] = useState(false);
 
     // --- UI ---
-    const [activeTab, setActiveTab] = useState<ActiveTab>('conciliar');
+    const [activeTab, setActiveTab] = useState<'conciliar' | 'historial' | 'transferencias'>('conciliar');
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     // --- Filtro de fechas (por cuenta) ---
@@ -181,17 +237,17 @@ export const ReconciliationView: React.FC = () => {
     // --- Columnas (por cuenta) ---
     const [visibleSourceCols, setVisibleSourceCols] = useState<Record<SourceColumn, boolean>>(
         () => getAccountConfig(selectedAccountId, 'visibleSourceCols', {
-            fecha: true, valor: true, descripcion: true, sucursal: false, referencia: false, doc_banco: false
+            fecha: true, valor: true, descripcion: true, sucursal: false, referencia: false, doc_banco: false, notas: true
         })
     );
     const [visibleTargetCols, setVisibleTargetCols] = useState<Record<TargetColumn, boolean>>(
         () => getAccountConfig(selectedAccountId, 'visibleTargetCols', {
-            fecha: true, valor: true, descripcion: true, cuenta: false, contacto: false, identificacion: false, centro_costo: false, documento: false
+            fecha: true, valor: true, descripcion: true, cuenta: false, contacto: false, identificacion: false, centro_costo: false, documento: false, notas: true
         })
     );
     const [visibleMatchCols, setVisibleMatchCols] = useState<Record<MatchColumn, boolean>>(
         () => getAccountConfig(selectedAccountId, 'visibleMatchCols', {
-            fecha: true, valor: true, descripcion: true, score: true, diff_valor: false, diff_dias: false
+            fecha: true, valor: true, descripcion: true, score: true, diff_valor: false, diff_dias: false, notas: false
         })
     );
 
@@ -255,13 +311,13 @@ export const ReconciliationView: React.FC = () => {
         setDateTo(getAccountConfig(selectedAccountId, 'dateTo', ''));
         setFlowFilter(getAccountConfig(selectedAccountId, 'flowFilter', 'all'));
         setVisibleSourceCols(getAccountConfig(selectedAccountId, 'visibleSourceCols', {
-            fecha: true, valor: true, descripcion: true, sucursal: false, referencia: false, doc_banco: false
+            fecha: true, valor: true, descripcion: true, sucursal: false, referencia: false, doc_banco: false, notas: true
         }));
         setVisibleTargetCols(getAccountConfig(selectedAccountId, 'visibleTargetCols', {
-            fecha: true, valor: true, descripcion: true, cuenta: false, contacto: false, identificacion: false, centro_costo: false, documento: false
+            fecha: true, valor: true, descripcion: true, cuenta: false, contacto: false, identificacion: false, centro_costo: false, documento: false, notas: true
         }));
         setVisibleMatchCols(getAccountConfig(selectedAccountId, 'visibleMatchCols', {
-            fecha: true, valor: true, descripcion: true, score: true, diff_valor: false, diff_dias: false
+            fecha: true, valor: true, descripcion: true, score: true, diff_valor: false, diff_dias: false, notas: false
         }));
         setSourceSearch(getAccountConfig(selectedAccountId, 'sourceSearch', ''));
         setTargetSearch(getAccountConfig(selectedAccountId, 'targetSearch', ''));
@@ -332,6 +388,9 @@ export const ReconciliationView: React.FC = () => {
     const [reversingId, setReversingId] = useState<string | null>(null);
     const [reversalReason, setReversalReason] = useState('');
 
+    // --- Modo Invertido: conciliación ---
+    const [savingReverseMatchId, setSavingReverseMatchId] = useState<string | null>(null);
+
     // --- Refs ---
     const sourceScrollRef = useRef<HTMLDivElement>(null);
     const targetScrollRef = useRef<HTMLDivElement>(null);
@@ -368,15 +427,40 @@ export const ReconciliationView: React.FC = () => {
     // CARGA
     // =============================================
 
+    /** Cargar registros de TODAS las cuentas bancarias (solo para modo invertido) */
+    const loadAllBankRecords = useCallback(async () => {
+        if (loadingAllBanks) return;
+        setLoadingAllBanks(true);
+        try {
+            const results = await Promise.all(
+                RECONCILIATION_ACCOUNTS.map(acc =>
+                    ReconciliationBankService.loadSourceRecords(acc).then(records => ({ id: acc.id, records }))
+                )
+            );
+            const map: Record<string, ReconciliationRecord[]> = {};
+            results.forEach(({ id, records }) => { map[id] = records; });
+            setAllBankRecords(map);
+        } catch (err) {
+            console.error('Error cargando cuentas bancarias:', err);
+        } finally {
+            setLoadingAllBanks(false);
+        }
+    }, [loadingAllBanks]);
+
     const loadData = useCallback(async () => {
         if (!selectedAccount) return;
         setLoading(true);
         try {
+            // Siempre cargamos todo para el historial consolidado y match cruzado
+            if (Object.keys(allBankRecords).length === 0) {
+                loadAllBankRecords();
+            }
+
             const [source, target, ids, hist] = await Promise.all([
                 ReconciliationBankService.loadSourceRecords(selectedAccount),
                 ReconciliationBankService.loadAsientosContables(),
                 ReconciliationBankService.getConciliatedIds(selectedAccount.table),
-                ReconciliationBankService.getHistory(selectedAccount.table),
+                ReconciliationBankService.getAllActiveHistory(),
             ]);
             setSourceRecords(source);
             setTargetRecords(target);
@@ -391,11 +475,229 @@ export const ReconciliationView: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedAccount]);
+    }, [selectedAccount, allBankRecords, loadAllBankRecords]);
+
+    /** Activar / desactivar modo invertido */
+    const toggleReverseMode = useCallback(() => {
+        setReverseMode(prev => {
+            const next = !prev;
+            if (next && Object.keys(allBankRecords).length === 0) {
+                // Cargar todas las cuentas la primera vez que se activa
+                loadAllBankRecords();
+            }
+            if (!next) {
+                // Al desactivar, limpiar selección
+                setSelectedReverseTargetIds(new Set());
+            }
+            return next;
+        });
+    }, [allBankRecords, loadAllBankRecords]);
 
     useEffect(() => { loadData(); }, [loadData]);
+    
+    // --- Handlers para Notas ---
+    const openNoteModal = useCallback((record: ReconciliationRecord, type: 'source' | 'target') => {
+        setEditingNoteRecord({ record, type });
+        setNoteText(record.notes || '');
+    }, []);
 
+    const handleSaveNote = async () => {
+        if (!editingNoteRecord) return;
+        setSavingNote(true);
+        try {
+            const { record, type } = editingNoteRecord;
+            let tableName = '';
+            
+            if (type === 'source') {
+                tableName = selectedAccount?.table || '';
+            } else {
+                tableName = 'accounting_asientos_contables';
+            }
 
+            if (!tableName) return;
+
+            await ReconciliationBankService.updateNote(tableName, record.id, noteText);
+            
+            // Actualizar localmente para feedback inmediato
+            if (type === 'source') {
+                setSourceRecords(prev => prev.map(r => r.id === record.id ? { ...r, notes: noteText } : r));
+            } else {
+                setTargetRecords(prev => prev.map(r => r.id === record.id ? { ...r, notes: noteText } : r));
+            }
+            
+            setEditingNoteRecord(null);
+        } catch (err) {
+            console.error('Error al guardar nota:', err);
+        } finally {
+            setSavingNote(false);
+        }
+    };
+
+    const loadTransfers = useCallback(async () => {
+        setLoadingTransfers(true);
+        try {
+            const data = await ReconciliationBankService.findInternalTransfers();
+            setInternalTransfers(data);
+        } catch (err) {
+            console.error('Error cargando transferencias:', err);
+        } finally {
+            setLoadingTransfers(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'transferencias') {
+            loadTransfers();
+        }
+    }, [activeTab, loadTransfers]);
+
+    const filteredTransfers = useMemo(() => {
+        let result = internalTransfers;
+        if (dateFrom && dateTo) {
+            result = result.filter(t => t.date >= dateFrom && t.date <= dateTo);
+        }
+        return result;
+    }, [internalTransfers, dateFrom, dateTo]);
+
+    const transferColumns: Column<InternalTransfer>[] = useMemo(() => [
+        {
+            key: 'date',
+            label: 'Fecha',
+            type: 'date',
+            render: (val: string) => (
+                <div className="flex items-center gap-2">
+                    <CalendarDaysIcon className="h-4 w-4 text-slate-400" />
+                    <span>{fmtDate(val)}</span>
+                </div>
+            )
+        },
+        {
+            key: 'sourceAccount',
+            label: 'Origen (Salida)',
+            render: (_, r) => (
+                <div className="flex flex-col">
+                    <span className="font-semibold text-rose-600 dark:text-rose-400">{r.sourceAccount.label}</span>
+                    <span className="text-2xs text-slate-500 truncate max-w-[200px]" title={r.sourceDesc}>{r.sourceDesc}</span>
+                    {r.sourceRecordId !== 'caja-virtual' && (r as any).sourceRef && (
+                        <span className="text-2xs font-mono text-slate-400">{(r as any).sourceRef}</span>
+                    )}
+                </div>
+            )
+        },
+        {
+            key: 'targetAccount',
+            label: 'Destino (Entrada)',
+            render: (_, r) => (
+                <div className="flex flex-col">
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">{r.targetAccount.label}</span>
+                    <span className="text-2xs text-slate-500 truncate max-w-[200px]" title={r.targetDesc}>{r.targetDesc}</span>
+                    {r.targetRecordId !== 'caja-virtual' && (r as any).targetRef && (
+                        <span className="text-2xs font-mono text-slate-400">{(r as any).targetRef}</span>
+                    )}
+                </div>
+            )
+        },
+        {
+            key: 'amount',
+            label: 'Valor',
+            type: 'currency',
+            align: 'text-right',
+            render: (val: number) => (
+                <strong className="text-slate-900 dark:text-white">
+                    {fmt(val)}
+                </strong>
+            )
+        },
+        {
+            key: 'isConciliated',
+            label: 'Conciliación',
+            width: 'w-[100px]',
+            align: 'text-center',
+            render: (_, item) => (
+                <div className="flex justify-center">
+                    {item.isConciliated ? (
+                        <StatusBadge variant="success" label="Conciliado" />
+                    ) : (
+                        <StatusBadge variant="warning" label="Pendiente" />
+                    )}
+                </div>
+            )
+        },
+        {
+            key: 'is_registered',
+            label: 'Estado',
+            width: 'w-[80px]',
+            align: 'text-center',
+            render: (_, item) => (
+                <button
+                    onClick={(e) => { e.stopPropagation(); toggleTransferRegistered(item.id); }}
+                    className={`h-7 w-7 rounded-full mx-auto flex items-center justify-center transition-all ${
+                        registeredTransferIds.has(item.id)
+                            ? 'bg-emerald-500 text-white shadow-sm dark:bg-emerald-600'
+                            : 'bg-slate-100 text-slate-400 hover:text-slate-600 dark:bg-slate-800 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                    title={registeredTransferIds.has(item.id) ? 'Marcado como registrado' : 'Marcar como registrado'}
+                >
+                    <CheckCircleIcon className="h-5 w-5" />
+                </button>
+            )
+        }
+    ], [registeredTransferIds, toggleTransferRegistered]);
+
+    const exportTransfersToCSV = useCallback((selectedIds: Set<string>) => {
+        const transfersToExport = internalTransfers.filter(t => selectedIds.has(t.id));
+        if (transfersToExport.length === 0) return;
+
+        const header = "Tipo de documento;Consecutivo;Fecha de elaboración;Fecha de vencimiento;Código de cuenta;Id contacto;Centro de costos;Débito;Crédito;Base;Descripción;Descripción movimiento";
+        const rows: string[] = [];
+        let consecutivo = 1;
+
+        transfersToExport.forEach(t => {
+            const dateParts = t.date.split('T')[0].split('-');
+            const dateStr = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : t.date;
+            
+            // Fila 1: Origen (Crédito / Salida)
+            rows.push([
+                'RC',
+                consecutivo,
+                dateStr,
+                dateStr,
+                t.sourceAccount.pucCode || '',
+                '', 
+                '', 
+                '', 
+                t.amount.toString().replace('.', ','),
+                '', 
+                `Transferencia de ${t.sourceAccount.label} a ${t.targetAccount.label}`,
+                t.sourceDesc
+            ].join(';'));
+
+            // Fila 2: Destino (Débito / Entrada)
+            rows.push([
+                'RC',
+                consecutivo,
+                dateStr,
+                dateStr,
+                t.targetAccount.pucCode || '',
+                '', 
+                '', 
+                t.amount.toString().replace('.', ','),
+                '',
+                '', 
+                `Transferencia de ${t.sourceAccount.label} a ${t.targetAccount.label}`,
+                t.targetDesc
+            ].join(';'));
+            
+            consecutivo++;
+        });
+
+        const csvContent = '\uFEFF' + [header, ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `asientos_transferencias_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    }, [internalTransfers]);
 
     // Limpiar sugerencias y auto-matches si cambia el filtro de flujo
     useEffect(() => {
@@ -537,7 +839,7 @@ export const ReconciliationView: React.FC = () => {
         [selectedTargetId, pendingTarget]
     );
 
-    // --- Columnas Historial ---
+    // --- Columnas Historial (Consolidado) ---
     const historyColumns: Column<ReconciliationHistoryRow>[] = useMemo(() => [
         {
             key: 'status',
@@ -551,130 +853,160 @@ export const ReconciliationView: React.FC = () => {
             )
         },
         {
-            key: 'source_info',
-            label: 'Movimiento Banco',
+            key: 'cuenta_banco',
+            label: 'Cuenta Banco',
+            getValue: (item) => RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table)?.label || '—',
             render: (_, item) => {
-                const source = sourceRecords.find(r => r.id === item.source_record_id);
-                if (!source) return <span className="text-slate-400 italic text-xs">No disponible</span>;
-                return (
-                    <div className="flex flex-col py-1 min-w-[180px]">
-                        <span className="font-medium text-slate-700 dark:text-slate-200 text-xs truncate max-w-[250px]" title={source.description || 'Sin descripción'}>
-                            {source.description || 'Sin descripción'}
-                        </span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs2 font-bold text-slate-800 dark:text-slate-100">{fmt(source.amount)}</span>
-                            <span className="text-3xs text-slate-400">{fmtDate(source.date)}</span>
-                        </div>
-                    </div>
-                );
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                return <span className="font-medium text-slate-700 dark:text-slate-300 text-xs">{acc?.label || '—'}</span>;
             }
         },
         {
-            key: 'target_info',
-            label: 'Asiento Contable',
+            key: 'fecha_banco',
+            label: 'Fecha Banco',
+            type: 'date',
+            getValue: (item) => {
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                const records = acc ? allBankRecords[acc.id] : [];
+                const source = records?.find(r => r.id === item.source_record_id);
+                return source ? source.date : '';
+            },
+            render: (_, item) => {
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                const records = acc ? allBankRecords[acc.id] : [];
+                const source = records?.find(r => r.id === item.source_record_id);
+                return <span className="text-slate-600 dark:text-slate-400 text-xs">{source ? fmtDate(source.date) : '—'}</span>;
+            }
+        },
+        {
+            key: 'valor_banco',
+            label: 'Valor Banco',
+            align: 'text-right',
+            type: 'currency',
+            getValue: (item) => {
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                const records = acc ? allBankRecords[acc.id] : [];
+                const source = records?.find(r => r.id === item.source_record_id);
+                return source ? source.amount : '';
+            },
+            render: (_, item) => {
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                const records = acc ? allBankRecords[acc.id] : [];
+                const source = records?.find(r => r.id === item.source_record_id);
+                return <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{source ? fmt(source.amount) : '—'}</span>;
+            }
+        },
+        {
+            key: 'desc_banco',
+            label: 'Desc. Banco',
+            getValue: (item) => {
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                const records = acc ? allBankRecords[acc.id] : [];
+                const source = records?.find(r => r.id === item.source_record_id);
+                return source?.description || '—';
+            },
+            render: (_, item) => {
+                const acc = RECONCILIATION_ACCOUNTS.find(a => a.table === item.source_table);
+                const records = acc ? allBankRecords[acc.id] : [];
+                const source = records?.find(r => r.id === item.source_record_id);
+                return <span className="text-slate-500 dark:text-slate-400 text-xs truncate max-w-[200px]" title={source?.description}>{source?.description || '—'}</span>;
+            }
+        },
+        {
+            key: 'target_doc',
+            label: 'Asiento/Doc',
+            getValue: (item) => {
+                const target = targetRecords.find(r => r.id === item.target_record_id);
+                return target?.raw?.documento || '—';
+            },
             render: (_, item) => {
                 const target = targetRecords.find(r => r.id === item.target_record_id);
-                if (!target) return <span className="text-slate-400 italic text-xs">No disponible</span>;
-                
-                // Buscar si hay otros registros con el mismo target y created_at (agrupación parcial)
-                const group = history.filter(h => 
-                    h.target_record_id === item.target_record_id && 
-                    h.created_at === item.created_at
-                );
-                const isGroup = group.length > 1;
-                const totalGroupAmount = group.reduce((sum, h) => {
-                    const src = sourceRecords.find(r => r.id === h.source_record_id);
-                    return sum + (src?.amount || 0);
-                }, 0);
-
                 return (
-                    <div className="flex flex-col py-1 min-w-[180px]">
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-slate-700 dark:text-slate-200 text-xs truncate max-w-[200px]" title={target.description || 'Sin descripción'}>
-                                {target.description || 'Sin descripción'}
-                            </span>
-                            {isGroup && (
-                                <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                                    <LinkIcon className="h-2.5 w-2.5" />
-                                    M:{group.length}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs2 font-bold text-slate-800 dark:text-slate-100">{fmt(target.amount)}</span>
-                            <span className="text-3xs text-slate-400">{fmtDate(target.date)}</span>
-                            {isGroup && (
-                                <span className="text-3xs text-purple-500 font-medium italic">
-                                    (Vs {fmt(totalGroupAmount)} total)
-                                </span>
-                            )}
-                        </div>
+                    <div className="flex flex-col">
+                        <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
+                            {target?.raw?.documento || '—'}
+                        </span>
+                        <span className="text-2xs text-slate-500 truncate max-w-[140px]" title={target?.raw?.contacto}>
+                            {target?.raw?.contacto || '—'}
+                        </span>
                     </div>
                 );
             }
         },
         {
-            key: 'match_type',
-            label: 'Cruce',
-            width: '110px',
-            render: (val, item) => (
-                <div className="flex flex-col gap-1.5 items-start">
-                    <StatusBadge 
-                        variant={val === 'auto' ? 'info' : 'neutral'} 
-                        label={val === 'auto' ? 'Automático' : 'Manual'} 
-                    />
-                    {item.score != null && (
-                        <ScorePill score={item.score} />
-                    )}
-                </div>
-            )
-        },
-        {
-            key: 'amount_diff',
-            label: 'Diferencia',
-            width: '100px',
+            key: 'target_value',
+            label: 'Valor Contable',
             align: 'text-right',
-            render: (_, item) => (
-                <div className="text-right flex flex-col items-end">
-                    <div className={`font-semibold text-xs ${item.amount_diff === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                        {item.amount_diff === 0 ? 'Exacto' : fmt(item.amount_diff)}
+            type: 'currency',
+            getValue: (item) => {
+                const target = targetRecords.find(r => r.id === item.target_record_id);
+                return target ? target.amount : '';
+            },
+            render: (_, item) => {
+                const target = targetRecords.find(r => r.id === item.target_record_id);
+                if (!target) return <span className="text-slate-400">—</span>;
+                return (
+                    <div className="flex flex-col items-end">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{fmt(target.amount)}</span>
+                        {item.amount_diff !== 0 && (
+                            <span className="text-3xs text-rose-500 font-medium">Dif: {fmt(item.amount_diff)}</span>
+                        )}
                     </div>
-                    {item.date_diff > 0 && (
-                        <div className="text-3xs text-slate-500 mt-1 font-medium bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Δ {item.date_diff} días</div>
-                    )}
+                );
+            }
+        },
+        {
+            key: 'fecha_conciliacion',
+            label: 'F. Conciliación',
+            render: (_, item) => (
+                <div className="flex flex-col">
+                    <span className="text-slate-600 dark:text-slate-400 text-xs">{fmtDate(item.created_at)}</span>
+                    <span className="text-2xs text-slate-400">{item.match_type === 'auto' ? 'Automático' : 'Manual'}</span>
                 </div>
             )
         },
         {
-            key: 'created_at',
-            label: 'Fecha Cruce',
-            width: '120px',
-            align: 'text-right',
-            render: (val) => <span className="text-xs text-slate-500">{fmtDate(val)}</span>
+            key: 'score',
+            label: 'Confianza',
+            render: (_, item) => (
+                <div className="flex items-center gap-1.5">
+                    {item.score != null ? <ScorePill score={item.score} /> : <span className="text-slate-400">—</span>}
+                </div>
+            )
         },
         {
             key: 'actions',
-            label: '',
-            width: '60px',
-            align: 'text-right',
+            label: 'Acciones',
+            width: '100px',
+            align: 'text-center',
             render: (_, item) => (
-                item.status === 'active' && (
+                <div className="flex items-center justify-center gap-1.5">
                     <Button 
-                        variant="icon-danger" 
+                        variant="icon" 
                         size="icon-sm" 
-                        title="Revertir"
-                        onClick={(e) => { 
-                            e?.stopPropagation?.();
-                            setReversingId(item.id); 
-                            setReversalReason(''); 
-                        }}
+                        title="Ver Detalle Contable Asignado"
+                        onClick={() => setHistoryDetailRow(item)}
                     >
-                        <ArrowPathIcon className="h-4 w-4" />
+                        <DocumentTextIcon className="h-4 w-4" />
                     </Button>
-                )
+                    {item.status === 'active' && (
+                        <Button 
+                            variant="icon-danger" 
+                            size="icon-sm" 
+                            title="Revertir Conciliación"
+                            onClick={(e) => { 
+                                e?.stopPropagation?.();
+                                setReversingId(item.id); 
+                                setReversalReason(''); 
+                            }}
+                        >
+                            <ArrowPathIcon className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
             )
         }
-    ], [sourceRecords, targetRecords]);
+    ], [allBankRecords, targetRecords]);
 
     // =============================================
     // HOVER: Cross-highlighting
@@ -689,9 +1021,11 @@ export const ReconciliationView: React.FC = () => {
         setHoveredSourceId(record.id);
         const highlighted = new Set<string>();
         for (const t of pendingTarget) {
-            const aDiff = Math.abs(record.amount - t.amount);
+            // Mismo signo + diferencia de magnitud dentro de tolerancia
+            const sameSign = (record.amount >= 0) === (t.amount >= 0);
+            const aDiff = Math.abs(Math.abs(record.amount) - Math.abs(t.amount));
             const dDiff = daysDiff(record.date, t.date);
-            if (aDiff <= amountTolerance && dDiff <= dateMarginDays) highlighted.add(t.id);
+            if (sameSign && aDiff <= amountTolerance && dDiff <= dateMarginDays) highlighted.add(t.id);
         }
         setHighlightedTargetIds(highlighted);
     }, [pendingTarget, amountTolerance, dateMarginDays]);
@@ -702,22 +1036,28 @@ export const ReconciliationView: React.FC = () => {
 
     const getSuggestionsForAmount = useCallback((amount: number, baseDate: string): MatchSuggestion[] => {
         const sugs: MatchSuggestion[] = [];
+        const srcAbs = Math.abs(amount);
         for (const t of pendingTarget) {
-            const aDiff = Math.abs(amount - t.amount);
+            // Solo sugerir registros del mismo signo (+ con +, - con -)
+            const sameSign = (amount >= 0) === (t.amount >= 0);
+            if (!sameSign) continue;
+
+            const tgtAbs = Math.abs(t.amount);
+            const aDiff = Math.abs(srcAbs - tgtAbs);
             const dDiff = daysDiff(baseDate, t.date);
             let score = 0;
             let ruleInfo = '';
             if (aDiff === 0 && dDiff === 0) {
                 score = 100; ruleInfo = 'Exacto';
             } else if (aDiff === 0 && dDiff <= dateMarginDays) {
-                score = 99 - dDiff * 2; ruleInfo = `Valor exacto, ±${dDiff}d`;
+                score = 99 - dDiff * 2; ruleInfo = `Valor exacto, \u00b1${dDiff}d`;
             } else if (aDiff <= amountTolerance && dDiff <= dateMarginDays) {
                 const ap = (aDiff / amountTolerance) * 5;
                 score = Math.round(98 - ap - dDiff * 1.5);
-                ruleInfo = `Δ$${aDiff.toLocaleString()}, ±${dDiff}d`;
+                ruleInfo = `\u0394$${aDiff.toLocaleString()}, \u00b1${dDiff}d`;
             } else if (aDiff <= amountTolerance * 2) {
                 score = Math.max(20, Math.round(50 - (aDiff / amountTolerance) * 25));
-                ruleInfo = `Δ$${aDiff.toLocaleString()}, ±${dDiff}d`;
+                ruleInfo = `\u0394$${aDiff.toLocaleString()}, \u00b1${dDiff}d`;
             }
             if (score >= 20) sugs.push({ record: t, score, amountDiff: aDiff, dateDiff: dDiff, ruleInfo });
         }
@@ -930,12 +1270,11 @@ export const ReconciliationView: React.FC = () => {
         handleSourceClick(match.sourceRecord);
     };
 
-    /** Revertir match */
     const handleReverse = async () => {
-        if (!reversingId || !reversalReason.trim() || !selectedAccount) return;
+        if (!reversingId || !selectedAccount) return;
         setSaving(true);
         try {
-            await ReconciliationBankService.reverseMatch(reversingId, reversalReason.trim());
+            await ReconciliationBankService.reverseMatch(reversingId);
             
             // Actualización puramente optimista en memoria local
             const recordToReverse = history.find(h => h.id === reversingId);
@@ -946,12 +1285,8 @@ export const ReconciliationView: React.FC = () => {
                 newIds.delete(`target:${recordToReverse.target_record_id}`);
                 setConciliatedIds(newIds);
                 
-                // Actualizar historial localmente
-                setHistory(prev => prev.map(h => 
-                    h.id === reversingId 
-                    ? { ...h, status: 'reversed', reversed_reason: reversalReason.trim() } 
-                    : h
-                ));
+                // Actualizar historial localmente (eliminar)
+                setHistory(prev => prev.filter(h => h.id !== reversingId));
             } else {
                 // Fallback por si acaso
                 const hist = await ReconciliationBankService.getHistory(selectedAccount.table);
@@ -967,9 +1302,141 @@ export const ReconciliationView: React.FC = () => {
         }
     };
 
+    /** Reversión masiva de Historial */
+    const handleReverseBulk = async (ids: Set<string>) => {
+        if (!selectedAccount) return;
+        const confirmMsg = ids.size === 1 
+            ? '¿Estás seguro de que quieres revertir la conciliación seleccionada?'
+            : `¿Estás seguro de que quieres revertir las ${ids.size} conciliaciones seleccionadas?`;
+            
+        if (!confirm(confirmMsg)) return;
+        
+        setSaving(true);
+        try {
+            const idArray = Array.from(ids);
+            await ReconciliationBankService.reverseMatchesBatch(idArray);
+            
+            // Actualizar localmente para liberar los registros
+            const newIds = new Set(conciliatedIds);
+            
+            // Por cada ID revertido, limpiar sus source/target del set local de forma reactiva
+            const itemsToReverse = history.filter(h => ids.has(h.id));
+            itemsToReverse.forEach(item => {
+                newIds.delete(`source:${item.source_record_id}`);
+                newIds.delete(`target:${item.target_record_id}`);
+            });
+            
+            setConciliatedIds(newIds);
+            setHistory(prev => prev.filter(h => !ids.has(h.id)));
+        } catch (err) {
+            console.error('Error en reversión masiva:', err);
+            alert('Error revirtiendo registros en lote.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const acceptedCount = autoMatches.length - rejectedMatchIndices.size;
     const hasDateFilter = !!(dateFrom && dateTo);
     const isManualMode = !!focusedSourceId;
+
+    // =============================================
+    // MODO INVERTIDO: coincidencias de valor exacto
+    // =============================================
+
+    /** Registros target seleccionados para búsqueda inversa */
+    const selectedReverseTargetRecords = useMemo(
+        () => pendingTarget.filter(r => selectedReverseTargetIds.has(r.id)),
+        [selectedReverseTargetIds, pendingTarget]
+    );
+
+    const selectedReverseTargetSum = useMemo(
+        () => selectedReverseTargetRecords.reduce((sum, r) => sum + r.amount, 0),
+        [selectedReverseTargetRecords]
+    );
+
+    /** Concilia un match del modo invertido (bankRecord + múltiples targetRecords) */
+    const handleReverseConciliar = async (match: ReverseMatch) => {
+        if (selectedReverseTargetIds.size === 0 || savingReverseMatchId) return;
+
+        // Obtener la cuenta bancaria correcta para este match
+        const account = RECONCILIATION_ACCOUNTS.find(a => a.id === match.accountId);
+        if (!account) return;
+
+        const matchKey = `${match.accountId}:${match.record.id}`;
+        setSavingReverseMatchId(matchKey);
+        try {
+            const targetIds = Array.from(selectedReverseTargetIds);
+            
+            // Vincular cada asiento contable seleccionado con el registro bancario
+            const matchesToSave: ReconciliationMatchResult[] = selectedReverseTargetRecords.map(targetRecord => {
+                return {
+                    sourceRecord: match.record,
+                    targetRecord: targetRecord,
+                    score: 0,
+                    ruleInfo: 'Conciliación Inversa',
+                    amountDiff: Math.abs(Math.abs(match.record.amount) - Math.abs(selectedReverseTargetSum)),
+                    dateDiff: daysDiff(match.record.date, targetRecord.date),
+                };
+            });
+
+            await ReconciliationBankService.saveMatchesBatch(
+                account.table,
+                matchesToSave,
+                'manual'
+            );
+
+            // Actualización optimista de IDs conciliados
+            setConciliatedIds(prev => {
+                const next = new Set(prev);
+                next.add(`source:${match.record.id}`);
+                targetIds.forEach(id => next.add(`target:${id}`));
+                return next;
+            });
+
+            // Recargar historial global
+            const hist = await ReconciliationBankService.getAllActiveHistory();
+            setHistory(hist);
+
+            // Cerrar el panel inverso y limpiar selección (los asientos ya quedaron conciliados)
+            setSelectedReverseTargetIds(new Set());
+        } catch (err) {
+            console.error('Error en conciliación inversa:', err);
+            alert('Error al conciliar. Por favor intente de nuevo.');
+        } finally {
+            setSavingReverseMatchId(null);
+        }
+    };
+
+    /** Buscar coincidencias de valor exacto en TODAS las cuentas bancarias */
+    const reverseMatches = useMemo((): ReverseMatch[] => {
+        if (!reverseMode || selectedReverseTargetIds.size === 0) return [];
+        const targetAmount = selectedReverseTargetSum;
+        const results: ReverseMatch[] = [];
+
+        RECONCILIATION_ACCOUNTS.forEach(acc => {
+            const records = allBankRecords[acc.id] || [];
+            records.forEach(r => {
+                // Debe coincidir en valor absoluto Y en signo (+ con +, - con -)
+                const sameAbsValue = Math.abs(r.amount) === Math.abs(targetAmount);
+                const sameSign = (r.amount >= 0) === (targetAmount >= 0);
+                if (sameAbsValue && sameSign) {
+                    results.push({
+                        accountId: acc.id,
+                        accountLabel: acc.label,
+                        record: r,
+                        alreadyConciliated: conciliatedIds.has(`source:${r.id}`),
+                    });
+                }
+            });
+        });
+
+        // Ordenar: primero los no conciliados, luego por cuenta
+        return results.sort((a, b) => {
+            if (a.alreadyConciliated !== b.alreadyConciliated) return a.alreadyConciliated ? 1 : -1;
+            return a.accountLabel.localeCompare(b.accountLabel);
+        });
+    }, [reverseMode, selectedReverseTargetIds, selectedReverseTargetSum, allBankRecords, conciliatedIds]);
 
     // =============================================
     // RENDER
@@ -1052,11 +1519,38 @@ export const ReconciliationView: React.FC = () => {
                                 className={`px-3 py-1 text-2xs font-semibold transition-colors ${activeTab === 'historial' ? 'bg-slate-800 text-white dark:bg-slate-600' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50'}`}>
                                 Historial ({history.length})
                             </button>
+                            <button onClick={() => setActiveTab('transferencias')}
+                                className={`px-3 py-1 text-2xs font-semibold transition-colors ${activeTab === 'transferencias' ? 'bg-slate-800 text-white dark:bg-slate-600' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50'}`}>
+                                Transferencias Int.
+                            </button>
                         </div>
                     </div>
 
                     {/* Acciones principales */}
                     <div className="flex items-center gap-4">
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={async () => {
+                                if (confirm("¿Estás seguro de que deseas limpiar los registros huérfanos del historial? Esto verificará y eliminará conciliaciones donde el registro bancario o contable original haya sido borrado.")) {
+                                    setLoading(true);
+                                    try {
+                                        const count = await ReconciliationBankService.cleanOrphanedRecords();
+                                        alert(`Limpieza completada. Se eliminaron ${count} registros huérfanos.`);
+                                        await loadData(); // Recargar datos para refrescar la UI
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert("Error al limpiar registros huérfanos.");
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }
+                            }}
+                            className="bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800"
+                        >
+                            <SparklesIcon className="h-4 w-4 mr-1.5" />
+                            Limpiar Huérfanos
+                        </Button>
                         {/* Selector Ingreso / Egreso */}
                         <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
                             <button
@@ -1161,110 +1655,160 @@ export const ReconciliationView: React.FC = () => {
                 {activeTab === 'conciliar' ? (
                     <div className="flex flex-col h-full gap-3">
 
-                        {/* ─── BARRA DE VINCULACIÓN MANUAL ─── */}
-                        {selectedSourceIds.size > 0 && selectedTargetRecord && (
-                            <div className="shrink-0 flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 animate-in">
-                                {/* Source */}
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <WalletIcon className="h-4 w-4 text-purple-500 shrink-0" />
-                                    <div className="min-w-0 flex flex-col">
-                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">
-                                            {selectedSourceIds.size > 1 ? `Total: ${fmt(selectedSourceSum)}` : fmt(selectedSourceSum)}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 leading-tight">
-                                            {selectedSourceIds.size > 1 
-                                                ? `${selectedSourceIds.size} seleccionados`
-                                                : focusedSourceRecord ? fmtDate(focusedSourceRecord.date) : ''}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <ArrowsRightLeftIcon className="h-5 w-5 text-purple-400 shrink-0" />
-
-                                {/* Target */}
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <DocumentTextIcon className="h-4 w-4 text-blue-500 shrink-0" />
-                                    <div className="min-w-0 flex flex-col">
-                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">{fmt(selectedTargetRecord.amount)}</span>
-                                        <span className="text-[10px] text-slate-500 leading-tight">{fmtDate(selectedTargetRecord.date)}</span>
-                                    </div>
-                                </div>
-
-                                {/* Diferencias */}
-                                <div className="flex items-center gap-3 shrink-0 px-3 border-l border-slate-200 dark:border-slate-700">
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Diferencia</span>
-                                        <span className={`text-xs font-bold ${Math.abs(selectedSourceSum - selectedTargetRecord.amount) < 1 ? 'text-emerald-600' : 'text-orange-600'}`}>
-                                            {fmt(selectedSourceSum - selectedTargetRecord.amount)}
+                        {/* ─── PANEL MODO VINCULACIÓN MANUAL ─── */}
+                        {selectedSourceIds.size > 0 && (
+                            <div className="shrink-0 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                                {/* Header */}
+                                <div className="flex items-center gap-2 px-4 py-2 border-b border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20">
+                                    <SparklesIcon className="h-4 w-4 text-purple-600" />
+                                    <div className="text-xs font-bold text-purple-700 dark:text-purple-400 tracking-caps flex-1 flex items-center gap-3">
+                                        <span className="uppercase">Modo vinculación</span>
+                                        <span className="font-normal text-purple-600 dark:text-purple-300 border-l border-purple-300 dark:border-purple-700 pl-3 flex items-center gap-3">
+                                            {selectedSourceRecords.length > 1 ? (
+                                                <>{selectedSourceRecords.length} registros selecionados — Total: <strong className="text-purple-900 dark:text-purple-100 text-sm tracking-normal bg-purple-200 dark:bg-purple-700/50 px-2 py-0.5 rounded-md">{fmt(selectedSourceSum)}</strong></>
+                                            ) : selectedSourceRecords.length === 1 ? (
+                                                <>
+                                                    <span className="opacity-80 tracking-normal">{fmtDate(selectedSourceRecords[0].date)}</span>
+                                                    <span className="truncate max-w-[250px] tracking-normal opacity-90" title={selectedSourceRecords[0].description}>
+                                                        {selectedSourceRecords[0].description}
+                                                    </span>
+                                                    <strong className="text-purple-900 dark:text-purple-100 text-sm tracking-normal bg-purple-200 dark:bg-purple-700/50 px-2.5 py-0.5 rounded-md ml-1 shadow-sm border border-purple-300/50 dark:border-purple-500/50">
+                                                        {fmt(selectedSourceRecords[0].amount)}
+                                                    </strong>
+                                                </>
+                                            ) : null}
                                         </span>
                                     </div>
-                                    {selectedSourceIds.size === 1 && focusedSourceRecord && (
-                                        <div className="flex flex-col items-end border-l border-slate-100 dark:border-slate-800 pl-3">
-                                            <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Días</span>
-                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                {daysDiff(focusedSourceRecord.date, selectedTargetRecord.date)}d
-                                            </span>
-                                        </div>
+
+                                    {/* Estado de la selección */}
+                                    {selectedTargetRecord ? (
+                                        <span className="text-2xs text-purple-600 font-semibold">
+                                            Asiento seleccionado — listo para vincular
+                                        </span>
+                                    ) : suggestions.length > 0 ? (
+                                        <span className="text-2xs text-purple-500 font-semibold">
+                                            {suggestions.length} sugerencia{suggestions.length !== 1 ? 's' : ''}
+                                        </span>
+                                    ) : (
+                                        <span className="text-2xs text-slate-400 italic">Haz click en un asiento para vincular</span>
                                     )}
+
+                                    <button
+                                        onClick={cancelManualSelection}
+                                        className="h-5 w-5 rounded flex items-center justify-center text-purple-400 hover:text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                                    >
+                                        <XMarkIcon className="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
 
-                                {/* Acciones */}
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <Button variant="primary" size="sm" onClick={handleConfirmManualPair} isLoading={saving} className="gap-1.5 h-8 px-4 rounded-lg shadow-sm shadow-purple-200">
-                                        <LinkIcon className="h-3.5 w-3.5" />
-                                        Vincular
-                                    </Button>
-                                    <Button variant="ghost" size="icon-sm" onClick={cancelManualSelection} className="h-8 w-8">
-                                        <XMarkIcon className="h-4 w-4" />
-                                    </Button>
+                                {/* Tabla de sugerencias o confirmación del par */}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="border-b border-purple-100 dark:border-purple-900/40">
+                                                <th className="text-left pl-4 pr-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Confianza</th>
+                                                <th className="text-left px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Fecha</th>
+                                                <th className="text-right px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Valor</th>
+                                                <th className="text-left px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Descripción</th>
+                                                <th className="text-left px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Contacto</th>
+                                                <th className="text-right px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Dif. Valor</th>
+                                                <th className="text-right px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Dif. Días</th>
+                                                <th className="text-center px-2 py-1.5 text-2xs font-semibold text-purple-500 uppercase tracking-wider">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-purple-100 dark:divide-purple-900/30">
+                                            {selectedTargetRecord ? (
+                                                /* Fila de confirmación del par ya seleccionado */
+                                                <tr className="bg-purple-100/60 dark:bg-purple-900/20">
+                                                    <td className="pl-4 pr-2 py-2">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-purple-200 text-purple-800 dark:bg-purple-800/60 dark:text-purple-200">
+                                                            <LinkIcon className="h-3 w-3" />
+                                                            Manual
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(selectedTargetRecord.date)}</td>
+                                                    <td className="px-2 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{fmt(selectedTargetRecord.amount)}</td>
+                                                    <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[220px]" title={selectedTargetRecord.description || ''}>{selectedTargetRecord.description || '—'}</td>
+                                                    <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[180px]" title={selectedTargetRecord.raw?.contacto || ''}>{selectedTargetRecord.raw?.contacto || '—'}</td>
+                                                    <td className="px-2 py-2 text-right font-semibold whitespace-nowrap">
+                                                        <span className={Math.abs(selectedSourceSum - selectedTargetRecord.amount) < 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}>
+                                                            {Math.abs(selectedSourceSum - selectedTargetRecord.amount) < 1 ? 'Exacto' : fmt(selectedSourceSum - selectedTargetRecord.amount)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-right text-slate-500 whitespace-nowrap">
+                                                        {focusedSourceRecord ? `${daysDiff(focusedSourceRecord.date, selectedTargetRecord.date)}d` : '—'}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <div className="flex items-center justify-center gap-1.5">
+                                                            <Button
+                                                                variant="primary"
+                                                                size="xs"
+                                                                onClick={handleConfirmManualPair}
+                                                                isLoading={saving}
+                                                                className="gap-1"
+                                                            >
+                                                                <LinkIcon className="h-3 w-3" />
+                                                                Vincular
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon-sm"
+                                                                onClick={() => setSelectedTargetId(null)}
+                                                                title="Cambiar selección"
+                                                            >
+                                                                <XMarkIcon className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : suggestions.length > 0 ? (
+                                                /* Filas de sugerencias automáticas */
+                                                suggestions.map((s, idx) => (
+                                                    <tr
+                                                        key={idx}
+                                                        className="hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors group cursor-pointer"
+                                                        onClick={() => !saving && handleQuickLink(s)}
+                                                    >
+                                                        <td className="pl-4 pr-2 py-2">
+                                                            <ScorePill score={s.score} />
+                                                        </td>
+                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(s.record.date)}</td>
+                                                        <td className="px-2 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{fmt(s.record.amount)}</td>
+                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[220px]" title={s.record.description || ''}>{s.record.description || '—'}</td>
+                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[180px]" title={s.record.raw?.contacto || ''}>{s.record.raw?.contacto || '—'}</td>
+                                                        <td className="px-2 py-2 text-right text-2xs font-semibold whitespace-nowrap">
+                                                            <span className={s.amountDiff === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                                                                {s.amountDiff === 0 ? 'Exacto' : fmt(s.amountDiff)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-2 py-2 text-right text-slate-500 whitespace-nowrap">{s.dateDiff}d</td>
+                                                        <td className="px-2 py-2">
+                                                            <div className="flex justify-center">
+                                                                <Button
+                                                                    variant="primary"
+                                                                    size="xs"
+                                                                    onClick={(e) => { e?.stopPropagation?.(); handleQuickLink(s); }}
+                                                                    disabled={saving}
+                                                                    className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                >
+                                                                    <LinkIcon className="h-3 w-3" />
+                                                                    Vincular
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                /* Sin sugerencias — esperando selección manual */
+                                                <tr>
+                                                    <td colSpan={8} className="py-4 text-center text-xs text-slate-400 italic">
+                                                        Haz click en cualquier asiento contable de la tabla de la derecha para vincularlo
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* ─── BARRA COMPACTA TOP SUGERENCIAS Y MODO MANUAL ─── */}
-                        {selectedSourceIds.size > 0 && !selectedTargetRecord && (
-                            <div className="shrink-0 flex items-center gap-3 px-3 py-2 rounded-lg bg-white dark:bg-slate-800/80 border border-purple-200 dark:border-purple-800 shadow-sm animate-in slide-in-from-top-2 fade-in duration-200">
-                                <div className="flex items-center gap-2 pr-3 border-r border-slate-200 dark:border-slate-700 shrink-0">
-                                    <SparklesIcon className="h-4 w-4 text-purple-500" />
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-800 dark:text-white leading-tight uppercase tracking-wider">Modo vinculación</span>
-                                        <span className="text-2xs text-slate-500 truncate max-w-[200px] leading-tight">
-                                            <b className="text-purple-600 dark:text-purple-400">{fmt(selectedSourceSum)}</b>
-                                            {selectedSourceIds.size > 1 && <span className="ml-1 text-[10px] text-slate-400">({selectedSourceIds.size} items)</span>}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {suggestions.length > 0 ? (
-                                    <div className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto scroller-hide">
-                                        {suggestions.map((s, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleQuickLink(s)}
-                                                disabled={saving}
-                                                className="shrink-0 flex items-center gap-2 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left group"
-                                            >
-                                                <ScorePill score={s.score} />
-                                                <div className="flex flex-col justify-center">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-none">{fmt(s.record.amount)}</span>
-                                                        <span className="text-[10px] text-slate-400 leading-none">{fmtDate(s.record.date)}</span>
-                                                    </div>
-                                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[150px] mt-0.5 leading-none">{s.record.description || '—'}</span>
-                                                </div>
-                                                <span className="text-[10px] font-semibold text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity ml-1">Vincular</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <span className="flex-1 text-xs text-slate-500">
-                                        Haz click en un asiento contable para vincular
-                                    </span>
-                                )}
-
-                                <button onClick={cancelManualSelection} className="ml-auto shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                    <XMarkIcon className="h-4 w-4" />
-                                </button>
                             </div>
                         )}
 
@@ -1420,6 +1964,129 @@ export const ReconciliationView: React.FC = () => {
                             </div>
                         )}
 
+                        {/* ─── PANEL MODO INVERTIDO: resultados de búsqueda ─── */}
+                        {reverseMode && selectedReverseTargetIds.size > 0 && (
+                            <div className="shrink-0 rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                                {/* Header */}
+                                <div className="flex items-center gap-2 px-4 py-2 border-b border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20">
+                                    <ArrowsRightLeftIcon className="h-4 w-4 text-orange-600" />
+                                    <span className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-caps flex-1">
+                                        Búsqueda inversa
+                                        <span className="ml-2 font-normal text-orange-500">
+                                            ({selectedReverseTargetIds.size} {selectedReverseTargetIds.size === 1 ? 'asiento' : 'asientos'}) 
+                                            suma: {fmt(selectedReverseTargetSum)}
+                                        </span>
+                                    </span>
+                                    {loadingAllBanks ? (
+                                        <span className="text-2xs text-orange-500 italic">Cargando cuentas…</span>
+                                    ) : (
+                                        <span className="text-2xs text-orange-600 font-semibold">
+                                            {reverseMatches.length === 0 ? 'Sin coincidencias' : `${reverseMatches.length} coincidencia${reverseMatches.length !== 1 ? 's' : ''}`}
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={() => setSelectedReverseTargetIds(new Set())}
+                                        className="h-5 w-5 rounded flex items-center justify-center text-orange-400 hover:text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                                    >
+                                        <XMarkIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+
+                                {/* Resultados */}
+                                {reverseMatches.length === 0 && !loadingAllBanks ? (
+                                    <div className="flex items-center justify-center gap-2 py-4 text-xs text-orange-400">
+                                        <XCircleIcon className="h-4 w-4" />
+                                        No se encontró ningún movimiento bancario con el valor {fmt(selectedReverseTargetSum)} en ninguna cuenta.
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="border-b border-orange-100 dark:border-orange-900/40">
+                                                    <th className="text-left pl-4 pr-2 py-1.5 text-2xs font-semibold text-orange-500 uppercase tracking-wider">Cuenta Bancaria</th>
+                                                    <th className="text-left px-2 py-1.5 text-2xs font-semibold text-orange-500 uppercase tracking-wider">Fecha</th>
+                                                    <th className="text-right px-2 py-1.5 text-2xs font-semibold text-orange-500 uppercase tracking-wider">Valor</th>
+                                                    <th className="text-left px-2 py-1.5 text-2xs font-semibold text-orange-500 uppercase tracking-wider">Descripción</th>
+                                                    <th className="text-center px-2 py-1.5 text-2xs font-semibold text-orange-500 uppercase tracking-wider">Estado</th>
+                                                    <th className="text-center px-2 py-1.5 text-2xs font-semibold text-orange-500 uppercase tracking-wider">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-orange-100 dark:divide-orange-900/30">
+                                                {reverseMatches.map((m, idx) => {
+                                                    const matchKey = `${m.accountId}:${m.record.id}`;
+                                                    const isSavingThis = savingReverseMatchId === matchKey;
+                                                    return (
+                                                    <tr
+                                                        key={`${m.accountId}-${m.record.id}-${idx}`}
+                                                        className={`transition-colors ${
+                                                            m.alreadyConciliated
+                                                                ? 'bg-emerald-50/60 dark:bg-emerald-900/10'
+                                                                : 'hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                                                        }`}
+                                                    >
+                                                        <td className="pl-4 pr-2 py-2">
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold ${
+                                                                m.accountId === selectedAccountId
+                                                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                                                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                                                            }`}>
+                                                                {m.accountId === selectedAccountId && '★ '}{m.accountLabel}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(m.record.date)}</td>
+                                                        <td className="px-2 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{fmt(m.record.amount)}</td>
+                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{m.record.description || '—'}</td>
+                                                        <td className="px-2 py-2 text-center">
+                                                            {m.alreadyConciliated ? (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                                                    <CheckCircleIcon className="h-3 w-3" />
+                                                                    Conciliado
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                                                                    <ClockIcon className="h-3 w-3" />
+                                                                    Pendiente
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-center">
+                                                            {!m.alreadyConciliated ? (
+                                                                <button
+                                                                    onClick={() => handleReverseConciliar(m)}
+                                                                    disabled={!!savingReverseMatchId}
+                                                                    title="Conciliar este par"
+                                                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-2xs font-bold transition-all ${
+                                                                        isSavingThis
+                                                                            ? 'bg-purple-100 text-purple-400 cursor-wait'
+                                                                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-400 dark:hover:bg-purple-900/60 cursor-pointer'
+                                                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                                >
+                                                                    {isSavingThis ? (
+                                                                        <>
+                                                                            <ArrowPathIcon className="h-3 w-3 animate-spin" />
+                                                                            Guardando…
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <LinkIcon className="h-3 w-3" />
+                                                                            Conciliar
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-2xs text-slate-400">—</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* ─── SPLIT PANEL ─── */}
                         <div className="grid grid-cols-2 gap-3" style={{ height: 'calc(100vh - 280px)' }}>
                             {/* PANEL SOURCE */}
@@ -1526,14 +2193,14 @@ export const ReconciliationView: React.FC = () => {
                                         <table className="w-full text-xs">
                                             <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                                                 <tr>
-                                                    {/* Columna de acción sospechoso */}
-                                                    <th className="w-7 px-1 py-2"></th>
                                                     {visibleSourceCols.fecha && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>}
                                                     {visibleSourceCols.valor && <th className="text-right px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>}
                                                     {visibleSourceCols.sucursal && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Sucursal</th>}
                                                     {visibleSourceCols.referencia && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Referencia</th>}
                                                     {visibleSourceCols.doc_banco && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Doc. Banco</th>}
                                                     {visibleSourceCols.descripcion && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Descripción</th>}
+                                                    {visibleSourceCols.notas && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider w-32">Notas</th>}
+                                                    <th className="w-14 px-1 py-2 pr-4 text-right text-2xs font-semibold text-slate-500 uppercase tracking-wider">Acción</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1558,33 +2225,6 @@ export const ReconciliationView: React.FC = () => {
                                                                 : 'hover:bg-slate-50 dark:hover:bg-slate-700/30 border-slate-50 dark:border-slate-700/50'
                                                         }`}
                                                     >
-                                                        {/* Botones de acción (sospechoso / registrado) */}
-                                                        <td className="w-14 px-1 py-2">
-                                                            <div className="flex items-center gap-0.5">
-                                                                <button
-                                                                    onClick={e => toggleSuspected(r.id, e)}
-                                                                    title={isSuspected ? 'Quitar marca de sospechoso' : 'Marcar como sospechoso (sin match)'}
-                                                                    className={`h-5 w-5 rounded flex items-center justify-center transition-all ${
-                                                                        isSuspected
-                                                                            ? 'text-amber-500 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200'
-                                                                            : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-amber-400 hover:bg-amber-50'
-                                                                    }`}
-                                                                >
-                                                                    <ExclamationTriangleIcon className="h-3 w-3" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={e => toggleRegistered(r.id, e)}
-                                                                    title={registeredIds.has(r.id) ? 'Quitar marca de registrado' : 'Marcar como ya registrado en contabilidad'}
-                                                                    className={`h-5 w-5 rounded flex items-center justify-center transition-all ${
-                                                                        registeredIds.has(r.id)
-                                                                            ? 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200'
-                                                                            : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-emerald-400 hover:bg-emerald-50'
-                                                                    }`}
-                                                                >
-                                                                    <CheckCircleIcon className="h-3 w-3" />
-                                                                </button>
-                                                            </div>
-                                                        </td>
                                                         {visibleSourceCols.fecha && (
                                                             <td className={`px-3 py-2 whitespace-nowrap ${
                                                                 registeredIds.has(r.id) ? 'text-emerald-700 dark:text-emerald-400' :
@@ -1615,6 +2255,55 @@ export const ReconciliationView: React.FC = () => {
                                                                 </span>
                                                             </td>
                                                         )}
+                                                        {visibleSourceCols.notas && (
+                                                            <td className="px-3 py-2">
+                                                                <div className="flex items-center gap-1.5 group/note">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); openNoteModal(r, 'source'); }}
+                                                                        className={`flex-shrink-0 h-6 w-6 rounded flex items-center justify-center transition-all ${
+                                                                            r.notes 
+                                                                                ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/40' 
+                                                                                : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-purple-500 hover:bg-purple-50'
+                                                                        }`}
+                                                                        title={r.notes ? 'Editar nota' : 'Añadir nota'}
+                                                                    >
+                                                                        {r.notes ? <ChatBubbleLeftEllipsisIcon className="h-3.5 w-3.5" /> : <PencilSquareIcon className="h-3.5 w-3.5" />}
+                                                                    </button>
+                                                                    {r.notes && (
+                                                                        <span className="text-2xs text-slate-500 dark:text-slate-400 truncate max-w-[100px] italic" title={r.notes}>
+                                                                            {r.notes}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        )}
+                                                        {/* Botones de acción (sospechoso / registrado) */}
+                                                        <td className="w-14 px-1 py-2 pr-4">
+                                                            <div className="flex items-center justify-end gap-0.5">
+                                                                <button
+                                                                    onClick={e => toggleSuspected(r.id, e)}
+                                                                    title={isSuspected ? 'Quitar marca de sospechoso' : 'Marcar como sospechoso (sin match)'}
+                                                                    className={`h-5 w-5 rounded flex items-center justify-center transition-all ${
+                                                                        isSuspected
+                                                                            ? 'text-amber-500 bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200'
+                                                                            : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-amber-400 hover:bg-amber-50'
+                                                                    }`}
+                                                                >
+                                                                    <ExclamationTriangleIcon className="h-3 w-3" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={e => toggleRegistered(r.id, e)}
+                                                                    title={registeredIds.has(r.id) ? 'Quitar marca de registrado' : 'Marcar como ya registrado en contabilidad'}
+                                                                    className={`h-5 w-5 rounded flex items-center justify-center transition-all ${
+                                                                        registeredIds.has(r.id)
+                                                                            ? 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200'
+                                                                            : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-emerald-400 hover:bg-emerald-50'
+                                                                    }`}
+                                                                >
+                                                                    <CheckCircleIcon className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
                                                     </tr>
                                                     );
                                                 })}
@@ -1626,17 +2315,23 @@ export const ReconciliationView: React.FC = () => {
 
                             {/* PANEL TARGET */}
                             <div className={`flex flex-col bg-white dark:bg-slate-800 rounded-xl border overflow-hidden transition-colors ${
-                                isManualMode
+                                reverseMode
+                                    ? 'border-orange-300 dark:border-orange-700 ring-1 ring-orange-200 dark:ring-orange-900'
+                                    : isManualMode
                                     ? 'border-blue-300 dark:border-blue-700 ring-1 ring-blue-200 dark:ring-blue-800'
                                     : 'border-slate-200 dark:border-slate-700'
                             }`}>
                                 <div className={`flex items-center gap-2 px-4 py-2.5 border-b ${
-                                    isManualMode
+                                    reverseMode
+                                        ? 'bg-orange-50 dark:bg-orange-900/15 border-orange-200 dark:border-orange-800'
+                                        : isManualMode
                                         ? 'bg-blue-100 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                                         : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'
                                 }`}>
-                                    <DocumentTextIcon className="h-4 w-4 text-blue-600" />
-                                    <span className="text-xs font-bold uppercase tracking-caps text-blue-700 dark:text-blue-400 whitespace-nowrap">
+                                    <DocumentTextIcon className={`h-4 w-4 ${reverseMode ? 'text-orange-600' : 'text-blue-600'}`} />
+                                    <span className={`text-xs font-bold uppercase tracking-caps whitespace-nowrap ${
+                                        reverseMode ? 'text-orange-700 dark:text-orange-400' : 'text-blue-700 dark:text-blue-400'
+                                    }`}>
                                         Asientos Contables
                                     </span>
                                     
@@ -1701,8 +2396,30 @@ export const ReconciliationView: React.FC = () => {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
-                                    {isManualMode && (
+                                    {/* Toggle Modo Invertido */}
+                                    <button
+                                        onClick={toggleReverseMode}
+                                        title={reverseMode ? 'Desactivar modo invertido' : 'Activar modo invertido: buscar asiento en cuentas bancarias'}
+                                        className={`ml-2 h-7 px-2.5 flex items-center gap-1.5 rounded-md border text-2xs font-bold transition-all ${
+                                            reverseMode
+                                                ? 'bg-orange-100 border-orange-400 text-orange-700 dark:bg-orange-900/40 dark:border-orange-600 dark:text-orange-400 shadow-sm'
+                                                : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-orange-500 hover:border-orange-300 hover:bg-orange-50'
+                                        }`}
+                                    >
+                                        <ArrowsRightLeftIcon className="h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">{reverseMode ? 'Invertido' : 'Invertir'}</span>
+                                        {reverseMode && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                        )}
+                                    </button>
+
+                                    {!reverseMode && isManualMode && (
                                         <span className="text-2xs text-blue-500 font-medium ml-2 whitespace-nowrap">— click para vincular</span>
+                                    )}
+                                    {reverseMode && (
+                                        <span className="text-2xs text-orange-500 font-medium ml-1 whitespace-nowrap">
+                                            {loadingAllBanks ? 'Cargando cuentas…' : '— click en asiento para buscar'}
+                                        </span>
                                     )}
                                     <span className="text-2xs text-slate-400 ml-2">{pendingTarget.length}</span>
                                     <DropdownMenu>
@@ -1744,6 +2461,7 @@ export const ReconciliationView: React.FC = () => {
                                                     {visibleTargetCols.centro_costo && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Centro C.</th>}
                                                     {visibleTargetCols.documento && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Documento</th>}
                                                     {visibleTargetCols.descripcion && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Descripción</th>}
+                                                    {visibleTargetCols.notas && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider w-32">Notas</th>}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1751,20 +2469,36 @@ export const ReconciliationView: React.FC = () => {
                                                     const isHighlighted = highlightedTargetIds.has(r.id);
                                                     const isSuggested = suggestions.some(s => s.record.id === r.id);
                                                     const isTargetSelected = selectedTargetId === r.id;
+                                                    const isReverseSelected = reverseMode && selectedReverseTargetIds.has(r.id);
 
                                                     return (
                                                         <tr key={r.id}
                                                             ref={el => { if (el) targetRowRefs.current.set(r.id, el); }}
-                                                            onClick={() => isManualMode && handleTargetClick(r)}
+                                                            onClick={() => {
+                                                                if (reverseMode) {
+                                                                    setSelectedReverseTargetIds(prev => {
+                                                                        const next = new Set(prev);
+                                                                        if (next.has(r.id)) next.delete(r.id);
+                                                                        else next.add(r.id);
+                                                                        return next;
+                                                                    });
+                                                                } else if (isManualMode) {
+                                                                    handleTargetClick(r);
+                                                                }
+                                                            }}
                                                             className={`border-b border-slate-50 dark:border-slate-700/50 transition-all duration-300 ${
-                                                                isManualMode ? 'cursor-pointer' : ''
+                                                                reverseMode ? 'cursor-pointer' : isManualMode ? 'cursor-pointer' : ''
                                                             } ${
-                                                                isTargetSelected
+                                                                isReverseSelected
+                                                                    ? 'bg-orange-100 dark:bg-orange-900/30 ring-1 ring-inset ring-orange-400'
+                                                                    : isTargetSelected
                                                                     ? 'bg-blue-100 dark:bg-blue-900/30 ring-1 ring-inset ring-blue-400'
                                                                     : isSuggested
                                                                     ? 'bg-purple-50 dark:bg-purple-900/20 border-l-2 border-l-purple-400'
                                                                     : isHighlighted
                                                                     ? 'bg-blue-50/80 dark:bg-blue-900/15'
+                                                                    : reverseMode
+                                                                    ? 'hover:bg-orange-50/60 dark:hover:bg-orange-900/10'
                                                                     : isManualMode
                                                                     ? 'hover:bg-blue-50 dark:hover:bg-blue-900/10'
                                                                     : ''
@@ -1778,6 +2512,28 @@ export const ReconciliationView: React.FC = () => {
                                                             {visibleTargetCols.centro_costo && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.centro_costo || '—'}</td>}
                                                             {visibleTargetCols.documento && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.documento || '—'}</td>}
                                                             {visibleTargetCols.descripcion && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[250px]">{r.description || '—'}</td>}
+                                                            {visibleTargetCols.notas && (
+                                                                <td className="px-3 py-2">
+                                                                    <div className="flex items-center gap-1.5 group/note">
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); openNoteModal(r, 'target'); }}
+                                                                            className={`flex-shrink-0 h-6 w-6 rounded flex items-center justify-center transition-all ${
+                                                                                r.notes 
+                                                                                    ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/40' 
+                                                                                    : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-purple-500 hover:bg-purple-50'
+                                                                            }`}
+                                                                            title={r.notes ? 'Editar nota' : 'Añadir nota'}
+                                                                        >
+                                                                            {r.notes ? <ChatBubbleLeftEllipsisIcon className="h-3.5 w-3.5" /> : <PencilSquareIcon className="h-3.5 w-3.5" />}
+                                                                        </button>
+                                                                        {r.notes && (
+                                                                            <span className="text-2xs text-slate-500 dark:text-slate-400 truncate max-w-[100px] italic" title={r.notes}>
+                                                                                {r.notes}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     );
                                                 })}
@@ -1789,7 +2545,7 @@ export const ReconciliationView: React.FC = () => {
                         </div>
 
                     </div>
-                ) : (
+                ) : activeTab === 'historial' ? (
                     /* ═══ TAB HISTORIAL ═══ */
                     <div className="h-full flex flex-col min-h-0 bg-white dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                         <SmartDataTable
@@ -1797,12 +2553,74 @@ export const ReconciliationView: React.FC = () => {
                             data={history}
                             columns={historyColumns}
                             enableSearch={true}
-                            enableSelection={false}
+                            enableSelection={true}
                             enableExport={true}
                             enableColumnConfig={true}
-                            searchPlaceholder="Buscar en historial..."
+                            searchPlaceholder="Buscar en historial consolidado..."
                             containerClassName="h-full"
                             scrollContainerClassName="max-h-full"
+                            renderSelectionActions={(selectedIds) => (
+                                <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => handleReverseBulk(selectedIds)}
+                                    className="h-8 px-3 gap-1.5 text-xs font-bold rounded-md"
+                                >
+                                    <ArrowPathIcon className="h-4 w-4" /> Revertir {selectedIds.size} Conciliaciones
+                                </Button>
+                            )}
+                        />
+                    </div>
+                ) : (
+                    /* ═══ TAB TRANSFERENCIAS ═══ */
+                    <div className="h-full flex flex-col min-h-0 bg-white dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative">
+                        {loadingTransfers && (
+                            <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            </div>
+                        )}
+                        <SmartDataTable
+                            id="internal_transfers"
+                            data={filteredTransfers}
+                            columns={transferColumns}
+                            enableSearch={true}
+                            enableSelection={true}
+                            enableExport={true}
+                            enableColumnConfig={true}
+                            searchPlaceholder="Buscar en transferencias..."
+                            containerClassName="h-full"
+                            scrollContainerClassName="max-h-full"
+                            getRowClassName={(item) => 
+                                registeredTransferIds.has(item.id) 
+                                    ? '!bg-emerald-100/80 dark:!bg-emerald-900/40 hover:!bg-emerald-200/60 dark:hover:!bg-emerald-800/60' 
+                                    : undefined
+                            }
+                            renderSelectionActions={(selectedIds) => (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
+                                        className="h-8 px-3 gap-1.5 text-xs font-bold rounded-md bg-indigo-600 hover:bg-indigo-700 text-white shadow-md border-transparent"
+                                        onClick={() => exportTransfersToCSV(selectedIds)}
+                                    >
+                                        <ArrowDownTrayIcon className="h-4 w-4" /> Exportar a CSV ({selectedIds.size})
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        className="h-8 px-3 gap-1.5 text-xs font-bold rounded-md"
+                                        onClick={() => {
+                                            setRegisteredTransferIds(prev => {
+                                                const next = new Set(prev);
+                                                selectedIds.forEach(id => next.add(id));
+                                                return next;
+                                            });
+                                        }}
+                                    >
+                                        <CheckCircleIcon className="h-4 w-4" /> Marcar Registrados
+                                    </Button>
+                                </div>
+                            )}
                         />
                     </div>
                 )}
@@ -1810,19 +2628,131 @@ export const ReconciliationView: React.FC = () => {
 
             {/* ═══ MODAL REVERSIÓN ═══ */}
             {reversingId && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6">
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">Revertir Conciliación</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Los registros volverán a estar pendientes.</p>
-                        <textarea value={reversalReason} onChange={(e) => setReversalReason(e.target.value)}
-                            placeholder="Razón de la reversión..."
-                            className="w-full h-20 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                        <div className="flex justify-end gap-2 mt-4">
-                            <Button variant="secondary" size="sm" onClick={() => setReversingId(null)}>Cancelar</Button>
-                            <Button variant="danger" size="sm" onClick={handleReverse} disabled={!reversalReason.trim()} isLoading={saving}>Revertir</Button>
+                <div className="fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center gap-3">
+                            <div className="h-12 w-12 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center shrink-0">
+                                <ArrowPathIcon className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">¿Revertir Conciliación?</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Los registros se desvincularán y el asiento volverá a estar pendiente de forma automática.</p>
+                            </div>
+                        </div>
+                        <div className="flex justify-center gap-3 mt-6">
+                            <Button variant="secondary" size="md" onClick={() => setReversingId(null)}>Cancelar</Button>
+                            <Button variant="danger" size="md" onClick={handleReverse} isLoading={saving}>Sí, revertir</Button>
                         </div>
                     </div>
                 </div>
+            )}
+            
+            {/* ═══ MODAL DETALLE HISTORIAL ═══ */}
+            {historyDetailRow && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full p-6 relative">
+                        <div className="flex items-center justify-between mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <DocumentTextIcon className="h-5 w-5 text-purple-500" />
+                                Detalle de Asiento Contable
+                            </h3>
+                            <button onClick={() => setHistoryDetailRow(null)} className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                        {(() => {
+                            const target = targetRecords.find(r => r.id === historyDetailRow.target_record_id);
+                            if (!target) return <p className="text-xs text-slate-500 italic py-4">No se pudo encontrar el detalle del registro contable.</p>;
+                            
+                            return (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                        <div>
+                                            <span className="block text-2xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Fecha Contabilizada</span>
+                                            <span className="text-slate-700 dark:text-slate-200 font-medium">{fmtDate(target.date)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-2xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Valor Neto</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-100">{fmt(target.amount)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-2xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Cuenta Asignada</span>
+                                            <span className="text-slate-700 dark:text-slate-200 truncate" title={target.raw?.cuenta}>{target.raw?.cuenta || '—'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-2xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Contacto / Tercero</span>
+                                            <span className="text-slate-700 dark:text-slate-200 truncate" title={target.raw?.contacto}>{target.raw?.contacto || '—'}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="block text-2xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">Documento</span>
+                                        <span className="text-slate-700 dark:text-slate-200 font-mono text-xs">{target.raw?.documento || '—'}</span>
+                                    </div>
+                                    <div className="pt-2">
+                                        <span className="block text-2xs font-semibold text-slate-400 uppercase tracking-widest mb-1.5">Descripción del Asiento</span>
+                                        <p className="p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-lg text-slate-600 dark:text-slate-300 text-xs leading-relaxed">
+                                            {target.description || '—'}
+                                        </p>
+                                    </div>
+                                    <div className="mt-6 flex justify-end border-t border-slate-100 dark:border-slate-700/50 pt-4">
+                                        <Button variant="secondary" size="md" onClick={() => setHistoryDetailRow(null)}>Cerrar</Button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
+            {/* ═══ MODAL NOTAS ═══ */}
+            {editingNoteRecord && (
+                <Modal
+                    isOpen={!!editingNoteRecord}
+                    onClose={() => setEditingNoteRecord(null)}
+                    title={editingNoteRecord.record.notes ? 'Editar Nota' : 'Añadir Nota'}
+                >
+                    <div className="space-y-4">
+                        <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800/50">
+                            <div className="flex justify-between items-start mb-1">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                                    {editingNoteRecord.type === 'source' ? 'Registro Bancario' : 'Asiento Contable'}
+                                </span>
+                                <span className="text-2xs font-mono text-slate-500">{editingNoteRecord.record.id.slice(0, 8)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[180px]">
+                                    {editingNoteRecord.record.description || 'Sin descripción'}
+                                </span>
+                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                    {fmt(editingNoteRecord.record.amount)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <FormGroup label="Comentario o Nota" description="Este comentario será visible en la tabla de conciliación.">
+                            <textarea
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                className="w-full min-h-[100px] p-3 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+                                placeholder="Escribe aquí una observación importante..."
+                                autoFocus
+                            />
+                        </FormGroup>
+
+                        <div className="flex justify-end gap-3 pt-2">
+                            <Button variant="secondary" onClick={() => setEditingNoteRecord(null)}>
+                                Cancelar
+                            </Button>
+                            <Button 
+                                variant="primary" 
+                                onClick={handleSaveNote} 
+                                isLoading={savingNote}
+                                disabled={savingNote}
+                            >
+                                Guardar Nota
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

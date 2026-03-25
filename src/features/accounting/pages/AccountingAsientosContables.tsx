@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { DocumentTextIcon } from '../../../components/ui/Icons';
+import { useUI } from '../../../context/UIContext';
+import { AccountingDuplicateDetector } from '../components/AccountingDuplicateDetector';
 
 export interface AsientoContableRow {
     id: string;
@@ -19,9 +21,13 @@ export interface AsientoContableRow {
     saldo_final: number;
 }
 
+// ─── Componente principal ─────────────────────────────────────────────────────
 export const AccountingAsientosContables: React.FC = () => {
+    const [reloadTrigger, setReloadTrigger] = useState(0);
+
     return (
         <SmartDataPage<AsientoContableRow>
+            key={reloadTrigger}
             title="Asientos Contables"
             supabaseTableName="accounting_asientos_contables"
             icon={<DocumentTextIcon className="w-6 h-6 text-purple-600" />}
@@ -30,7 +36,7 @@ export const AccountingAsientosContables: React.FC = () => {
                 { label: 'Contabilidad', href: '/accounting/consolidated' },
                 { label: 'Asientos Contables' }
             ]}
-            importMatchFields={['documento', 'cuenta', 'identificacion', 'descripcion_movimiento']}
+            importMatchFields={['documento', 'cuenta', 'fecha', 'identificacion']}
             columns={[
                 { key: 'cuenta', label: 'Cuenta', type: 'text', sortable: true },
                 { key: 'contacto', label: 'Contacto', type: 'text', sortable: true },
@@ -51,6 +57,12 @@ export const AccountingAsientosContables: React.FC = () => {
             dateField="fecha"
             searchPlaceholder="Buscar en asientos contables..."
             defaultSort={[{ key: 'fecha', ascending: false }]}
+            customActions={
+                <AccountingDuplicateDetector 
+                    tableName="accounting_asientos_contables" 
+                    onDuplicatedDeleted={() => setReloadTrigger(t => t + 1)} 
+                />
+            }
             infoDefinitions={[
                 {
                     label: 'Cuenta',
@@ -85,29 +97,78 @@ export const AccountingAsientosContables: React.FC = () => {
             ]}
             mapImportRow={(row) => {
                 const getVal = (keys: string[]) => {
-                    const foundKey = Object.keys(row).find(k => 
-                        keys.includes(k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, '_'))
-                    );
+                    const foundKey = Object.keys(row).find(k => {
+                        const normalizedK = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, '_');
+                        return keys.includes(normalizedK) || keys.includes(k);
+                    });
                     return foundKey ? row[foundKey] : undefined;
                 };
 
-                let fecha = getVal(['fecha', 'date', 'fecha_movimiento']) || new Date().toISOString().split('T')[0];
-                let fDate = new Date(fecha);
+                // Helper: convierte valores de Excel a texto limpio.
+                const textVal = (raw: any): string => {
+                    if (raw === undefined || raw === null || raw === '') return '';
+                    if (raw === 0 || raw === '0') return ''; // Excel empty cell in numeric column
+                    return String(raw).trim();
+                };
+                
+                const parseNum = (raw: any): number => {
+                    if (raw === undefined || raw === null || raw === '') return 0;
+                    if (typeof raw === 'number') return isNaN(raw) ? 0 : raw;
+                    let numStr = String(raw).trim();
+                    if (numStr.includes(',') && numStr.includes('.')) {
+                        numStr = numStr.replace(/,/g, '');
+                    } else if (numStr.includes(',')) {
+                        const parts = numStr.split(',');
+                        if (parts[parts.length - 1].length === 3) numStr = numStr.replace(/,/g, '');
+                        else numStr = numStr.replace(',', '.');
+                    }
+                    const n = Number(numStr.replace(/[^0-9.\-]/g, ''));
+                    return isNaN(n) ? 0 : n;
+                };
+
+                let fechaRaw = getVal(['fecha', 'date', 'fecha_movimiento']);
+                let fDate: Date | null = null;
+                if (fechaRaw !== undefined && fechaRaw !== null && fechaRaw !== '') {
+                    const numFecha = Number(fechaRaw);
+                    if (!isNaN(numFecha) && numFecha > 10000 && numFecha < 100000) {
+                        fDate = new Date(Math.round((numFecha - 25569) * 86400 * 1000));
+                    } else {
+                        fDate = new Date(fechaRaw);
+                        if (isNaN(fDate.getTime()) && typeof fechaRaw === 'string') {
+                            const dmyMatch = fechaRaw.trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                            if (dmyMatch) fDate = new Date(`${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`);
+                        }
+                    }
+                }
+
+                const formatISO = (d: Date | null): string => {
+                    if (!d || isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                };
+
+                // Normalizar identificaciones para que '00123' -> '123'
+                const normId = (val: string): string => {
+                    if (/^\d+$/.test(val)) return val.replace(/^0+/, '') || '0';
+                    return val;
+                };
                 
                 return {
-                    cuenta: String(getVal(['cuenta', 'codigo_cuenta']) || ''),
-                    contacto: String(getVal(['contacto', 'tercero']) || ''),
-                    identificacion: String(getVal(['identificacion', 'nit', 'cc', 'id']) || ''),
-                    centro_costo: String(getVal(['centro_de_costo', 'centro_costo']) || ''),
-                    documento: String(getVal(['documento', 'comprobante']) || ''),
-                    fecha: (!isNaN(fDate.getTime()) ? fDate : new Date()).toISOString().split('T')[0],
-                    descripcion: String(getVal(['descripcion', 'detalle']) || ''),
-                    descripcion_movimiento: String(getVal(['descripcion_del_movimiento', 'descripcion_movimiento']) || ''),
-                    base: parseFloat(getVal(['base']) || '0') || 0,
-                    saldo_inicial: parseFloat(getVal(['saldo_inicial']) || '0') || 0,
-                    debito: parseFloat(getVal(['debito', 'debitos']) || '0') || 0,
-                    credito: parseFloat(getVal(['credito', 'creditos']) || '0') || 0,
-                    saldo_final: parseFloat(getVal(['saldo_final']) || '0') || 0,
+                    cuenta: String(getVal(['cuenta', 'codigo_cuenta']) ?? '').trim(),
+                    contacto: textVal(getVal(['contacto', 'tercero'])),
+                    identificacion: normId(textVal(getVal(['identificacion', 'nit', 'cc', 'rut']))),
+                    centro_costo: textVal(getVal(['centro_de_costo', 'centro_costo'])),
+                    documento: String(getVal(['documento', 'comprobante']) ?? '').trim(),
+                    fecha: formatISO(fDate),
+                    descripcion: textVal(getVal(['descripcion', 'detalle'])),
+                    descripcion_movimiento: textVal(getVal(['descripcion_del_movimiento', 'descripcion_movimiento'])),
+                    base: parseNum(getVal(['base'])),
+                    saldo_inicial: parseNum(getVal(['saldo_inicial'])),
+                    debito: parseNum(getVal(['debito', 'debitos'])),
+                    credito: parseNum(getVal(['credito', 'creditos'])),
+                    saldo_final: parseNum(getVal(['saldo_final'])),
                 };
             }}
         />

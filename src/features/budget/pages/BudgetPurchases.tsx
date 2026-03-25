@@ -6,10 +6,12 @@ import { Purchase } from '../../../types/budget';
 import { PurchaseFormModal } from '../components/PurchaseFormModal';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { useUI } from '../../../context/UIContext';
+import { AccountingDuplicateDetector } from '../../accounting/components/AccountingDuplicateDetector';
 
 export const BudgetPurchases: React.FC = () => {
     const { setAlertModal } = useUI();
     // --- MAIN VIEW STATE ---
+    const [reloadKey, setReloadKey] = useState(0);
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -44,37 +46,7 @@ export const BudgetPurchases: React.FC = () => {
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
-
-
-    // --- BULK DELETE ---
-    const handleBulkDelete = async (selectedIds: Set<string>) => {
-        setAlertModal({
-            isOpen: true,
-            type: 'warning',
-            title: 'Confirmar Eliminación Masiva',
-            message: `¿Estás seguro de que deseas eliminar ${selectedIds.size} compras? Esta acción no se puede deshacer.`,
-            showCancel: true,
-            confirmText: 'Eliminar',
-            onConfirm: async () => {
-                setAlertModal({ isOpen: false, message: '' });
-                setLoading(true);
-                try {
-                    const idsArray = Array.from(selectedIds);
-                    for (const id of idsArray) {
-                        await purchaseService.deletePurchase(id);
-                    }
-                    await loadData();
-                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registros eliminados exitosamente.' });
-                } catch (error) {
-                    console.error("Error al eliminar registros:", error);
-                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Ocurrió un error al intentar eliminar algunos registros.' });
-                } finally {
-                    setLoading(false);
-                }
-            }
-        });
-    };
+    }, [loadData, reloadKey]);
 
     // --- MAIN LIST COLUMNS ---
     const mainColumns: Column<Purchase>[] = useMemo(() => [
@@ -181,6 +153,7 @@ export const BudgetPurchases: React.FC = () => {
     // --- RENDER ---
     return (
         <SmartDataPage<Purchase>
+            key={reloadKey}
             title="Compras"
             icon={<ShoppingBagIcon className="h-6 w-6 text-purple-600" />}
             breadcrumbs={[
@@ -196,6 +169,12 @@ export const BudgetPurchases: React.FC = () => {
             columns={mainColumns}
             enableAdd={true}
             onAdd={() => setIsFormOpen(true)}
+            customActions={
+                <AccountingDuplicateDetector 
+                    tableName="budget_purchases" 
+                    onDuplicatedDeleted={() => setReloadKey(k => k + 1)} 
+                />
+            }
             importMatchFields={['cuenta', 'contacto', 'documento', 'base']} // Detección de duplicados EXACTA con base de datos
             mapImportRow={(row) => {
                 const getField = (possibleNames: string[]) => {
@@ -205,25 +184,33 @@ export const BudgetPurchases: React.FC = () => {
                     return null;
                 };
 
+                // Helper: trata 0 numérico (celda vacía de Excel en col numérica) como ""
+                const textVal = (raw: any): string => {
+                    if (raw === undefined || raw === null || raw === '') return '';
+                    if (raw === 0 || raw === '0') return '';
+                    return String(raw).trim();
+                };
+
                 let fecha = getField(['fecha', 'date', 'dia']) || new Date().toISOString().split('T')[0];
                 if (typeof fecha === 'number' || !isNaN(Number(fecha))) {
-                    const excelEpoch = new Date(1899, 11, 30);
-                    const dateObj = new Date(excelEpoch.getTime() + Number(fecha) * 86400000);
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    // Math.round corrige fallos decimales de coma flotante de JS justo en la media noche
+                    const dateObj = new Date(excelEpoch.getTime() + Math.round(Number(fecha) * 86400000));
                     fecha = dateObj.toISOString().split('T')[0];
                 } else if (fecha instanceof Date) {
                     fecha = fecha.toISOString().split('T')[0];
                 }
 
                 return {
-                    cuenta: String(getField(['cuenta', 'rubro']) || ''),
-                    nombre_cuenta: String(getField(['nombre_cuenta', 'nombre de cuenta']) || ''),
-                    contacto: String(getField(['contacto', 'proveedor', 'tercero']) || ''),
-                    identificacion: String(getField(['identificacion', 'identificación', 'nit', 'cedula']) || ''),
-                    centro_costo: String(getField(['centro_costo', 'centro de costo']) || ''),
-                    documento: String(getField(['documento', 'factura', 'invoice', 'ref', 'numero']) || ''),
+                    cuenta: textVal(getField(['cuenta', 'rubro'])),
+                    nombre_cuenta: textVal(getField(['nombre_cuenta', 'nombre de cuenta'])),
+                    contacto: textVal(getField(['contacto', 'proveedor', 'tercero'])),
+                    identificacion: textVal(getField(['identificacion', 'identificación', 'nit', 'cedula'])),
+                    centro_costo: textVal(getField(['centro_costo', 'centro de costo'])),
+                    documento: textVal(getField(['documento', 'factura', 'invoice', 'ref', 'numero'])),
                     fecha: String(fecha),
-                    descripcion: String(getField(['descripcion', 'descripción', 'detalle', 'concepto']) || ''),
-                    descripcion_movimiento: String(getField(['descripcion_movimiento', 'descripción del movimiento']) || ''),
+                    descripcion: textVal(getField(['descripcion', 'descripción', 'detalle', 'concepto'])),
+                    descripcion_movimiento: textVal(getField(['descripcion_movimiento', 'descripción del movimiento'])),
                     base: Number(getField(['base'])) || 0,
                     saldo_inicial: Number(getField(['saldo_inicial', 'saldo inicial'])) || 0,
                     debito: Number(getField(['debito', 'débito'])) || 0,
