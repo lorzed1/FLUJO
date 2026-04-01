@@ -38,6 +38,7 @@ import {
     ReconciliationConfig,
     InternalTransfer,
 } from '../../../services/reconciliationBankService';
+import { TransferAccountingExportWizard } from '../components/TransferAccountingExportWizard';
 
 // =============================================
 // HELPERS
@@ -211,6 +212,8 @@ export const ReconciliationView: React.FC = () => {
     // --- Historial UI ---
     const [historySearch, setHistorySearch] = useState('');
     const [historyDetailRow, setHistoryDetailRow] = useState<ReconciliationHistoryRow | null>(null);
+    const [showTransferExportWizard, setShowTransferExportWizard] = useState(false);
+    const [wizardSelectedTransfers, setWizardSelectedTransfers] = useState<InternalTransfer[]>([]);
 
     // --- Modo Invertido: búsqueda desde asientos contables hacia cuentas bancarias ---
     const [reverseMode, setReverseMode] = useState(false);
@@ -2601,9 +2604,12 @@ export const ReconciliationView: React.FC = () => {
                                         variant="primary"
                                         size="sm"
                                         className="h-8 px-3 gap-1.5 text-xs font-bold rounded-md bg-indigo-600 hover:bg-indigo-700 text-white shadow-md border-transparent"
-                                        onClick={() => exportTransfersToCSV(selectedIds)}
+                                        onClick={() => {
+                                            setWizardSelectedTransfers(internalTransfers.filter(t => selectedIds.has(t.id)));
+                                            setShowTransferExportWizard(true);
+                                        }}
                                     >
-                                        <ArrowDownTrayIcon className="h-4 w-4" /> Exportar a CSV ({selectedIds.size})
+                                        <ArrowDownTrayIcon className="h-4 w-4" /> Exportar a Contabilidad ({selectedIds.size})
                                     </Button>
                                     <Button
                                         variant="secondary"
@@ -2703,6 +2709,13 @@ export const ReconciliationView: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* ═══ MODAL CONTABILIDAD TRANSFERENCIAS ═══ */}
+            <TransferAccountingExportWizard
+                isOpen={showTransferExportWizard}
+                onClose={() => setShowTransferExportWizard(false)}
+                selectedTransfers={wizardSelectedTransfers}
+            />
+
             {/* ═══ MODAL NOTAS ═══ */}
             {editingNoteRecord && (
                 <Modal

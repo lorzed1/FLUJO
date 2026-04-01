@@ -128,6 +128,7 @@ export function useSmartDataTable<T extends Record<string, any>>({
     const [showExportModal, setShowExportModal] = useState(false);
     const [pendingExportFormat, setPendingExportFormat] = useState<'excel' | 'csv' | 'pdf' | null>(null);
     const [exportDateRange, setExportDateRange] = useState({ start: '', end: '' });
+    const [exportDaysOfWeek, setExportDaysOfWeek] = useState<number[]>([]);
 
     // --- Refs ---
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -422,41 +423,51 @@ export function useSmartDataTable<T extends Record<string, any>>({
         if (!pendingExportFormat) return;
 
         // Obtenemos los datos actuales tal cual se ven en la tabla.
-        // Se usa `processedData` si queremos exportar con filtros de texto/columna aplicados, o `data` (crudo global de la vista)
         let dataToExport = [...processedData];
 
-        // Fallback defensivo vital: si processedData en la memoria de React se borró pero aún pasamos prop data (común en cálculos de cliente/frontend sin Supabase), úsalo instanciado para recuperar info.
         if (dataToExport.length === 0 && data.length > 0) {
             console.warn('Advertencia interna: processedData dio 0, exportando matriz base (data prop) directamente.');
             dataToExport = [...data];
         }
 
-        if (filterByDate && exportDateField && exportDateRange.start && exportDateRange.end) {
-            // Se usa substring de ISO para normalizar fechas cruzadas y evitar `NaN` o discrepancias con zonas UTC/locales 
-            const startRaw = exportDateRange.start;
-            const endRaw = exportDateRange.end;
-
+        if (filterByDate && exportDateField) {
             dataToExport = dataToExport.filter(item => {
                 const val = (item as any)[exportDateField];
                 if (!val) return false;
 
-                // Normalizamos fechas string asegurando comparación string literal tipo YYYY-MM-DD para evitar el parser getTime() si es posible
-                if (typeof val === 'string' && val.length >= 10 && startRaw.length >= 10) {
-                    const truncItem = val.substring(0, 10);
-                    return truncItem >= startRaw && truncItem <= endRaw;
+                // 1. Filtrar por día de la semana si hay selección
+                if (exportDaysOfWeek && exportDaysOfWeek.length > 0) {
+                    // Prevenir discrepancia de zonas horarias
+                    const localDate = new Date(typeof val === 'string' && val.includes('T') ? val : `${val}T12:00:00`);
+                    if (!exportDaysOfWeek.includes(localDate.getDay())) {
+                        return false;
+                    }
                 }
 
-                // Fallback tradicional timestamp 
-                const itemTime = new Date(val).getTime();
-                const startTime = new Date(startRaw).getTime();
-                const endTime = new Date(endRaw).getTime() + (24 * 60 * 60 * 1000) - 1; // +1 día para incluirlo
-                if (isNaN(itemTime)) return true; // Ante la duda en parser ISO corrupto, inclúyelo
-                return itemTime >= startTime && itemTime <= endTime;
+                // 2. Filtrar por rango de fechas si está definido
+                if (exportDateRange.start && exportDateRange.end) {
+                    const startRaw = exportDateRange.start;
+                    const endRaw = exportDateRange.end;
+
+                    if (typeof val === 'string' && val.length >= 10 && startRaw.length >= 10) {
+                        const truncItem = val.substring(0, 10);
+                        if (!(truncItem >= startRaw && truncItem <= endRaw)) return false;
+                    } else {
+                        const itemTime = new Date(val).getTime();
+                        const startTime = new Date(startRaw).getTime();
+                        const endTime = new Date(endRaw).getTime() + (24 * 60 * 60 * 1000) - 1;
+                        if (!isNaN(itemTime)) {
+                            if (!(itemTime >= startTime && itemTime <= endTime)) return false;
+                        }
+                    }
+                }
+
+                return true;
             });
         }
 
         if (dataToExport.length === 0) {
-            alert('La exportación de fechas entre ' + (exportDateRange.start || '?') + ' y ' + (exportDateRange.end || '?') + ' generó un archivo sin datos numéricos (0 filas cruzadas entre calendarios). Prueba ampliando el rango o exportando sin filtro.');
+            alert('La exportación con los filtros de fecha seleccionados generó un archivo sin datos. Prueba ampliando el rango u opciones.');
         }
 
         performExport(dataToExport, pendingExportFormat);
@@ -483,6 +494,8 @@ export function useSmartDataTable<T extends Record<string, any>>({
         setShowExportModal,
         exportDateRange,
         setExportDateRange,
+        exportDaysOfWeek,
+        setExportDaysOfWeek,
 
         // Data
         processedData,

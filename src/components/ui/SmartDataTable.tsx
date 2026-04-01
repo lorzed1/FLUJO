@@ -542,12 +542,12 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
 
                         <div className="p-6 space-y-4">
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm rounded-lg">
-                                <p>¿Deseas exportar todo el listado o filtrar por un rango de fechas específico?</p>
+                                <p>Filtra por rango de fechas o días de la semana específicos antes de exportar. Puedes combinar ambas opciones.</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Desde</label>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Desde (Opcional)</label>
                                     <DatePicker
                                         value={table.exportDateRange.start}
                                         onChange={(val) => table.setExportDateRange((prev: any) => ({ ...prev, start: val }))}
@@ -555,12 +555,36 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Hasta</label>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Hasta (Opcional)</label>
                                     <DatePicker
                                         value={table.exportDateRange.end}
                                         onChange={(val) => table.setExportDateRange((prev: any) => ({ ...prev, end: val }))}
                                         className="w-full text-sm"
                                     />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase">Días Específicos (Opcional)</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {[{label:'Dom',val:0},{label:'Lun',val:1},{label:'Mar',val:2},{label:'Mié',val:3},{label:'Jue',val:4},{label:'Vie',val:5},{label:'Sáb',val:6}].map(day => {
+                                        const isSelected = table.exportDaysOfWeek?.includes(day.val);
+                                        return (
+                                            <Button
+                                                key={day.val}
+                                                variant={isSelected ? "primary" : "secondary"}
+                                                size="xs"
+                                                onClick={() => {
+                                                    table.setExportDaysOfWeek((prev: number[]) => 
+                                                        prev.includes(day.val) ? prev.filter(d => d !== day.val) : [...prev, day.val]
+                                                    );
+                                                }}
+                                                className={isSelected ? "!bg-indigo-600 !hover:bg-indigo-700" : ""}
+                                            >
+                                                {day.label}
+                                            </Button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -575,10 +599,10 @@ export function SmartDataTable<T extends Record<string, any>>(props: SmartDataTa
                             </Button>
                             <Button
                                 onClick={() => table.handleConfirmExport(true)}
-                                disabled={!table.exportDateRange.start || !table.exportDateRange.end}
+                                disabled={!(table.exportDateRange.start && table.exportDateRange.end) && (!table.exportDaysOfWeek || table.exportDaysOfWeek.length === 0)}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Exportar Rango
+                                Exportar Filtrado
                             </Button>
                         </div>
                     </div>
