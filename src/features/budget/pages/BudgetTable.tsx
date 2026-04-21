@@ -75,47 +75,29 @@ export const BudgetTable: React.FC = () => {
         const item = commitments.find(c => c.id === id);
         if (!item) return;
 
-        const isRecurring = item.recurrenceRuleId && (item.status === 'pending' || item.id.startsWith('projected-'));
-
-        if (isRecurring && item.recurrenceRuleId) {
-            setAlertModal({
-                isOpen: true,
-                type: 'warning',
-                title: 'Eliminar Gasto Recurrente',
-                message: 'Este gasto pertenece a una regla recurrente. ¿Deseas eliminar la regla completa? Esto borrará todas las proyecciones futuras pendientes.',
-                showCancel: true,
-                confirmText: 'Eliminar Regla y Futuros',
-                onConfirm: async () => {
-                    try {
-                        if (item.recurrenceRuleId) {
-                            await budgetService.deleteRecurrenceRule(item.recurrenceRuleId);
-                        }
-                        loadData();
-                        setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Regla recurrente eliminada.' });
-                    } catch (error) {
-                        console.error("Error deleting rule:", error);
-                        setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar la regla recurrente.' });
-                    }
-                }
-            });
-            return;
-        }
+        const isProjected = item.id.startsWith('projected-');
 
         setAlertModal({
             isOpen: true,
             type: 'warning',
             title: 'Confirmar Eliminación',
-            message: '¿Eliminar este compromiso?',
+            message: `¿Deseas eliminar este registro de "${item.title}"?`,
             showCancel: true,
             confirmText: 'Eliminar',
             onConfirm: async () => {
                 try {
-                    await budgetService.deleteCommitment(id);
-                    loadData();
-                    setAlertModal({ isOpen: false, message: '' });
+                    if (isProjected && item.recurrenceRuleId) {
+                        // For projections, we "cancel" the instance by creating a cancelled record
+                        await budgetService.cancelProjectedCommitment(item.recurrenceRuleId, item.dueDate);
+                    } else {
+                        // For real commitments, just delete
+                        await budgetService.deleteCommitment(id);
+                    }
+                    await loadData();
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registro eliminado correctamente.' });
                 } catch (error) {
-                    console.error(error);
-                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar' });
+                    console.error("Error deleting item:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar el registro.' });
                 }
             }
         });

@@ -20,6 +20,18 @@ interface AccountingExportWizardProps {
 
 const STORAGE_KEY = 'accounting_export_config';
 
+const DEFAULT_ACCOUNTING_MAPPINGS = [
+    { sourceField: 'baseImpuesto', label: 'VENTA BASE', accountCode: '41402001', thirdPartyId: '222222222222', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'impuestoConsumo', label: 'INC (8%)', accountCode: '2495', thirdPartyId: '800197268', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'propina', label: 'PROPINA', accountCode: '281501', thirdPartyId: '12345678', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'ingresoCovers', label: 'COVERS', accountCode: '281502', thirdPartyId: '55555', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'efectivo', label: 'EFECTIVO', accountCode: '11050501', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'datafonoDavid', label: 'DATAFONO 1', accountCode: '13050102', thirdPartyId: '860032909', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'datafonoJulian', label: 'DATAFONO 2', accountCode: '13050102', thirdPartyId: '86003290', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'transfBancolombia', label: 'BANCOLOMBIA', accountCode: '11100103', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'faltante', label: 'DESCUADRE (Faltante)', accountCode: '53059502', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' }
+];
+
 export const AccountingExportWizard: React.FC<AccountingExportWizardProps> = ({ isOpen, onClose, selectedArqueos = [] }) => {
     const { setAlertModal } = useUI();
     const [step, setStep] = useState(1);
@@ -104,7 +116,12 @@ export const AccountingExportWizard: React.FC<AccountingExportWizardProps> = ({ 
                 setConfig(null);
             }
         } else {
-            setConfig(null);
+            // Use defaults if nothing in localStorage
+            setConfig({
+                mappings: DEFAULT_ACCOUNTING_MAPPINGS as any[],
+                defaultDocumentType: 'FV'
+            });
+            setDocType('FV');
         }
     };
 

@@ -85,25 +85,15 @@ export async function updateRecurrenceRule(id: string, updates: Partial<Recurren
     }
 }
 
-/** Elimina una regla y sus compromisos pendientes asociados */
+/** Elimina una regla y desvincula/elimina sus compromisos asociados */
 export async function deleteRecurrenceRule(id: string): Promise<void> {
     try {
-        // 1. Delete all PENDING commitments associated with this rule
-        const { error: delCommError } = await supabase
-            .from('budget_commitments')
-            .delete()
-            .eq('recurrence_rule_id', id)
-            .eq('status', 'pending');
-        if (delCommError) throw delCommError;
-
-        // 2. Delete the rule itself
-        const { error: delRuleError } = await supabase
-            .from('budget_recurring_rules')
-            .delete()
-            .eq('id', id);
-        if (delRuleError) throw delRuleError;
+        const { error } = await supabase
+            .rpc('delete_budget_recurring_rule', { target_id: id });
+        
+        if (error) throw error;
     } catch (error) {
-        console.error('Error deleting rule and associated pending commitments:', error);
+        console.error('Error deleting recurrence rule (referential integrity failure):', error);
         throw error;
     }
 }

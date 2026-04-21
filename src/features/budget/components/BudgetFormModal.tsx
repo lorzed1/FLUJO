@@ -11,6 +11,8 @@ import { PlusIcon, XMarkIcon, CheckIcon, TagIcon, BanknotesIcon } from '../../..
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { FormGroup } from '../../../components/ui/FormGroup';
+import { TrashIcon } from '../../../components/ui/Icons';
+import { useBudgetContext } from '../layouts/BudgetLayout';
 
 interface BudgetFormModalProps {
     isOpen: boolean;
@@ -18,6 +20,7 @@ interface BudgetFormModalProps {
     initialDate?: Date;
     initialCommitment?: BudgetCommitment;
     onSubmit: (data: any) => Promise<void>;
+    onDelete?: (commitment: BudgetCommitment) => Promise<void>;
 }
 
 export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
@@ -25,7 +28,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
     onClose,
     initialDate,
     initialCommitment,
-    onSubmit
+    onSubmit,
+    onDelete
 }) => {
     const { categories, addCategory } = useData();
     const [formData, setFormData] = useState({
@@ -110,6 +114,16 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
             console.error(error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!initialCommitment || !onDelete) return;
+        try {
+            await onDelete(initialCommitment);
+            onClose();
+        } catch (error) {
+            console.error("Failed to delete from modal", error);
         }
     };
 
@@ -254,7 +268,21 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                     </div>
 
                     <div className="pt-5 flex justify-between items-center border-t border-slate-100 dark:border-slate-700 mt-4 shrink-0 bg-white dark:bg-slate-800">
-                        <div className="flex-1">
+                        <div className="flex gap-2 items-center">
+                            {initialCommitment && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleDelete}
+                                    className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/10"
+                                    title="Eliminar este registro"
+                                >
+                                    <TrashIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline ml-1">Eliminar</span>
+                                </Button>
+                            )}
+                            
                             {initialCommitment && initialCommitment.status !== 'paid' && (
                                 <Button
                                     type="button"

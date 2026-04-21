@@ -27,7 +27,9 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
         const { data: rows, error } = await query;
         if (error) throw error;
 
-        const realCommitments: BudgetCommitment[] = (rows || []).map((row: any) => mapCommitmentFromRow(row));
+        const realCommitments: BudgetCommitment[] = (rows || [])
+            .map((row: any) => mapCommitmentFromRow(row))
+            .filter(c => c.status !== 'cancelled'); // Filter out cancelled ones
 
         // 2. Project VIRTUAL commitments (Only if range is provided)
         if (startDate && endDate) {
@@ -41,7 +43,13 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
             const start = parseISO(startDate);
             const end = parseISO(endDate);
             const virtualCommitments: BudgetCommitment[] = [];
-            const consumedRealIds = new Set<string>();
+            
+            // Re-fetch all real commitments for deduplication including cancelled ones
+            const { data: allRealRows } = await supabase
+                .from('budget_commitments')
+                .select('id, due_date, recurrence_rule_id, status');
+            
+            const allReal = allRealRows || [];
 
             for (const rule of rules) {
                 if (!rule.active) continue;
@@ -86,26 +94,15 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
 
                     const dateStr = format(nextDate, 'yyyy-MM-dd');
 
-                    const candidates = realCommitments.filter(rc =>
-                        rc.recurrenceRuleId === rule.id && !consumedRealIds.has(rc.id)
-                    );
+                    // Check if there is already a real commitment (paid, pending OR cancelled) for this rule and date
+                    // Use find to be more explicit and handle potential null comparisons
+                    const hasRealCoverage = allReal.some(rc => {
+                        const isSameRule = rc.recurrence_rule_id === rule.id;
+                        const isSameDay = rc.due_date === dateStr;
+                        return isSameRule && isSameDay;
+                    });
 
-                    let bestMatch: BudgetCommitment | null = null;
-                    let minDiff = Infinity;
-                    const thresholdDays = rule.frequency === 'weekly' ? 6 : 25;
-
-                    for (const candidate of candidates) {
-                        const candidateDate = parseISO(candidate.dueDate);
-                        const diff = Math.abs(candidateDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24);
-                        if (diff <= thresholdDays && diff < minDiff) {
-                            minDiff = diff;
-                            bestMatch = candidate;
-                        }
-                    }
-
-                    if (bestMatch) {
-                        consumedRealIds.add(bestMatch.id);
-                    } else {
+                    if (!hasRealCoverage) {
                         virtualCommitments.push({
                             id: `projected-${rule.id}-${dateStr}`,
                             title: `${rule.title} (Proyectado)`,
@@ -125,38 +122,12 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
                 }
             }
 
-            // --- AGGRESSIVE DEDUPLICATION ---
-            const finalVirtuals = virtualCommitments.filter(vc => {
-                const vcDate = parseISO(vc.dueDate);
-                const hasCoverage = realCommitments.some(rc => {
-                    if (rc.recurrenceRuleId !== vc.recurrenceRuleId) return false;
-                    const rcDate = parseISO(rc.dueDate);
-                    const diffVal = Math.abs(rcDate.getTime() - vcDate.getTime()) / (1000 * 60 * 60 * 24);
-                    return diffVal <= 3;
-                });
-                return !hasCoverage;
-            });
+            // Combine only non-cancelled real with new virtuals
+            const finalMap = new Map<string, BudgetCommitment>();
+            realCommitments.forEach(rc => finalMap.set(rc.id, rc));
+            virtualCommitments.forEach(vc => finalMap.set(vc.id, vc));
 
-            // FINAL DEDUPLICATION BY ID AND SIGNATURE
-            const uniqueMap = new Map<string, BudgetCommitment>();
-            const signatureSet = new Set<string>();
-
-            realCommitments.forEach(rc => {
-                uniqueMap.set(rc.id, rc);
-                if (rc.recurrenceRuleId) {
-                    signatureSet.add(`${rc.recurrenceRuleId}-${rc.dueDate}`);
-                }
-            });
-
-            finalVirtuals.forEach(vc => {
-                const key = `${vc.recurrenceRuleId}-${vc.dueDate}`;
-                if (!signatureSet.has(key)) {
-                    uniqueMap.set(vc.id, vc);
-                    signatureSet.add(key);
-                }
-            });
-
-            return Array.from(uniqueMap.values()).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+            return Array.from(finalMap.values()).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
         }
 
         return realCommitments;
@@ -277,10 +248,40 @@ export async function updateCommitment(id: string, updates: Partial<BudgetCommit
 /** Elimina un compromiso */
 export async function deleteCommitment(id: string): Promise<void> {
     try {
-        const { error } = await supabase.from('budget_commitments').delete().eq('id', id);
+        const { error } = await supabase
+            .rpc('delete_budget_commitment', { target_id: id });
         if (error) throw error;
     } catch (error) {
         console.error('Error deleting commitment:', error);
+        throw error;
+    }
+}
+
+/** Cancela un compromiso proyectado (crea un registro real con status 'cancelled') */
+export async function cancelProjectedCommitment(ruleId: string, dueDate: string): Promise<void> {
+    try {
+        // 1. Fetch rule info to mirror it
+        const { data: ruleRow, error: ruleError } = await supabase
+            .from('budget_recurring_rules')
+            .select('*')
+            .eq('id', ruleId)
+            .single();
+        
+        if (ruleError) throw ruleError;
+        const rule = mapRuleFromRow(ruleRow);
+
+        // 2. Create a REAL commitment with status 'cancelled'
+        await addCommitment({
+            title: rule.title,
+            amount: rule.amount,
+            dueDate: dueDate,
+            status: 'cancelled' as any,
+            category: rule.category,
+            recurrenceRuleId: ruleId,
+            description: 'Instancia de recurrencia cancelada individualmente'
+        });
+    } catch (error) {
+        console.error('Error cancelling projected commitment:', error);
         throw error;
     }
 }

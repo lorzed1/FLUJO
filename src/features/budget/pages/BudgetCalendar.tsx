@@ -143,6 +143,34 @@ export const BudgetCalendar: React.FC = () => {
         openForm(undefined, event.resource);
     }, [openForm]);
 
+    const handleDelete = async (event: MyEvent) => {
+        const item = event.resource;
+        const isProjected = event.isProjected;
+
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Confirmar Eliminación',
+            message: `¿Eliminar "${item.title}" del calendario?`,
+            showCancel: true,
+            confirmText: 'Eliminar',
+            onConfirm: async () => {
+                try {
+                    if (isProjected && item.recurrenceRuleId) {
+                        await budgetService.cancelProjectedCommitment(item.recurrenceRuleId, item.dueDate);
+                    } else {
+                        await budgetService.deleteCommitment(item.id);
+                    }
+                    await fetchEvents();
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registro eliminado.' });
+                } catch (error) {
+                    console.error("Error deleting event:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo eliminar el registro.' });
+                }
+            }
+        });
+    };
+
     const onSelectSlot = useCallback(({ start }: { start: Date }) => {
         openForm(start);
     }, [openForm]);
@@ -216,6 +244,13 @@ export const BudgetCalendar: React.FC = () => {
                                 className="p-1 bg-purple-600 hover:bg-purple-700 text-white rounded shadow-sm transition-colors"
                             >
                                 <PencilIcon className="w-3 h-3" />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleDelete(event); }}
+                                className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded shadow-sm transition-colors"
+                                title="Eliminar"
+                            >
+                                <TrashIcon className="w-3 h-3" />
                             </button>
                         </div>
                         {isPaid && <CheckCircleIcon className="w-3 h-3 flex-shrink-0 ml-1 text-emerald-600" />}
@@ -448,6 +483,16 @@ export const BudgetCalendar: React.FC = () => {
                                                                             <CreditCardIcon className="w-3 h-3" />
                                                                         </button>
                                                                     )}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDelete(event);
+                                                                        }}
+                                                                        className="text-rose-600 hover:text-rose-700 bg-white dark:bg-slate-800 rounded-full p-0.5 shadow-sm"
+                                                                        title="Eliminar"
+                                                                    >
+                                                                        <TrashIcon className="w-3 h-3" />
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         );

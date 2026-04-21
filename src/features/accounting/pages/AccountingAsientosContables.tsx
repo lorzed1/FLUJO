@@ -3,6 +3,7 @@ import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { DocumentTextIcon } from '../../../components/ui/Icons';
 import { useUI } from '../../../context/UIContext';
 import { AccountingDuplicateDetector } from '../components/AccountingDuplicateDetector';
+import { normalizeDate } from '../../../utils/dateUtils';
 
 export interface AsientoContableRow {
     id: string;
@@ -127,27 +128,7 @@ export const AccountingAsientosContables: React.FC = () => {
                 };
 
                 let fechaRaw = getVal(['fecha', 'date', 'fecha_movimiento']);
-                let fDate: Date | null = null;
-                if (fechaRaw !== undefined && fechaRaw !== null && fechaRaw !== '') {
-                    const numFecha = Number(fechaRaw);
-                    if (!isNaN(numFecha) && numFecha > 10000 && numFecha < 100000) {
-                        fDate = new Date(Math.round((numFecha - 25569) * 86400 * 1000));
-                    } else {
-                        fDate = new Date(fechaRaw);
-                        if (isNaN(fDate.getTime()) && typeof fechaRaw === 'string') {
-                            const dmyMatch = fechaRaw.trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-                            if (dmyMatch) fDate = new Date(`${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`);
-                        }
-                    }
-                }
-
-                const formatISO = (d: Date | null): string => {
-                    if (!d || isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                };
+                const fecha = normalizeDate(fechaRaw, new Date().toISOString().split('T')[0]);
 
                 // Normalizar identificaciones para que '00123' -> '123'
                 const normId = (val: string): string => {
@@ -161,7 +142,7 @@ export const AccountingAsientosContables: React.FC = () => {
                     identificacion: normId(textVal(getVal(['identificacion', 'nit', 'cc', 'rut']))),
                     centro_costo: textVal(getVal(['centro_de_costo', 'centro_costo'])),
                     documento: String(getVal(['documento', 'comprobante']) ?? '').trim(),
-                    fecha: formatISO(fDate),
+                    fecha,
                     descripcion: textVal(getVal(['descripcion', 'detalle'])),
                     descripcion_movimiento: textVal(getVal(['descripcion_del_movimiento', 'descripcion_movimiento'])),
                     base: parseNum(getVal(['base'])),

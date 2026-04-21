@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { daysDiffUTC } from '../utils/dateUtils';
 
 // =============================================
 // TIPOS
@@ -98,6 +99,19 @@ export interface ReconciliationHistoryRow {
 export interface ReconciliationConfig {
     amountTolerance: number;  // Tolerancia en valor absoluto (ej: 2000)
     dateMarginDays: number;   // Margen de días (ej: 2)
+}
+
+export interface ConciliationLinkInfo {
+    historyId: string;
+    sourceTable: string;
+    sourceRecordId: string;
+    targetRecordId: string;
+}
+
+export interface ConciliatedData {
+    ids: Set<string>;
+    targetLinks: Map<string, ConciliationLinkInfo>; // targetRecordId -> LinkInfo
+    sourceLinks: Map<string, ConciliationLinkInfo>; // sourceRecordId -> LinkInfo
 }
 
 const DEFAULT_CONFIG: ReconciliationConfig = {
@@ -343,7 +357,7 @@ export class ReconciliationBankService {
             return records.map(r => ({ 
                 ...r, 
                 account: acc,
-                isConciliated: conciliated.has(`source:${r.id}`)
+                isConciliated: conciliated.ids.has(`source:${r.id}`)
             }));
         });
 
@@ -675,22 +689,83 @@ export class ReconciliationBankService {
         if (!recordIds || recordIds.length === 0) return;
 
         try {
+            // EXTREMELY IMPORTANT: We must filter out IDs that are NOT valid UUIDs
+            // because the database columns source_record_id and target_record_id in reconciliation_history
+            // are of type UUID. Passing strings like "rule_123" will cause a 400 Bad Request / 22P02 Postgres error.
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const validUuidIds = recordIds.filter(id => uuidRegex.test(id));
+
+            if (validUuidIds.length === 0) return;
+
             // 1. Borrar todas las conciliaciones donde estos registros son el SOURCE
             const { error: err1 } = await supabase
                 .from('reconciliation_history')
                 .delete()
-                .in('source_record_id', recordIds);
+                .in('source_record_id', validUuidIds);
             
             // 2. Borrar todas las conciliaciones donde estos registros son el TARGET
             const { error: err2 } = await supabase
                 .from('reconciliation_history')
                 .delete()
-                .in('target_record_id', recordIds);
+                .in('target_record_id', validUuidIds);
 
             if (err1) console.error("Error al limpiar conciliaciones (source):", err1);
             if (err2) console.error("Error al limpiar conciliaciones (target):", err2);
         } catch (err) {
             console.error("Error manejando limpieza huérfana de conciliaciones:", err);
+        }
+    }
+
+    /**
+     * Invalida (revierte) conciliaciones activas cuando los registros subyacentes son modificados.
+     * Esto protege de corrupciones (Ghost Records).
+     */
+    static async invalidateByRecordIds(recordIds: string[], reason: string = 'Actualización autodetectada. Registro subyacente modificado.'): Promise<string[]> {
+        if (!recordIds || recordIds.length === 0) return [];
+        
+        // Filtrar valid UUIDs para evitar error 22P02 Postgres
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const validUuidIds = recordIds.filter(id => uuidRegex.test(id));
+        if (validUuidIds.length === 0) return [];
+
+        try {
+            // Find affected items
+            const { data: sourceMatches } = await supabase
+                .from('reconciliation_history')
+                .select('id')
+                .eq('status', 'active')
+                .in('source_record_id', validUuidIds);
+
+            const { data: targetMatches } = await supabase
+                .from('reconciliation_history')
+                .select('id')
+                .eq('status', 'active')
+                .in('target_record_id', validUuidIds);
+
+            const idsToInvalidate = new Set([
+                ...(sourceMatches || []).map(r => r.id),
+                ...(targetMatches || []).map(r => r.id)
+            ]);
+
+            const targetIds = Array.from(idsToInvalidate);
+            if (targetIds.length === 0) return [];
+
+            // Perform reversing
+            const { error } = await supabase
+                .from('reconciliation_history')
+                .update({
+                    status: 'reversed',
+                    reversed_at: new Date().toISOString(),
+                    reversed_reason: reason
+                })
+                .in('id', targetIds);
+
+            if (error) throw error;
+            return targetIds;
+            
+        } catch (error) {
+            console.error("Error invalidating reconciliations by record IDs:", error);
+            return [];
         }
     }
 
@@ -735,41 +810,44 @@ export class ReconciliationBankService {
         return (data || []) as ReconciliationHistoryRow[];
     }
 
-    /**
-     * Obtiene el set de IDs ya conciliados (activos) para filtrar.
-     *
-     * IMPORTANTE: Los source_record_id se filtran por cuenta bancaria (source_table),
-     * pero los target_record_id (asientos contables) son globales: un asiento ya
-     * conciliado con CUALQUIER cuenta debe ocultarse sin importar qué cuenta se esté
-     * visualizando actualmente.
-     */
-    static async getConciliatedIds(sourceTable: string): Promise<Set<string>> {
-        // Consulta 1: IDs de source (propios de esta cuenta bancaria)
-        const { data: sourceData, error: sourceError } = await supabase
+    static async getConciliatedIds(sourceTable: string): Promise<ConciliatedData> {
+        // Obtenemos TODO el historial activo para tener trazabilidad completa
+        const { data, error } = await supabase
             .from('reconciliation_history')
-            .select('source_record_id')
-            .eq('source_table', sourceTable)
+            .select('id, source_table, source_record_id, target_record_id')
             .eq('status', 'active');
 
-        if (sourceError) throw sourceError;
+        if (error) throw error;
 
-        // Consulta 2: IDs de target (asientos contables) — GLOBAL, sin filtro de cuenta
-        // Un asiento conciliado con cualquier cuenta debe quedar oculto en todas las cuentas.
-        const { data: targetData, error: targetError } = await supabase
-            .from('reconciliation_history')
-            .select('target_record_id')
-            .eq('status', 'active');
+        const result: ConciliatedData = {
+            ids: new Set<string>(),
+            targetLinks: new Map(),
+            sourceLinks: new Map()
+        };
 
-        if (targetError) throw targetError;
+        (data || []).forEach((row: any) => {
+            const linkInfo: ConciliationLinkInfo = {
+                historyId: row.id,
+                sourceTable: row.source_table,
+                sourceRecordId: row.source_record_id,
+                targetRecordId: row.target_record_id
+            };
 
-        const ids = new Set<string>();
-        (sourceData || []).forEach((row: any) => {
-            ids.add(`source:${row.source_record_id}`);
+            // Para el set de IDs (retrocompatibilidad y filtrado rápido)
+            // Agregamos source solo si pertenece a la tabla actual
+            if (row.source_table === sourceTable) {
+                result.ids.add(`source:${row.source_record_id}`);
+                result.sourceLinks.set(row.source_record_id, linkInfo);
+            }
+
+            // Target siempre se agrega (global)
+            if (row.target_record_id) {
+                result.ids.add(`target:${row.target_record_id}`);
+                result.targetLinks.set(row.target_record_id, linkInfo);
+            }
         });
-        (targetData || []).forEach((row: any) => {
-            ids.add(`target:${row.target_record_id}`);
-        });
-        return ids;
+
+        return result;
     }
 
     // ------------------------------------------
@@ -851,9 +929,6 @@ export class ReconciliationBankService {
     // ------------------------------------------
 
     private static daysDiff(date1: string, date2: string): number {
-        const d1 = new Date(date1).getTime();
-        const d2 = new Date(date2).getTime();
-        if (isNaN(d1) || isNaN(d2)) return 999;
-        return Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+        return daysDiffUTC(date1, date2);
     }
 }

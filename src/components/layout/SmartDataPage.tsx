@@ -188,6 +188,12 @@ export function SmartDataPage<T extends Record<string, any>>({
 
             if (error) throw error;
 
+            // PREVENCIÓN DE GHOST RECORDS: Invalidar conciliaciones activas de registros actualizados
+            const affectedIds = recordsToUpsert.map(r => r.id).filter(Boolean) as string[];
+            if (affectedIds.length > 0) {
+                await ReconciliationBankService.invalidateByRecordIds(affectedIds);
+            }
+
             await loadData();
             setImportOpen(false);
             setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: `Se importaron ${importedData.length} registros exitosamente.` });
@@ -229,6 +235,9 @@ export function SmartDataPage<T extends Record<string, any>>({
                 .eq('id', editingItem.id);
 
             if (error) throw error;
+
+            // PREVENCIÓN DE GHOST RECORDS: Invalidar su conciliación si fue editado
+            await ReconciliationBankService.invalidateByRecordIds([editingItem.id]);
 
             await loadData();
             setEditingItem(undefined);

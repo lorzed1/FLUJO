@@ -16,6 +16,7 @@ import { useUI } from '../../../context/UIContext';
 
 export type BudgetContextType = {
     openForm: (date?: Date, commitment?: BudgetCommitment) => void;
+    handleDelete: (commitment: BudgetCommitment) => Promise<void>;
     refreshTrigger: number;
 };
 
@@ -34,6 +35,37 @@ export const BudgetLayout: React.FC = () => {
         setIsModalOpen(true);
     };
 
+    const handleDelete = async (commitment: BudgetCommitment) => {
+        const isProjected = commitment.id.startsWith('projected-');
+
+        return new Promise<void>((resolve, reject) => {
+            setAlertModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'Confirmar Eliminación',
+                message: `¿Deseas eliminar este registro de "${commitment.title}"?`,
+                showCancel: true,
+                confirmText: 'Eliminar',
+                onConfirm: async () => {
+                    try {
+                        if (isProjected && commitment.recurrenceRuleId) {
+                            await budgetService.cancelProjectedCommitment(commitment.recurrenceRuleId, commitment.dueDate);
+                        } else {
+                            await budgetService.deleteCommitment(commitment.id);
+                        }
+                        setRefreshTrigger(prev => prev + 1);
+                        setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registro eliminado correctamente.' });
+                        resolve();
+                    } catch (error) {
+                        console.error("Error deleting item:", error);
+                        setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar el registro.' });
+                        reject(error);
+                    }
+                }
+            });
+        });
+    };
+
     const handleCreateOrUpdate = async (data: any) => {
         try {
             if (data.id && !data.id.startsWith('projected-')) {
@@ -41,27 +73,24 @@ export const BudgetLayout: React.FC = () => {
                 await budgetService.updateCommitment(data.id, {
                     title: data.title,
                     amount: data.amount,
-                    dueDate: data.date || data.dueDate, // Fix: Handle both form 'date' and object 'dueDate'
+                    dueDate: data.date || data.dueDate,
                     status: data.status,
                     category: data.category,
-                    paidDate: data.paidDate // Include paidDate
+                    paidDate: data.paidDate
                 });
                 setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Compromiso actualizado exitosamente' });
             } else {
                 // Modo Creación o Materialización de Proyección
                 if (data.id && data.id.startsWith('projected-')) {
                     // Caso Especial: El usuario editó una proyección virtual.
-                    // Creamos un compromiso REAL para esta fecha específica.
-                    // Al existir un real con 'recurrenceRuleId' y misma fecha, 
-                    // la proyección automática se ocultará y mostrará este real modificado.
                     await budgetService.addCommitment({
                         title: data.title.replace(' (Proyectado)', ''),
                         amount: data.amount,
-                        dueDate: data.date || data.dueDate, // Fix: Handle both form 'date' and object 'dueDate'
+                        dueDate: data.date || data.dueDate,
                         status: data.status,
                         category: data.category,
-                        recurrenceRuleId: data.recurrenceRuleId, // Mantenemos link a la regla
-                        paidDate: data.paidDate // Include paidDate
+                        recurrenceRuleId: data.recurrenceRuleId, // VÍNCULO CRÍTICO: Para evitar duplicados
+                        paidDate: data.paidDate
                     });
                     setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: 'Gasto guardado individualmente. Esta modificación solo afecta a este mes.' });
                 } else {
@@ -88,10 +117,8 @@ export const BudgetLayout: React.FC = () => {
 
     return (
         <div className="flex flex-col space-y-4">
-
-
             <div className="flex-1 min-h-0">
-                <Outlet context={{ openForm, refreshTrigger }} />
+                <Outlet context={{ openForm, handleDelete, refreshTrigger }} />
             </div>
 
             <BudgetFormModal
@@ -100,6 +127,7 @@ export const BudgetLayout: React.FC = () => {
                 initialDate={initialDate}
                 initialCommitment={initialCommitment}
                 onSubmit={handleCreateOrUpdate}
+                onDelete={handleDelete}
             />
         </div>
     );

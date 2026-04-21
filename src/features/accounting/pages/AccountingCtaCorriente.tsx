@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { WalletIcon } from '../../../components/ui/Icons';
 import { BankDuplicateDetector } from '../components/BankDuplicateDetector';
+import { normalizeDate } from '../../../utils/dateUtils';
 
 export interface CtaCorrienteRow {
     id: string;
@@ -65,16 +66,7 @@ export const AccountingCtaCorriente: React.FC = () => {
                     return { valor: 0, descripcion: 'ERROR: SIN FECHA', fecha: '1900-01-01' } as any;
                 }
 
-                let fecha = rawFecha;
-
-                // If it's an excel serial date, convert it
-                if (typeof fecha === 'number' || (!isNaN(Number(fecha)) && String(fecha).length <= 6)) {
-                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-                    const dateObj = new Date(excelEpoch.getTime() + Math.round(Number(fecha) * 86400000));
-                    fecha = dateObj.toISOString().split('T')[0];
-                } else if (fecha instanceof Date) {
-                    fecha = fecha.toISOString().split('T')[0];
-                }
+                const fecha = normalizeDate(rawFecha, '1900-01-01');
 
                 let descripcion = String(row['Descripción'] || row['Descripcion'] || row['descripcion'] || row['Description'] || row['description'] || '');
                 let referencia = String(row['Referencia'] || row['referencia'] || row['Ref'] || row['ref'] || '');

@@ -11,11 +11,36 @@ interface AccountingConfigModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave?: () => void;
+    title?: string;
+    initialMappings?: AccountMapping[];
+    hideNatureSelect?: boolean;
 }
 
-const STORAGE_KEY = 'accounting_export_config';
+const DEFAULT_STORAGE_KEY = 'accounting_export_config';
 
-export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ isOpen, onClose, onSave }) => {
+
+const DEFAULT_ACCOUNTING_MAPPINGS: AccountMapping[] = [
+    { sourceField: 'baseImpuesto', label: 'VENTA BASE', accountCode: '41402001', thirdPartyId: '222222222222', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'impuestoConsumo', label: 'INC (8%)', accountCode: '2495', thirdPartyId: '800197268', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'propina', label: 'PROPINA', accountCode: '281501', thirdPartyId: '12345678', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'ingresoCovers', label: 'COVERS', accountCode: '281502', thirdPartyId: '55555', costCenter: 'Principal', nature: 'Credit' },
+    { sourceField: 'efectivo', label: 'EFECTIVO', accountCode: '11050501', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'datafonoDavid', label: 'DATAFONO 1', accountCode: '13050102', thirdPartyId: '860032909', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'datafonoJulian', label: 'DATAFONO 2', accountCode: '13050102', thirdPartyId: '86003290', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'transfBancolombia', label: 'BANCOLOMBIA', accountCode: '11100103', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
+    { sourceField: 'faltante', label: 'DESCUADRE (Faltante)', accountCode: '53059502', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' }
+];
+
+export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    onSave,
+    storageKey = DEFAULT_STORAGE_KEY,
+    availableFields = AVAILABLE_SOURCE_FIELDS,
+    title = "Configuración de Asientos Contables",
+    initialMappings = DEFAULT_ACCOUNTING_MAPPINGS,
+    hideNatureSelect = false
+}) => {
     const { setAlertModal } = useUI();
     const [mappings, setMappings] = useState<AccountMapping[]>([]);
     const [defaultDocType, setDefaultDocType] = useState('FV');
@@ -23,28 +48,29 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
     // Load from Local Storage on mount
     useEffect(() => {
         if (isOpen) {
-            const savedConfig = localStorage.getItem(STORAGE_KEY);
+            const savedConfig = localStorage.getItem(storageKey);
             if (savedConfig) {
                 try {
                     const parsed = JSON.parse(savedConfig);
                     setMappings(parsed.mappings || []);
-                    setDefaultDocType(parsed.defaultDocumentType || 'FV');
+                    setDefaultDocType(parsed.defaultDocumentType || (storageKey.includes('transfer') ? 'TR' : 'FV'));
                 } catch (e) {
                     console.error("Error parsing accounting config", e);
                 }
             } else {
-                // Initialize with some defaults if empty?
-                // For now leave empty to let user configure
+                // Initialize with defaults
+                setMappings(initialMappings);
+                setDefaultDocType(storageKey.includes('transfer') ? 'TR' : 'FV');
             }
         }
-    }, [isOpen]);
+    }, [isOpen, storageKey, initialMappings]);
 
     const handleSave = () => {
         const config = {
             mappings,
             defaultDocumentType: defaultDocType
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+        localStorage.setItem(storageKey, JSON.stringify(config));
         setAlertModal({
             isOpen: true,
             type: 'success',
@@ -59,8 +85,8 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
         setMappings([
             ...mappings,
             {
-                sourceField: AVAILABLE_SOURCE_FIELDS[0].id,
-                label: AVAILABLE_SOURCE_FIELDS[0].label,
+                sourceField: availableFields[0].id,
+                label: availableFields[0].label,
                 accountCode: '',
                 thirdPartyId: '',
                 costCenter: 'Principal',
@@ -81,7 +107,7 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
 
         // Auto-update label if source changes
         if (field === 'sourceField') {
-            const source = AVAILABLE_SOURCE_FIELDS.find(s => s.id === value);
+            const source = availableFields.find(s => s.id === value);
             if (source) {
                 newMappings[index].label = source.label;
             }
@@ -104,7 +130,7 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Configuración de Asientos Contables"
+            title={title}
             maxWidth="max-w-6xl"
         >
             <div className="space-y-6 flex-1 min-h-0 overflow-y-auto p-6">
@@ -132,7 +158,7 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cuenta PUC</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tercero (NIT)</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">C. Costo</th>
-                                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Naturaleza</th>
+                                {!hideNatureSelect && <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Naturaleza</th>}
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Acción</th>
                             </tr>
                         </thead>
@@ -145,7 +171,7 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
                                             onChange={(e) => updateMapping(index, 'sourceField', e.target.value)}
                                             className="block w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 text-xs py-1.5 focus:border-indigo-500 focus:ring-indigo-500"
                                         >
-                                            {AVAILABLE_SOURCE_FIELDS.map(f => (
+                                            {availableFields.map(f => (
                                                 <option key={f.id} value={f.id}>{f.label}</option>
                                             ))}
                                         </select>
@@ -184,26 +210,28 @@ export const AccountingConfigModal: React.FC<AccountingConfigModalProps> = ({ is
                                             className="block w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 text-xs py-1.5 focus:border-indigo-500 focus:ring-indigo-500"
                                         />
                                     </td>
-                                    <td className="px-3 py-2">
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => updateMapping(index, 'nature', 'Debit')}
-                                                className={`px-2 py-1 text-xs rounded border ${map.nature === 'Debit'
-                                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold'
-                                                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50'}`}
-                                            >
-                                                Débito
-                                            </button>
-                                            <button
-                                                onClick={() => updateMapping(index, 'nature', 'Credit')}
-                                                className={`px-2 py-1 text-xs rounded border ${map.nature === 'Credit'
-                                                    ? 'bg-rose-100 text-rose-700 border-rose-200 font-bold'
-                                                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-rose-50'}`}
-                                            >
-                                                Crédito
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {!hideNatureSelect && (
+                                        <td className="px-3 py-2">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => updateMapping(index, 'nature', 'Debit')}
+                                                    className={`px-2 py-1 text-xs rounded border ${map.nature === 'Debit'
+                                                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200 font-bold'
+                                                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50'}`}
+                                                >
+                                                    Débito
+                                                </button>
+                                                <button
+                                                    onClick={() => updateMapping(index, 'nature', 'Credit')}
+                                                    className={`px-2 py-1 text-xs rounded border ${map.nature === 'Credit'
+                                                        ? 'bg-rose-100 text-rose-700 border-rose-200 font-bold'
+                                                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-rose-50'}`}
+                                                >
+                                                    Crédito
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                     <td className="px-3 py-2 text-center">
                                         <div className="flex items-center justify-center gap-1">
                                             <button

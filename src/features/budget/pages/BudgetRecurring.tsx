@@ -20,6 +20,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
     const [selectedRule, setSelectedRule] = useState<RecurrenceRule | undefined>(undefined);
     const [isDuplicating, setIsDuplicating] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const loadRules = async () => {
         setLoading(true);
@@ -58,17 +59,38 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
     };
 
     const handleDelete = async (id: string) => {
+        if (isDeleting) return;
+
         setAlertModal({
             isOpen: true,
             type: 'warning',
             title: 'Confirmar Eliminación',
-            message: '¿Eliminar esta regla recurrente?',
+            message: '¿Eliminar esta regla recurrente? Esta acción borrará todas sus proyecciones futuras pendientes.',
             showCancel: true,
             confirmText: 'Eliminar',
             onConfirm: async () => {
-                await budgetService.deleteRecurrenceRule(id);
-                loadRules();
-                setAlertModal({ isOpen: false, message: '' });
+                if (isDeleting) return;
+                setIsDeleting(true);
+                try {
+                    await budgetService.deleteRecurrenceRule(id);
+                    await loadRules();
+                    setAlertModal({ isOpen: false, message: '' });
+                } catch (error: any) {
+                    // Ignore 404 as it means it was already deleted by a race condition
+                    if (error?.status !== 404 && error?.code !== 'PGRST116') {
+                        setAlertModal({ 
+                            isOpen: true, 
+                            type: 'error', 
+                            title: 'Error', 
+                            message: 'No se pudo eliminar la regla.' 
+                        });
+                    } else {
+                        await loadRules();
+                        setAlertModal({ isOpen: false, message: '' });
+                    }
+                } finally {
+                    setIsDeleting(false);
+                }
             }
         });
     };
@@ -318,6 +340,7 @@ const BudgetRecurringContent: React.FC<{ onSwitchToCategories: () => void }> = (
                 enableAdd={true}
                 onAdd={handleCreate}
                 onEdit={handleEdit}
+                onDelete={(item) => handleDelete(item.id)}
                 searchPlaceholder="Buscar regla..."
                 infoDefinitions={[
                     {

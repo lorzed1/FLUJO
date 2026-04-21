@@ -37,8 +37,11 @@ import {
     ReconciliationHistoryRow,
     ReconciliationConfig,
     InternalTransfer,
+    ConciliatedData,
 } from '../../../services/reconciliationBankService';
 import { TransferAccountingExportWizard } from '../components/TransferAccountingExportWizard';
+import { AccountingDuplicateDetector } from '../components/AccountingDuplicateDetector';
+import { daysDiffUTC } from '../../utils/dateUtils';
 
 // =============================================
 // HELPERS
@@ -62,10 +65,17 @@ const fmt = (n: number) =>
     n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
 const daysDiff = (d1: string, d2: string): number => {
-    const t1 = new Date(d1).getTime();
-    const t2 = new Date(d2).getTime();
-    if (isNaN(t1) || isNaN(t2)) return 999;
-    return Math.round(Math.abs(t2 - t1) / 86400000);
+    return daysDiffUTC(d1, d2);
+};
+
+/**
+ * Genera una "huella digital" única basada en monto y fecha para detectar duplicados visuales.
+ */
+const getRecordFingerprint = (amount: number, date: string) => {
+    // Usamos el valor absoluto para que coincida entre banco/contabilidad si el signo varía por diseño
+    const absAmount = Math.abs(amount);
+    const datePart = date.split('T')[0];
+    return `${absAmount}_${datePart}`;
 };
 
 const ScorePill: React.FC<{ score: number }> = ({ score }) => (
@@ -179,7 +189,11 @@ export const ReconciliationView: React.FC = () => {
     // --- Datos ---
     const [sourceRecords, setSourceRecords] = useState<ReconciliationRecord[]>([]);
     const [targetRecords, setTargetRecords] = useState<ReconciliationRecord[]>([]);
-    const [conciliatedIds, setConciliatedIds] = useState<Set<string>>(new Set());
+    const [conciliatedData, setConciliatedData] = useState<ConciliatedData>({ 
+        ids: new Set<string>(), 
+        sourceLinks: new Map(), 
+        targetLinks: new Map() 
+    });
     const [history, setHistory] = useState<ReconciliationHistoryRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -426,6 +440,56 @@ export const ReconciliationView: React.FC = () => {
         targetContainer.scrollTop = Math.max(0, desiredScroll);
     };
 
+    // --- Refresco de datos de conciliación ---
+    const refreshConciliated = useCallback(async () => {
+        if (!selectedAccount) return;
+        try {
+            const data = await ReconciliationBankService.getConciliatedIds(selectedAccount.table);
+            setConciliatedData(data);
+        } catch (err) {
+            console.error('Error refrescando conciliados:', err);
+        }
+    }, [selectedAccount]);
+
+    /**
+     * Al seleccionar un registro conciliado o su gemelo, permite saltar al registro vinculado
+     */
+    const jumpToReconciledPartner = useCallback(async (recordId: string, type: 'source' | 'target') => {
+        const link = type === 'target' 
+            ? conciliatedData.targetLinks.get(recordId)
+            : conciliatedData.sourceLinks.get(recordId);
+            
+        if (!link) return;
+
+        // Si es de otra cuenta, cambiar cuenta primera
+        if (link.sourceTable !== selectedAccount?.table) {
+            const partnerAccount = RECONCILIATION_ACCOUNTS.find(a => a.table === link.sourceTable);
+            if (partnerAccount) {
+                setSelectedAccountId(partnerAccount.id);
+                // El useEffect de selectedAccountId hará la carga, pero necesitamos esperar
+                // Para simplificar, en este MVP solo saltamos si es la misma cuenta
+                // o informamos al usuario.
+                return;
+            }
+        }
+
+        // Si es la misma cuenta, buscar el registro y resaltarlo
+        const sourceRec = sourceRecords.find(r => r.id === link.sourceRecordId);
+        if (sourceRec) {
+            handleSourceClick(sourceRec);
+            // Hacer scroll hasta el registro (usando refs si están disponibles)
+            setTimeout(() => {
+                const row = sourceRowRefs.current.get(link.sourceRecordId);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Animación visual de flash
+                    row.classList.add('animate-pulse', 'bg-purple-100', 'dark:bg-purple-900/40');
+                    setTimeout(() => row.classList.remove('animate-pulse', 'bg-purple-100', 'dark:bg-purple-900/40'), 2000);
+                }
+            }, 100);
+        }
+    }, [conciliatedData, selectedAccount, sourceRecords]);
+
     // =============================================
     // CARGA
     // =============================================
@@ -454,12 +518,10 @@ export const ReconciliationView: React.FC = () => {
         if (!selectedAccount) return;
         setLoading(true);
         try {
-            // Siempre cargamos todo para el historial consolidado y match cruzado
-            if (Object.keys(allBankRecords).length === 0) {
-                loadAllBankRecords();
-            }
+            // Limpieza automática de huérfanos antes de cargar datos
+            await ReconciliationBankService.cleanOrphanedRecords();
 
-            const [source, target, ids, hist] = await Promise.all([
+            const [source, target, data, hist] = await Promise.all([
                 ReconciliationBankService.loadSourceRecords(selectedAccount),
                 ReconciliationBankService.loadAsientosContables(),
                 ReconciliationBankService.getConciliatedIds(selectedAccount.table),
@@ -467,7 +529,7 @@ export const ReconciliationView: React.FC = () => {
             ]);
             setSourceRecords(source);
             setTargetRecords(target);
-            setConciliatedIds(ids);
+            setConciliatedData(data);
             setHistory(hist);
             setAutoMatches([]);
             setRejectedMatchIndices(new Set());
@@ -478,7 +540,7 @@ export const ReconciliationView: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedAccount, allBankRecords, loadAllBankRecords]);
+    }, [selectedAccount]);
 
     /** Activar / desactivar modo invertido */
     const toggleReverseMode = useCallback(() => {
@@ -716,7 +778,7 @@ export const ReconciliationView: React.FC = () => {
 
     const pendingSource = useMemo(
         () => sourceRecords
-            .filter(r => !conciliatedIds.has(`source:${r.id}`))
+            .filter(r => !conciliatedData.ids.has(`source:${r.id}`))
             .filter(r => {
                 if (flowFilter === 'income') return r.amount > 0;
                 if (flowFilter === 'expense') return r.amount < 0;
@@ -739,7 +801,7 @@ export const ReconciliationView: React.FC = () => {
                     (r.raw?.doc_banco || '').toLowerCase().includes(searchLower)
                 );
             }),
-        [sourceRecords, conciliatedIds, flowFilter, sourceSearch, showOnlySuspected, suspectedIds, showOnlyRegistered, registeredIds]
+        [sourceRecords, conciliatedData, flowFilter, sourceSearch, showOnlySuspected, suspectedIds, showOnlyRegistered, registeredIds]
     );
 
     /** Toggle marcado sospechoso (si marca sospechoso, quita registrado) */
@@ -772,18 +834,28 @@ export const ReconciliationView: React.FC = () => {
 
     /** Conteo de sospechosos aún pendientes (sin conciliar) */
     const suspectedPendingCount = useMemo(
-        () => sourceRecords.filter(r => suspectedIds.has(r.id) && !conciliatedIds.has(`source:${r.id}`)).length,
-        [sourceRecords, suspectedIds, conciliatedIds]
+        () => sourceRecords.filter(r => suspectedIds.has(r.id) && !conciliatedData.ids.has(`source:${r.id}`)).length,
+        [sourceRecords, suspectedIds, conciliatedData]
     );
-
     /** Conteo de registrados aún pendientes (sin conciliar) */
     const registeredPendingCount = useMemo(
-        () => sourceRecords.filter(r => registeredIds.has(r.id) && !conciliatedIds.has(`source:${r.id}`)).length,
-        [sourceRecords, registeredIds, conciliatedIds]
+        () => sourceRecords.filter(r => registeredIds.has(r.id) && !conciliatedData.ids.has(`source:${r.id}`)).length,
+        [sourceRecords, registeredIds, conciliatedData]
     );
+
+    const reconciledFingerprints = useMemo(() => {
+        const set = new Set<string>();
+        targetRecords.forEach(r => {
+            if (conciliatedData.ids.has(`target:${r.id}`)) {
+                set.add(getRecordFingerprint(r.amount, r.date));
+            }
+        });
+        return set;
+    }, [targetRecords, conciliatedData.ids]);
+
     const pendingTarget = useMemo(
         () => targetRecords
-            .filter(r => !conciliatedIds.has(`target:${r.id}`))
+            .filter(r => !conciliatedData.ids.has(`target:${r.id}`))
             .filter(r => {
                 if (flowFilter === 'income') return r.amount > 0;
                 if (flowFilter === 'expense') return r.amount < 0;
@@ -793,6 +865,13 @@ export const ReconciliationView: React.FC = () => {
                 if (excludedAccountsSet.size === 0) return true;
                 const account = (r.raw?.cuenta || '').toString().trim();
                 return !excludedAccountsSet.has(account);
+            })
+            .map(r => {
+                const fingerprint = getRecordFingerprint(r.amount, r.date);
+                return {
+                    ...r,
+                    isPotentialDuplicate: reconciledFingerprints.has(fingerprint)
+                };
             })
             .filter(r => {
                 if (!targetSearch) return true;
@@ -808,7 +887,7 @@ export const ReconciliationView: React.FC = () => {
                     (r.raw?.documento || '').toLowerCase().includes(searchLower)
                 );
             }),
-        [targetRecords, conciliatedIds, flowFilter, targetSearch, targetExcludeAccounts]
+        [targetRecords, conciliatedData.ids, flowFilter, targetSearch, targetExcludeAccounts, reconciledFingerprints, excludedAccountsSet]
     );
 
     const activeHistory = useMemo(() => history.filter(h => h.status === 'active'), [history]);
@@ -1138,7 +1217,7 @@ export const ReconciliationView: React.FC = () => {
         }
 
         const matches = ReconciliationBankService.reconcileAuto(
-            currentSource, currentTarget, conciliatedIds, config
+            currentSource, currentTarget, conciliatedData.ids, config
         );
         setAutoMatches(matches);
         setRejectedMatchIndices(new Set());
@@ -1155,13 +1234,8 @@ export const ReconciliationView: React.FC = () => {
         try {
             await ReconciliationBankService.saveMatchesBatch(selectedAccount.table, toSave);
             
-            // Actualización optimista
-            const newIds = new Set(conciliatedIds);
-            toSave.forEach(m => {
-                newIds.add(`source:${m.sourceRecord.id}`);
-                newIds.add(`target:${m.targetRecord.id}`);
-            });
-            setConciliatedIds(newIds);
+            // Actualización de estado
+            await refreshConciliated();
             
             // Recargar solo el historial
             const hist = await ReconciliationBankService.getHistory(selectedAccount.table);
@@ -1196,13 +1270,8 @@ export const ReconciliationView: React.FC = () => {
                 );
             }
             
-            // Actualización optimista
-            setConciliatedIds(prev => {
-                const next = new Set(prev);
-                sourceIds.forEach(id => next.add(`source:${id}`));
-                next.add(`target:${targetId}`);
-                return next;
-            });
+            // Actualización de estado
+            await refreshConciliated();
             
             // Recargar solo historial
             const hist = await ReconciliationBankService.getHistory(selectedAccount.table);
@@ -1244,13 +1313,8 @@ export const ReconciliationView: React.FC = () => {
                 'manual'
             );
             
-            // Actualización optimista: todos los registros de origen y el destino se marcan como conciliados
-            setConciliatedIds(prev => {
-                const next = new Set(prev);
-                sourceIds.forEach(id => next.add(`source:${id}`));
-                next.add(`target:${targetId}`);
-                return next;
-            });
+            // Actualización de estado
+            await refreshConciliated();
             
             // Recargar solo historial para reflejar los nuevos vínculos
             const hist = await ReconciliationBankService.getHistory(selectedAccount.table);
@@ -1283,10 +1347,7 @@ export const ReconciliationView: React.FC = () => {
             const recordToReverse = history.find(h => h.id === reversingId);
             if (recordToReverse) {
                 // Liberar IDs para que vuelvan a aparecer en tablas
-                const newIds = new Set(conciliatedIds);
-                newIds.delete(`source:${recordToReverse.source_record_id}`);
-                newIds.delete(`target:${recordToReverse.target_record_id}`);
-                setConciliatedIds(newIds);
+                await refreshConciliated();
                 
                 // Actualizar historial localmente (eliminar)
                 setHistory(prev => prev.filter(h => h.id !== reversingId));
@@ -1320,16 +1381,7 @@ export const ReconciliationView: React.FC = () => {
             await ReconciliationBankService.reverseMatchesBatch(idArray);
             
             // Actualizar localmente para liberar los registros
-            const newIds = new Set(conciliatedIds);
-            
-            // Por cada ID revertido, limpiar sus source/target del set local de forma reactiva
-            const itemsToReverse = history.filter(h => ids.has(h.id));
-            itemsToReverse.forEach(item => {
-                newIds.delete(`source:${item.source_record_id}`);
-                newIds.delete(`target:${item.target_record_id}`);
-            });
-            
-            setConciliatedIds(newIds);
+            await refreshConciliated();
             setHistory(prev => prev.filter(h => !ids.has(h.id)));
         } catch (err) {
             console.error('Error en reversión masiva:', err);
@@ -1390,12 +1442,7 @@ export const ReconciliationView: React.FC = () => {
             );
 
             // Actualización optimista de IDs conciliados
-            setConciliatedIds(prev => {
-                const next = new Set(prev);
-                next.add(`source:${match.record.id}`);
-                targetIds.forEach(id => next.add(`target:${id}`));
-                return next;
-            });
+            await refreshConciliated();
 
             // Recargar historial global
             const hist = await ReconciliationBankService.getAllActiveHistory();
@@ -1428,7 +1475,7 @@ export const ReconciliationView: React.FC = () => {
                         accountId: acc.id,
                         accountLabel: acc.label,
                         record: r,
-                        alreadyConciliated: conciliatedIds.has(`source:${r.id}`),
+                        alreadyConciliated: conciliatedData.ids.has(`source:${r.id}`),
                     });
                 }
             });
@@ -1439,7 +1486,7 @@ export const ReconciliationView: React.FC = () => {
             if (a.alreadyConciliated !== b.alreadyConciliated) return a.alreadyConciliated ? 1 : -1;
             return a.accountLabel.localeCompare(b.accountLabel);
         });
-    }, [reverseMode, selectedReverseTargetIds, selectedReverseTargetSum, allBankRecords, conciliatedIds]);
+    }, [reverseMode, selectedReverseTargetIds, selectedReverseTargetSum, allBankRecords, conciliatedData.ids]);
 
     // =============================================
     // RENDER
@@ -1531,29 +1578,7 @@ export const ReconciliationView: React.FC = () => {
 
                     {/* Acciones principales */}
                     <div className="flex items-center gap-4">
-                        <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            onClick={async () => {
-                                if (confirm("¿Estás seguro de que deseas limpiar los registros huérfanos del historial? Esto verificará y eliminará conciliaciones donde el registro bancario o contable original haya sido borrado.")) {
-                                    setLoading(true);
-                                    try {
-                                        const count = await ReconciliationBankService.cleanOrphanedRecords();
-                                        alert(`Limpieza completada. Se eliminaron ${count} registros huérfanos.`);
-                                        await loadData(); // Recargar datos para refrescar la UI
-                                    } catch (e) {
-                                        console.error(e);
-                                        alert("Error al limpiar registros huérfanos.");
-                                    } finally {
-                                        setLoading(false);
-                                    }
-                                }
-                            }}
-                            className="bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800"
-                        >
-                            <SparklesIcon className="h-4 w-4 mr-1.5" />
-                            Limpiar Huérfanos
-                        </Button>
+
                         {/* Selector Ingreso / Egreso */}
                         <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
                             <button
@@ -2038,13 +2063,22 @@ export const ReconciliationView: React.FC = () => {
                                                         </td>
                                                         <td className="px-2 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(m.record.date)}</td>
                                                         <td className="px-2 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{fmt(m.record.amount)}</td>
-                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{m.record.description || '—'}</td>
+                                                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={m.record.description}>{m.record.description || '—'}</td>
                                                         <td className="px-2 py-2 text-center">
                                                             {m.alreadyConciliated ? (
-                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
-                                                                    <CheckCircleIcon className="h-3 w-3" />
-                                                                    Conciliado
-                                                                </span>
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                                                        <CheckCircleIcon className="h-3 w-3" />
+                                                                        Conciliado
+                                                                    </span>
+                                                                    <button 
+                                                                        onClick={() => jumpToReconciledPartner(m.record.id, 'source')}
+                                                                        className="text-3xs text-purple-600 hover:underline flex items-center gap-0.5"
+                                                                    >
+                                                                        <EyeIcon className="h-2 w-2" />
+                                                                        Ver vínculo
+                                                                    </button>
+                                                                </div>
                                                             ) : (
                                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                                                                     <ClockIcon className="h-3 w-3" />
@@ -2485,13 +2519,11 @@ export const ReconciliationView: React.FC = () => {
                                                                         else next.add(r.id);
                                                                         return next;
                                                                     });
-                                                                } else if (isManualMode) {
+                                                                } else {
                                                                     handleTargetClick(r);
                                                                 }
                                                             }}
-                                                            className={`border-b border-slate-50 dark:border-slate-700/50 transition-all duration-300 ${
-                                                                reverseMode ? 'cursor-pointer' : isManualMode ? 'cursor-pointer' : ''
-                                                            } ${
+                                                            className={`border-b border-slate-50 dark:border-slate-700/50 transition-all duration-300 cursor-pointer ${
                                                                 isReverseSelected
                                                                     ? 'bg-orange-100 dark:bg-orange-900/30 ring-1 ring-inset ring-orange-400'
                                                                     : isTargetSelected
@@ -2502,13 +2534,43 @@ export const ReconciliationView: React.FC = () => {
                                                                     ? 'bg-blue-50/80 dark:bg-blue-900/15'
                                                                     : reverseMode
                                                                     ? 'hover:bg-orange-50/60 dark:hover:bg-orange-900/10'
-                                                                    : isManualMode
-                                                                    ? 'hover:bg-blue-50 dark:hover:bg-blue-900/10'
-                                                                    : ''
+                                                                    : 'hover:bg-blue-50 dark:hover:bg-blue-900/10'
                                                             }`}
                                                         >
-                                                            {visibleTargetCols.fecha && <td className="px-3 py-2 text-slate-600 dark:text-slate-400 whitespace-nowrap">{fmtDate(r.date)}</td>}
-                                                            {visibleTargetCols.valor && <td className="px-3 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">{fmt(r.amount)}</td>}
+                                                            {visibleTargetCols.fecha && (
+                                                                <td className={`px-3 py-2 whitespace-nowrap ${
+                                                                    isTargetSelected || isReverseSelected ? 'text-blue-700 dark:text-blue-400 font-bold' : 'text-slate-600 dark:text-slate-400'
+                                                                }`}>{fmtDate(r.date)}</td>
+                                                            )}
+                                                            {visibleTargetCols.valor && (
+                                                                <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${
+                                                                    isTargetSelected || isReverseSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'
+                                                                }`}>
+                                                                    <div className="flex items-center justify-end gap-1.5">
+                                                                        {(r as any).isPotentialDuplicate && (
+                                                                            <div 
+                                                                                className="group/dup relative"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    const twin = targetRecords.find(t => 
+                                                                                        t.id !== r.id && 
+                                                                                        conciliatedData.ids.has(`target:${t.id}`) && 
+                                                                                        getRecordFingerprint(t.amount, t.date) === getRecordFingerprint(r.amount, r.date)
+                                                                                    );
+                                                                                    if (twin) jumpToReconciledPartner(twin.id, 'target');
+                                                                                }}
+                                                                            >
+                                                                                <ExclamationTriangleIcon className="h-3.5 w-3.5 text-amber-500 animate-pulse cursor-help" />
+                                                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/dup:opacity-100 pointer-events-none transition-opacity z-50">
+                                                                                    Este monto y fecha ya tienen una conciliación con otro registro (posible duplicado). 
+                                                                                    <div className="mt-1 text-purple-400 font-bold">Click para ver vínculo</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        {fmt(r.amount)}
+                                                                    </div>
+                                                                </td>
+                                                            )}
                                                             {visibleTargetCols.cuenta && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.cuenta || '—'}</td>}
                                                             {visibleTargetCols.contacto && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.contacto || '—'}</td>}
                                                             {visibleTargetCols.identificacion && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.identificacion || '—'}</td>}

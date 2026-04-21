@@ -6,7 +6,6 @@ import { Column } from '../../components/ui/SmartDataTable';
 import { SmartDataPage } from '../../components/layout/SmartDataPage';
 import { CategoryBadge } from '../../components/ui/CategoryBadge';
 import { useUI } from '../../context/UIContext';
-import { Button } from '@/components/ui/Button';
 
 const TransfersView: React.FC = () => {
     const { setAlertModal } = useUI();
@@ -39,9 +38,9 @@ const TransfersView: React.FC = () => {
                     <span className="block">
                         {val || 'Sin referencia'}
                     </span>
-                    {item?.arqueoId && (
+                    {item?.arqueo_id && (
                         <span className="text-xs2 text-gray-400 font-mono mt-0.5">
-                            ID: {item.arqueoId.slice(0, 8)}...
+                            ID Arqueo: {item.arqueo_id.slice(0, 8)}...
                         </span>
                     )}
                 </div>

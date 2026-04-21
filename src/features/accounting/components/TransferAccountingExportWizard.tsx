@@ -1,25 +1,39 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
-import { ExclamationTriangleIcon, ArrowDownTrayIcon, CheckCircleIcon } from '../../../components/ui/Icons';
+import { ExclamationTriangleIcon, ArrowDownTrayIcon, CheckCircleIcon, Cog6ToothIcon } from '../../../components/ui/Icons';
 import { useUI } from '../../../context/UIContext';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { FormGroup } from '../../../components/ui/FormGroup';
 import { InternalTransfer } from '../../../services/reconciliationBankService';
+import { TransferRecord } from '../../../types';
+import { AccountingConfig, AccountingEntry } from '../../../types/accounting';
+import { AccountingConfigModal } from '../../cash-flow/components/AccountingConfigModal';
 
 interface TransferAccountingExportWizardProps {
     isOpen: boolean;
     onClose: () => void;
-    selectedTransfers: InternalTransfer[];
+    selectedTransfers: (InternalTransfer | TransferRecord)[];
 }
+
+const STORAGE_KEY = 'transfer_accounting_config';
+
+const DEFAULT_TRANSFER_MAPPINGS: any[] = [
+    { sourceField: 'Cta Natalia', label: 'CTA NATALIA', accountCode: '11100103', thirdPartyId: '1087993520', costCenter: 'Principal' },
+    { sourceField: 'Cta Ahorros Julian', label: 'CTA AHORROS JULIAN', accountCode: '11100102', thirdPartyId: '1087993520', costCenter: 'Principal' },
+    { sourceField: 'Caja', label: 'CAJA', accountCode: '11050501', thirdPartyId: '1087993520', costCenter: 'Principal' },
+    { sourceField: 'Bancolombia', label: 'BANCOLOMBIA', accountCode: '11100101', thirdPartyId: '1087993520', costCenter: 'Principal' }
+];
 
 export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWizardProps> = ({ isOpen, onClose, selectedTransfers = [] }) => {
     const { setAlertModal } = useUI();
-    const [step, setStep] = useState(1); // Paso 1: Parámetros, Paso 2: Generar
+    const [step, setStep] = useState(1);
+    const [showConfig, setShowConfig] = useState(false);
+    const [config, setConfig] = useState<AccountingConfig | null>(null);
 
-    // Config Estado
+    // Form Estado
     const [consecutive, setConsecutive] = useState<number>(0);
-    const [docType, setDocType] = useState('RC');
+    const [docType, setDocType] = useState('TR');
 
     // Filtros Estado
     const [dateStart, setDateStart] = useState('');
@@ -32,6 +46,7 @@ export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWi
     useEffect(() => {
         if (isOpen) {
             setStep(1);
+            loadConfig();
 
             // Determinar min y max date
             const today = new Date();
@@ -66,8 +81,45 @@ export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWi
         }
     }, [isOpen, selectedTransfers]);
 
+    const loadConfig = () => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setConfig(parsed);
+                setDocType(parsed.defaultDocumentType || 'TR');
+            } catch (e) {
+                setConfig(null);
+            }
+        }
+    };
+
+    // Campos disponibles para el mapeo (nombres de bancos/cuentas detectados en la selección)
+    const availableFields = useMemo(() => {
+        const types = new Set<string>();
+        selectedTransfers.forEach(t => {
+            if ('sourceAccount' in t) {
+                // Agregar tanto origen como destino para que el usuario pueda configurar ambos
+                types.add(t.sourceAccount.label || '');
+                types.add(t.targetAccount.label || '');
+            } else {
+                types.add(t.type || '');
+            }
+        });
+        
+        const fields = Array.from(types)
+            .filter(Boolean)
+            .map(type => ({
+                id: type,
+                label: type.toUpperCase()
+            }));
+
+        if (fields.length === 0) return [{ id: 'Transferencia', label: 'TRANSFERENCIA' }];
+        return fields.sort((a,b) => a.label.localeCompare(b.label));
+    }, [selectedTransfers]);
+
     const generateEntries = () => {
-        if (!selectedTransfers?.length) return;
+        if (!selectedTransfers?.length || !config?.mappings) return;
 
         let currentConsecutive = consecutive;
         let totalDebits = 0;
@@ -83,7 +135,7 @@ export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWi
             return;
         }
 
-        const entries: any[] = [];
+        const entries: AccountingEntry[] = [];
         const sortedTransfers = [...filteredTransfers].sort((a, b) => a.date.localeCompare(b.date));
 
         sortedTransfers.forEach(t => {
@@ -92,39 +144,58 @@ export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWi
             const amount = typeof t.amount === 'number' ? t.amount : 0;
 
             if (amount > 0) {
-                // Origen (Crédito)
-                entries.push({
-                    tipoDocumento: docType,
-                    consecutivo: currentConsecutive,
-                    fecha: dateStr,
-                    fechaVencimiento: dateStr,
-                    codigoCuenta: t.sourceAccount.pucCode || '',
-                    idTercero: '',
-                    centroCosto: '',
-                    debito: 0,
-                    credito: amount,
-                    base: 0,
-                    descripcion: `Transferencia de ${t.sourceAccount.label} a ${t.targetAccount.label}`,
-                    descripcionMovimiento: t.sourceDesc || 'Salida por transferencia'
-                });
-                totalCredits += amount;
+                const isInternal = 'sourceAccount' in t && 'targetAccount' in t;
+                const sourceLabel = isInternal ? (t as InternalTransfer).sourceAccount.label : 'Caja';
+                const targetLabel = isInternal ? (t as InternalTransfer).targetAccount.label : (t as TransferRecord).type;
+                const description = isInternal 
+                    ? `Transferencia ${sourceLabel} a ${targetLabel}` 
+                    : (t as TransferRecord).description || `Transferencia ${targetLabel}`;
 
-                // Destino (Débito)
-                entries.push({
-                    tipoDocumento: docType,
-                    consecutivo: currentConsecutive,
-                    fecha: dateStr,
-                    fechaVencimiento: dateStr,
-                    codigoCuenta: t.targetAccount.pucCode || '',
-                    idTercero: '',
-                    centroCosto: '',
-                    debito: amount,
-                    credito: 0,
-                    base: 0,
-                    descripcion: `Transferencia de ${t.sourceAccount.label} a ${t.targetAccount.label}`,
-                    descripcionMovimiento: t.targetDesc || 'Entrada por transferencia'
-                });
-                totalDebits += amount;
+                // --- LÓGICA INTELIGENTE DE PARTIDA DOBLE ---
+                
+                // 1. Buscar Cuenta de Salida (ORIGEN) -> Siempre CRÉDITO
+                const sourceMapping = config.mappings.find(m => m.sourceField.toLowerCase() === sourceLabel.toLowerCase());
+                
+                // 2. Buscar Cuenta de Entrada (DESTINO) -> Siempre DÉBITO
+                const targetMapping = config.mappings.find(m => m.sourceField.toLowerCase() === targetLabel.toLowerCase());
+
+                // Generar línea de SALIDA (Crédito)
+                if (sourceMapping) {
+                    entries.push({
+                        tipoDocumento: docType,
+                        consecutivo: currentConsecutive,
+                        fecha: dateStr,
+                        fechaVencimiento: dateStr,
+                        codigoCuenta: sourceMapping.accountCode,
+                        idTercero: sourceMapping.thirdPartyId,
+                        centroCosto: sourceMapping.costCenter,
+                        debito: 0,
+                        credito: amount,
+                        base: 0,
+                        descripcion: description,
+                        descripcionMovimiento: `Salida ${sourceLabel}`
+                    });
+                    totalCredits += amount;
+                }
+
+                // Generar línea de ENTRADA (Débito)
+                if (targetMapping) {
+                    entries.push({
+                        tipoDocumento: docType,
+                        consecutivo: currentConsecutive,
+                        fecha: dateStr,
+                        fechaVencimiento: dateStr,
+                        codigoCuenta: targetMapping.accountCode,
+                        idTercero: targetMapping.thirdPartyId,
+                        centroCosto: targetMapping.costCenter,
+                        debito: amount,
+                        credito: 0,
+                        base: 0,
+                        descripcion: description,
+                        descripcionMovimiento: `Entrada ${targetLabel}`
+                    });
+                    totalDebits += amount;
+                }
             }
 
             currentConsecutive++;
@@ -234,14 +305,25 @@ export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWi
                                 </p>
                             </FormGroup>
 
-                            <FormGroup label="Tipo de Documento">
-                                <input
-                                    type="text"
-                                    value={docType}
-                                    onChange={(e) => setDocType(e.target.value)}
-                                    className="w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 bg-white text-sm"
-                                />
-                            </FormGroup>
+                            <div className="flex items-center justify-between">
+                                <FormGroup label="Tipo de Documento" className="w-1/2">
+                                    <input
+                                        type="text"
+                                        value={docType}
+                                        onChange={(e) => setDocType(e.target.value)}
+                                        className="w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 bg-white text-sm"
+                                    />
+                                </FormGroup>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => setShowConfig(true)}
+                                    className="mt-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                >
+                                    <Cog6ToothIcon className="h-4 w-4 mr-1.5" />
+                                    Configurar Cuentas
+                                </Button>
+                            </div>
                             
                             <FormGroup label="Consecutivo Inicial" description="Se incrementará automáticamente para cada transferencia.">
                                 <input
@@ -354,6 +436,17 @@ export const TransferAccountingExportWizard: React.FC<TransferAccountingExportWi
                     )}
                 </div>
             </div>
+
+            <AccountingConfigModal
+                isOpen={showConfig}
+                onClose={() => setShowConfig(false)}
+                onSave={loadConfig}
+                storageKey={STORAGE_KEY}
+                availableFields={availableFields}
+                initialMappings={DEFAULT_TRANSFER_MAPPINGS}
+                hideNatureSelect={true}
+                title="Configuración de Cuentas: Transferencias"
+            />
         </Modal>
     );
 };

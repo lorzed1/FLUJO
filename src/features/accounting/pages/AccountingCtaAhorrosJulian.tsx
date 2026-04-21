@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 import { WalletIcon } from '../../../components/ui/Icons';
 import { BankDuplicateDetector } from '../components/BankDuplicateDetector';
+import { normalizeDate } from '../../../utils/dateUtils';
 
 export interface CtaAhorrosJulianRow {
     id: string;
@@ -70,30 +71,7 @@ export const AccountingCtaAhorrosJulian: React.FC = () => {
                     return { valor: 0, descripcion: 'ERROR: SIN FECHA', fecha: '1900-01-01' } as any;
                 }
 
-                let fecha = rawFecha;
-
-                // If it's an excel serial date, convert it
-                if (typeof fecha === 'number' || (!isNaN(Number(fecha)) && String(fecha).length <= 6)) {
-                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-                    const dateObj = new Date(excelEpoch.getTime() + Math.round(Number(fecha) * 86400000));
-                    fecha = dateObj.toISOString().split('T')[0];
-                } else if (fecha instanceof Date) {
-                    fecha = fecha.toISOString().split('T')[0];
-                } else if (typeof fecha === 'string') {
-                    const str = fecha.trim();
-                    const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-                    if (dmyMatch) {
-                        const [_, d, m, y] = dmyMatch;
-                        fecha = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                    } else {
-                        const d = new Date(str);
-                        if (!isNaN(d.getTime())) fecha = d.toISOString().split('T')[0];
-                        else fecha = str;
-                    }
-                }
-
-
-
+                const fecha = normalizeDate(rawFecha, '1900-01-01');
                 const parseNum = (raw: any): number => {
                     if (raw === undefined || raw === null || raw === '') return 0;
                     if (typeof raw === 'number') return isNaN(raw) ? 0 : raw;

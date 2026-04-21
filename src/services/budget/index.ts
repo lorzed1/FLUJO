@@ -27,6 +27,7 @@ export const budgetService = {
     addCommitment: commitments.addCommitment,
     updateCommitment: commitments.updateCommitment,
     deleteCommitment: commitments.deleteCommitment,
+    cancelProjectedCommitment: commitments.cancelProjectedCommitment,
 
     // Recurrence Rules
     getRecurrenceRules: recurrence.getRecurrenceRules,
