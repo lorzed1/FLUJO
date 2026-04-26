@@ -860,68 +860,13 @@ export class ReconciliationBankService {
      * Retorna el número de registros limpiados.
      */
     static async cleanOrphanedRecords(): Promise<number> {
-        let totalCleaned = 0;
-
-        // 1. Obtener TODO el historial
-        const { data: historyItems, error: histError } = await supabase
-            .from('reconciliation_history')
-            .select('id, source_table, source_record_id, target_record_id');
-
-        if (histError) throw histError;
-        if (!historyItems || historyItems.length === 0) return 0;
-
-        // 2. Obtener todos los IDs de asientos contables (Target)
-        const { data: targetRecords, error: targetError } = await supabase
-            .from('accounting_asientos_contables')
-            .select('id');
-        
-        if (targetError) throw targetError;
-        const validTargetIds = new Set((targetRecords || []).map(r => r.id));
-
-        // 3. Obtener todos los IDs de cada cuenta bancaria (Source)
-        const validSourceIds = new Set<string>();
-        for (const account of RECONCILIATION_ACCOUNTS) {
-            const { data: sourceRecords, error: sourceError } = await supabase
-                .from(account.table)
-                .select('id');
-            
-            if (sourceError) {
-                console.error(`Error fetching from ${account.table}:`, sourceError);
-                continue;
-            }
-            
-            // Prefijamos el ID con el nombre de la tabla para evitar colisiones
-            (sourceRecords || []).forEach(r => validSourceIds.add(`${account.table}:${r.id}`));
-        }
-
-        // 4. Buscar huérfanos
-        const idsToDelete: string[] = [];
-
-        for (const item of historyItems) {
-            const isSourceOrphan = !validSourceIds.has(`${item.source_table}:${item.source_record_id}`);
-            const isTargetOrphan = !validTargetIds.has(item.target_record_id);
-
-            if (isSourceOrphan || isTargetOrphan) {
-                idsToDelete.push(item.id);
-            }
-        }
-
-        // 5. Eliminar
-        if (idsToDelete.length > 0) {
-            // Eliminar en lotes de 1000 por si hay muchos
-            for (let i = 0; i < idsToDelete.length; i += 1000) {
-                const chunk = idsToDelete.slice(i, i + 1000);
-                const { error: delError } = await supabase
-                    .from('reconciliation_history')
-                    .delete()
-                    .in('id', chunk);
-
-                if (delError) throw delError;
-                totalCleaned += chunk.length;
-            }
-        }
-
-        return totalCleaned;
+        // DESACTIVADO POR SEGURIDAD:
+        // El método original traía validTargetIds haciendo un select() directo a la DB
+        // lo que estaba limitado a 1000 filas por PostgREST. Como las IDs de asientos viejos
+        // (>1000) no llegaban al cliente, la función creía erróneamente que los registros
+        // ya no existían en origen, procediendo a ELIMINAR el historial de dichas conciliaciones válidas.
+        console.warn('⚠️ Limpieza de huérfanos de conciliación temporalmente desactivada (previene borrado accidental por limit de 1000 records).');
+        return 0;
     }
 
     // ------------------------------------------

@@ -41,7 +41,7 @@ import {
 } from '../../../services/reconciliationBankService';
 import { TransferAccountingExportWizard } from '../components/TransferAccountingExportWizard';
 import { AccountingDuplicateDetector } from '../components/AccountingDuplicateDetector';
-import { daysDiffUTC } from '../../utils/dateUtils';
+import { daysDiffUTC } from '../../../utils/dateUtils';
 
 // =============================================
 // HELPERS
@@ -313,6 +313,22 @@ export const ReconciliationView: React.FC = () => {
         } catch { return new Set(); }
     });
 
+    // --- Versión para asientos contables (Target) ---
+    const [showOnlySuspectedTarget, setShowOnlySuspectedTarget] = useState(false);
+    const [showOnlyRegisteredTarget, setShowOnlyRegisteredTarget] = useState(false);
+    const [suspectedTargetIds, setSuspectedTargetIds] = useState<Set<string>>(() => {
+        try {
+            const val = localStorage.getItem(`conciliacion_target_suspected_${selectedAccountId}`);
+            return val ? new Set(JSON.parse(val) as string[]) : new Set();
+        } catch { return new Set(); }
+    });
+    const [registeredTargetIds, setRegisteredTargetIds] = useState<Set<string>>(() => {
+        try {
+            const val = localStorage.getItem(`conciliacion_target_registered_${selectedAccountId}`);
+            return val ? new Set(JSON.parse(val) as string[]) : new Set();
+        } catch { return new Set(); }
+    });
+
     // --- Persistir la cuenta seleccionada ---
     useEffect(() => setLocalConfig('accountId', selectedAccountId), [selectedAccountId]);
 
@@ -346,14 +362,23 @@ export const ReconciliationView: React.FC = () => {
             setSuspectedIds(sVal ? new Set(JSON.parse(sVal) as string[]) : new Set());
             const rVal = localStorage.getItem(`conciliacion_registered_${selectedAccountId}`);
             setRegisteredIds(rVal ? new Set(JSON.parse(rVal) as string[]) : new Set());
+
+            const stVal = localStorage.getItem(`conciliacion_target_suspected_${selectedAccountId}`);
+            setSuspectedTargetIds(stVal ? new Set(JSON.parse(stVal) as string[]) : new Set());
+            const rtVal = localStorage.getItem(`conciliacion_target_registered_${selectedAccountId}`);
+            setRegisteredTargetIds(rtVal ? new Set(JSON.parse(rtVal) as string[]) : new Set());
         } catch {
             setSuspectedIds(new Set());
             setRegisteredIds(new Set());
+            setSuspectedTargetIds(new Set());
+            setRegisteredTargetIds(new Set());
         }
 
         // Resetear selecciones y filtros UI
         setShowOnlySuspected(false);
         setShowOnlyRegistered(false);
+        setShowOnlySuspectedTarget(false);
+        setShowOnlyRegisteredTarget(false);
         setDateFilterOpen(false);
     }, [selectedAccountId]);
 
@@ -375,6 +400,13 @@ export const ReconciliationView: React.FC = () => {
     useEffect(() => {
         try { localStorage.setItem(`conciliacion_registered_${selectedAccountId}`, JSON.stringify([...registeredIds])); } catch {}
     }, [registeredIds, selectedAccountId]);
+
+    useEffect(() => {
+        try { localStorage.setItem(`conciliacion_target_suspected_${selectedAccountId}`, JSON.stringify([...suspectedTargetIds])); } catch {}
+    }, [suspectedTargetIds, selectedAccountId]);
+    useEffect(() => {
+        try { localStorage.setItem(`conciliacion_target_registered_${selectedAccountId}`, JSON.stringify([...registeredTargetIds])); } catch {}
+    }, [registeredTargetIds, selectedAccountId]);
 
 
 
@@ -518,8 +550,9 @@ export const ReconciliationView: React.FC = () => {
         if (!selectedAccount) return;
         setLoading(true);
         try {
-            // Limpieza automática de huérfanos antes de cargar datos
-            await ReconciliationBankService.cleanOrphanedRecords();
+            // DESACTIVADA TEMPORALMENTE: La limpieza global fallaba por el límite nativo de filas de Supabase
+            // y eliminaba como "huérfanos" a registros sanos cuyo index/ID cayera más allá del umbral 1000.
+            // await ReconciliationBankService.cleanOrphanedRecords();
 
             const [source, target, data, hist] = await Promise.all([
                 ReconciliationBankService.loadSourceRecords(selectedAccount),
@@ -542,7 +575,6 @@ export const ReconciliationView: React.FC = () => {
         }
     }, [selectedAccount]);
 
-    /** Activar / desactivar modo invertido */
     const toggleReverseMode = useCallback(() => {
         setReverseMode(prev => {
             const next = !prev;
@@ -557,6 +589,15 @@ export const ReconciliationView: React.FC = () => {
             return next;
         });
     }, [allBankRecords, loadAllBankRecords]);
+
+    const toggleReverseTarget = useCallback((id: string) => {
+        setSelectedReverseTargetIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
 
     useEffect(() => { loadData(); }, [loadData]);
     
@@ -832,6 +873,34 @@ export const ReconciliationView: React.FC = () => {
         });
     }, []);
 
+    /** Toggle sospechoso para asientos contables */
+    const toggleTargetSuspected = useCallback((id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSuspectedTargetIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) { next.delete(id); } 
+            else { 
+                next.add(id);
+                setRegisteredTargetIds(old => { const n = new Set(old); n.delete(id); return n; });
+            }
+            return next;
+        });
+    }, []);
+
+    /** Toggle registrado para asientos contables */
+    const toggleTargetRegistered = useCallback((id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setRegisteredTargetIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) { next.delete(id); } 
+            else { 
+                next.add(id);
+                setSuspectedTargetIds(old => { const n = new Set(old); n.delete(id); return n; });
+            }
+            return next;
+        });
+    }, []);
+
     /** Conteo de sospechosos aún pendientes (sin conciliar) */
     const suspectedPendingCount = useMemo(
         () => sourceRecords.filter(r => suspectedIds.has(r.id) && !conciliatedData.ids.has(`source:${r.id}`)).length,
@@ -841,6 +910,15 @@ export const ReconciliationView: React.FC = () => {
     const registeredPendingCount = useMemo(
         () => sourceRecords.filter(r => registeredIds.has(r.id) && !conciliatedData.ids.has(`source:${r.id}`)).length,
         [sourceRecords, registeredIds, conciliatedData]
+    );
+
+    const suspectedTargetPendingCount = useMemo(
+        () => targetRecords.filter(r => suspectedTargetIds.has(r.id) && !conciliatedData.ids.has(`target:${r.id}`)).length,
+        [targetRecords, suspectedTargetIds, conciliatedData]
+    );
+    const registeredTargetPendingCount = useMemo(
+                        () => targetRecords.filter(r => registeredTargetIds.has(r.id) && !conciliatedData.ids.has(`target:${r.id}`)).length,
+        [targetRecords, registeredTargetIds, conciliatedData]
     );
 
     const reconciledFingerprints = useMemo(() => {
@@ -855,16 +933,27 @@ export const ReconciliationView: React.FC = () => {
 
     const pendingTarget = useMemo(
         () => targetRecords
-            .filter(r => !conciliatedData.ids.has(`target:${r.id}`))
             .filter(r => {
-                if (flowFilter === 'income') return r.amount > 0;
-                if (flowFilter === 'expense') return r.amount < 0;
-                return true;
-            })
-            .filter(r => {
-                if (excludedAccountsSet.size === 0) return true;
-                const account = (r.raw?.cuenta || '').toString().trim();
-                return !excludedAccountsSet.has(account);
+                // Filtro Conciliado
+                if (conciliatedData.ids.has(`target:${r.id}`)) return false;
+                // Filtro Flujo
+                if (flowFilter === 'income' && r.amount < 0) return false;
+                if (flowFilter === 'expense' && r.amount > 0) return false;
+                
+                // Filtro Sospechosos / Registrados
+                if (showOnlySuspectedTarget && !suspectedTargetIds.has(r.id)) return false;
+                if (showOnlyRegisteredTarget && !registeredTargetIds.has(r.id)) return false;
+
+                // Filtro por Cuenta Excluida
+                if (excludedAccountsSet.has((r.raw?.cuenta || '').toString().trim())) return false;
+                
+                const searchLower = targetSearch.toLowerCase();
+                return (
+                    (r.description || '').toLowerCase().includes(searchLower) ||
+                    fmt(r.amount).toLowerCase().includes(searchLower) ||
+                    (r.raw?.contacto || '').toLowerCase().includes(searchLower) ||
+                    (r.raw?.documento || '').toLowerCase().includes(searchLower)
+                );
             })
             .map(r => {
                 const fingerprint = getRecordFingerprint(r.amount, r.date);
@@ -872,22 +961,8 @@ export const ReconciliationView: React.FC = () => {
                     ...r,
                     isPotentialDuplicate: reconciledFingerprints.has(fingerprint)
                 };
-            })
-            .filter(r => {
-                if (!targetSearch) return true;
-                const searchLower = targetSearch.toLowerCase();
-                return (
-                    (r.description || '').toLowerCase().includes(searchLower) ||
-                    fmt(r.amount).toLowerCase().includes(searchLower) ||
-                    fmtDate(r.date).toLowerCase().includes(searchLower) ||
-                    (r.raw?.cuenta || '').toLowerCase().includes(searchLower) ||
-                    (r.raw?.contacto || '').toLowerCase().includes(searchLower) ||
-                    (r.raw?.identificacion || '').toLowerCase().includes(searchLower) ||
-                    (r.raw?.centro_costo || '').toLowerCase().includes(searchLower) ||
-                    (r.raw?.documento || '').toLowerCase().includes(searchLower)
-                );
             }),
-        [targetRecords, conciliatedData.ids, flowFilter, targetSearch, targetExcludeAccounts, reconciledFingerprints, excludedAccountsSet]
+        [targetRecords, conciliatedData, flowFilter, targetSearch, showOnlySuspectedTarget, suspectedTargetIds, showOnlyRegisteredTarget, registeredTargetIds, excludedAccountsSet, reconciledFingerprints]
     );
 
     const activeHistory = useMemo(() => history.filter(h => h.status === 'active'), [history]);
@@ -1244,8 +1319,12 @@ export const ReconciliationView: React.FC = () => {
             setAutoMatches([]);
             setRejectedMatchIndices(new Set());
             cancelManualSelection();
-        } catch (err) {
+            
+            // Notificar éxito al usuario
+            alert(`✅ ${toSave.length} conciliaciones guardadas con éxito.`);
+        } catch (err: any) {
             console.error('Error confirmando matches:', err);
+            alert(`❌ Error al guardar conciliaciones: ${err?.message || JSON.stringify(err)}`);
         } finally {
             setSaving(false);
         }
@@ -1631,9 +1710,15 @@ export const ReconciliationView: React.FC = () => {
                             </button>
 
                             {autoMatches.length === 0 ? (
-                                <Button variant="primary" size="sm" onClick={handleAutoReconcile} isLoading={loading} className="gap-1.5">
+                                <Button 
+                                    variant="secondary" 
+                                    size="sm" 
+                                    onClick={handleAutoReconcile} 
+                                    className="gap-2"
+                                    disabled={activeTab === 'transferencias' || !!savingReverseMatchId}
+                                >
                                     <SparklesIcon className="h-4 w-4" />
-                                    Conciliar{hasDateFilter ? ' Rango' : ''}
+                                    Buscar Sugerencias{hasDateFilter ? ' (Rango)' : ''}
                                 </Button>
                             ) : (
                                 <>
@@ -2385,6 +2470,38 @@ export const ReconciliationView: React.FC = () => {
                                         />
                                     </div>
 
+                                    {/* Filtros Suspected/Registered */}
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                        <button
+                                            onClick={() => {
+                                                setShowOnlySuspectedTarget(!showOnlySuspectedTarget);
+                                                setShowOnlyRegisteredTarget(false);
+                                            }}
+                                            className={`h-7 px-2.5 rounded text-2xs font-bold transition-all border flex items-center gap-1.5 ${
+                                                showOnlySuspectedTarget
+                                                    ? 'bg-amber-100 border-amber-400 text-amber-700 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-400'
+                                                    : 'bg-white border-blue-200 text-slate-400 hover:border-amber-300 hover:text-amber-600 dark:bg-slate-800 dark:border-blue-800'
+                                            }`}
+                                        >
+                                            <ExclamationTriangleIcon className="h-3.5 w-3.5" />
+                                            {suspectedTargetPendingCount > 0 && <span>{suspectedTargetPendingCount}</span>}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowOnlyRegisteredTarget(!showOnlyRegisteredTarget);
+                                                setShowOnlySuspectedTarget(false);
+                                            }}
+                                            className={`h-7 px-2.5 rounded text-2xs font-bold transition-all border flex items-center gap-1.5 ${
+                                                showOnlyRegisteredTarget
+                                                    ? 'bg-emerald-100 border-emerald-400 text-emerald-700 dark:bg-emerald-900/40 dark:border-emerald-700 dark:text-emerald-400'
+                                                    : 'bg-white border-blue-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-600 dark:bg-slate-800 dark:border-blue-800'
+                                            }`}
+                                        >
+                                            <CheckCircleIcon className="h-3.5 w-3.5" />
+                                            {registeredTargetPendingCount > 0 && <span>{registeredTargetPendingCount}</span>}
+                                        </button>
+                                    </div>
+
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button
@@ -2488,118 +2605,133 @@ export const ReconciliationView: React.FC = () => {
                                         <div className="flex items-center justify-center h-32 text-xs text-slate-400">✓ Todo conciliado</div>
                                     ) : (
                                         <table className="w-full text-xs">
-                                            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
-                                                <tr>
-                                                    {visibleTargetCols.fecha && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>}
-                                                    {visibleTargetCols.valor && <th className="text-right px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>}
-                                                    {visibleTargetCols.cuenta && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Cuenta</th>}
-                                                    {visibleTargetCols.contacto && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Contacto</th>}
-                                                    {visibleTargetCols.identificacion && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Identific.</th>}
-                                                    {visibleTargetCols.centro_costo && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Centro C.</th>}
-                                                    {visibleTargetCols.documento && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Documento</th>}
-                                                    {visibleTargetCols.descripcion && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider">Descripción</th>}
-                                                    {visibleTargetCols.notas && <th className="text-left px-3 py-2 text-2xs font-semibold text-slate-500 uppercase tracking-wider w-32">Notas</th>}
+                                            <thead className="border-b border-blue-200 dark:border-blue-800 sticky top-0 bg-blue-50/95 dark:bg-[#1a2b4b]/95 backdrop-blur-sm z-20">
+                                                <tr className="border-b border-blue-200 dark:border-blue-800 sticky top-0 bg-blue-50/95 dark:bg-[#1a2b4b]/95 backdrop-blur-sm z-20">
+                                                    <th className="text-left pl-4 pr-1 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">#</th>
+                                                    {visibleTargetCols.fecha && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Fecha</th>}
+                                                    {visibleTargetCols.valor && <th className="text-right px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Valor</th>}
+                                                    {visibleTargetCols.descripcion && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Descripción</th>}
+                                                    {visibleTargetCols.cuenta && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Cuenta</th>}
+                                                    {visibleTargetCols.contacto && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest whitespace-nowrap">Contacto</th>}
+                                                    {visibleTargetCols.identificacion && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">ID</th>}
+                                                    {visibleTargetCols.centro_costo && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">CC</th>}
+                                                    {visibleTargetCols.documento && <th className="text-left px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Doc</th>}
+                                                    {visibleTargetCols.notas && <th className="text-center px-2 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Notas</th>}
+                                                    <th className="text-right pr-4 py-2 text-2xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-widest">Acción</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {pendingTarget.map(r => {
-                                                    const isHighlighted = highlightedTargetIds.has(r.id);
-                                                    const isSuggested = suggestions.some(s => s.record.id === r.id);
+                                                {pendingTarget.map((r, i) => {
+                                                    const isReverseSelected = selectedReverseTargetIds.has(r.id);
                                                     const isTargetSelected = selectedTargetId === r.id;
-                                                    const isReverseSelected = reverseMode && selectedReverseTargetIds.has(r.id);
+                                                    const isSuggested = highlightedTargetIds.has(r.id);
+                                                    const isHighlighted = hoveredSourceId && highlightedTargetIds.has(r.id);
+                                                    
+                                                    const isSuspected = suspectedTargetIds.has(r.id);
+                                                    const isRegistered = registeredTargetIds.has(r.id);
 
                                                     return (
-                                                        <tr key={r.id}
-                                                            ref={el => { if (el) targetRowRefs.current.set(r.id, el); }}
-                                                            onClick={() => {
-                                                                if (reverseMode) {
-                                                                    setSelectedReverseTargetIds(prev => {
-                                                                        const next = new Set(prev);
-                                                                        if (next.has(r.id)) next.delete(r.id);
-                                                                        else next.add(r.id);
-                                                                        return next;
-                                                                    });
-                                                                } else {
-                                                                    handleTargetClick(r);
-                                                                }
-                                                            }}
-                                                            className={`border-b border-slate-50 dark:border-slate-700/50 transition-all duration-300 cursor-pointer ${
-                                                                isReverseSelected
-                                                                    ? 'bg-orange-100 dark:bg-orange-900/30 ring-1 ring-inset ring-orange-400'
-                                                                    : isTargetSelected
-                                                                    ? 'bg-blue-100 dark:bg-blue-900/30 ring-1 ring-inset ring-blue-400'
-                                                                    : isSuggested
-                                                                    ? 'bg-purple-50 dark:bg-purple-900/20 border-l-2 border-l-purple-400'
+                                                    <tr
+                                                        key={`target-pending-${r.id}`}
+                                                        ref={(el) => { if (el) targetRowRefs.current.set(r.id, el); }}
+                                                        onClick={() => {
+                                                            if (reverseMode) toggleReverseTarget(r.id);
+                                                            else handleTargetClick(r);
+                                                        }}
+                                                        className={`group cursor-pointer border-b border-slate-100 dark:border-slate-800 transition-all duration-200 ${
+                                                            isReverseSelected
+                                                                ? 'bg-orange-100 dark:bg-orange-900/40 ring-1 ring-inset ring-orange-300'
+                                                                : isTargetSelected
+                                                                    ? 'bg-blue-600 text-white shadow-lg z-10'
                                                                     : isHighlighted
-                                                                    ? 'bg-blue-50/80 dark:bg-blue-900/15'
-                                                                    : reverseMode
-                                                                    ? 'hover:bg-orange-50/60 dark:hover:bg-orange-900/10'
-                                                                    : 'hover:bg-blue-50 dark:hover:bg-blue-900/10'
-                                                            }`}
-                                                        >
-                                                            {visibleTargetCols.fecha && (
-                                                                <td className={`px-3 py-2 whitespace-nowrap ${
-                                                                    isTargetSelected || isReverseSelected ? 'text-blue-700 dark:text-blue-400 font-bold' : 'text-slate-600 dark:text-slate-400'
-                                                                }`}>{fmtDate(r.date)}</td>
-                                                            )}
-                                                            {visibleTargetCols.valor && (
-                                                                <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${
-                                                                    isTargetSelected || isReverseSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'
-                                                                }`}>
-                                                                    <div className="flex items-center justify-end gap-1.5">
-                                                                        {(r as any).isPotentialDuplicate && (
-                                                                            <div 
-                                                                                className="group/dup relative"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    const twin = targetRecords.find(t => 
-                                                                                        t.id !== r.id && 
-                                                                                        conciliatedData.ids.has(`target:${t.id}`) && 
-                                                                                        getRecordFingerprint(t.amount, t.date) === getRecordFingerprint(r.amount, r.date)
-                                                                                    );
-                                                                                    if (twin) jumpToReconciledPartner(twin.id, 'target');
-                                                                                }}
-                                                                            >
-                                                                                <ExclamationTriangleIcon className="h-3.5 w-3.5 text-amber-500 animate-pulse cursor-help" />
-                                                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/dup:opacity-100 pointer-events-none transition-opacity z-50">
-                                                                                    Este monto y fecha ya tienen una conciliación con otro registro (posible duplicado). 
-                                                                                    <div className="mt-1 text-purple-400 font-bold">Click para ver vínculo</div>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                        {fmt(r.amount)}
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                            {visibleTargetCols.cuenta && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.cuenta || '—'}</td>}
-                                                            {visibleTargetCols.contacto && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.contacto || '—'}</td>}
-                                                            {visibleTargetCols.identificacion && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.identificacion || '—'}</td>}
-                                                            {visibleTargetCols.centro_costo && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.centro_costo || '—'}</td>}
-                                                            {visibleTargetCols.documento && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{r.raw?.documento || '—'}</td>}
-                                                            {visibleTargetCols.descripcion && <td className="px-3 py-2 text-slate-500 dark:text-slate-400 truncate max-w-[250px]">{r.description || '—'}</td>}
-                                                            {visibleTargetCols.notas && (
-                                                                <td className="px-3 py-2">
-                                                                    <div className="flex items-center gap-1.5 group/note">
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); openNoteModal(r, 'target'); }}
-                                                                            className={`flex-shrink-0 h-6 w-6 rounded flex items-center justify-center transition-all ${
-                                                                                r.notes 
-                                                                                    ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/40' 
-                                                                                    : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-purple-500 hover:bg-purple-50'
-                                                                            }`}
-                                                                            title={r.notes ? 'Editar nota' : 'Añadir nota'}
+                                                                        ? 'bg-blue-100 dark:bg-blue-900/40' 
+                                                                        : isSuggested
+                                                                            ? 'bg-purple-100/30' 
+                                                                            : isSuspected
+                                                                                ? 'bg-amber-50 dark:bg-amber-900/10'
+                                                                                : isRegistered
+                                                                                    ? 'bg-emerald-50 dark:bg-emerald-900/10'
+                                                                                    : 'hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
+                                                        }`}
+                                                    >
+                                                        <td className={`pl-4 pr-1 py-2 text-2xs font-mono ${isTargetSelected ? 'text-blue-100' : 'text-slate-400'}`}>{i + 1}</td>
+                                                        {visibleTargetCols.fecha && <td className={`px-2 py-2 whitespace-nowrap ${isTargetSelected ? 'text-white' : 'text-slate-500'}`}>{fmtDate(r.date)}</td>}
+                                                        {visibleTargetCols.valor && (
+                                                            <td className={`px-2 py-2 text-right font-semibold whitespace-nowrap ${isTargetSelected ? 'text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                                <div className="flex items-center justify-end gap-1.5">
+                                                                    {(r as any).isPotentialDuplicate && (
+                                                                         <div 
+                                                                            className="group/dup relative"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                const twin = targetRecords.find(t => 
+                                                                                    t.id !== r.id && 
+                                                                                    conciliatedData.ids.has(`target:${t.id}`) && 
+                                                                                    getRecordFingerprint(t.amount, t.date) === getRecordFingerprint(r.amount, r.date)
+                                                                                );
+                                                                                if (twin) jumpToReconciledPartner(twin.id, 'target');
+                                                                            }}
                                                                         >
-                                                                            {r.notes ? <ChatBubbleLeftEllipsisIcon className="h-3.5 w-3.5" /> : <PencilSquareIcon className="h-3.5 w-3.5" />}
-                                                                        </button>
-                                                                        {r.notes && (
-                                                                            <span className="text-2xs text-slate-500 dark:text-slate-400 truncate max-w-[100px] italic" title={r.notes}>
-                                                                                {r.notes}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                            )}
-                                                        </tr>
+                                                                            <ExclamationTriangleIcon className={`h-3.5 w-3.5 animate-pulse cursor-help ${isTargetSelected ? 'text-white' : 'text-amber-500'}`} />
+                                                                            <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/dup:opacity-100 pointer-events-none transition-opacity z-50">
+                                                                                Este monto y fecha ya tienen una conciliación con otro registro (posible duplicado). 
+                                                                                <div className="mt-1 text-purple-400 font-bold">Click para ver vínculo</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {fmt(r.amount)}
+                                                                </div>
+                                                            </td>
+                                                        )}
+                                                        {visibleTargetCols.descripcion && <td className={`px-2 py-2 truncate max-w-[150px] ${isTargetSelected ? 'text-blue-100' : 'text-slate-500'}`} title={r.description}>{r.description || '—'}</td>}
+                                                        {visibleTargetCols.cuenta && <td className={`px-2 py-2 text-2xs truncate max-w-[100px] ${isTargetSelected ? 'text-blue-100' : 'text-slate-400'}`}>{r.raw?.cuenta || '—'}</td>}
+                                                        {visibleTargetCols.contacto && <td className={`px-2 py-2 text-2xs truncate max-w-[110px] ${isTargetSelected ? 'text-blue-100' : 'text-slate-400'}`}>{r.raw?.contacto || '—'}</td>}
+                                                        {visibleTargetCols.identificacion && <td className={`px-2 py-2 text-xs truncate max-w-[80px] ${isTargetSelected ? 'text-blue-200' : 'text-slate-400 font-mono'}`}>{r.raw?.identificacion || '—'}</td>}
+                                                        {visibleTargetCols.centro_costo && <td className={`px-2 py-2 text-2xs truncate max-w-[80px] ${isTargetSelected ? 'text-blue-200' : 'text-slate-400'}`}>{r.raw?.centro_costo || '—'}</td>}
+                                                        {visibleTargetCols.documento && <td className={`px-2 py-2 text-2xs truncate max-w-[90px] ${isTargetSelected ? 'text-blue-100 font-bold' : 'text-slate-500'}`}>{r.raw?.documento || '—'}</td>}
+                                                        
+                                                        {visibleTargetCols.notas && (
+                                                            <td className="px-2 py-2 text-center">
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); openNoteModal(r, 'target'); }}
+                                                                    className={`p-1 rounded-md transition-all ${
+                                                                        isTargetSelected ? 'text-white hover:bg-blue-500' : 
+                                                                        r.notes ? 'text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30' : 
+                                                                        'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-500'
+                                                                    }`}
+                                                                    title={r.notes || 'Añadir nota'}
+                                                                >
+                                                                    {r.notes ? <ChatBubbleLeftEllipsisIcon className="h-4 w-4" /> : <PencilSquareIcon className="h-4 w-4" />}
+                                                                </button>
+                                                            </td>
+                                                        )}
+                                                        <td className="pr-4 py-2">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <button
+                                                                    onClick={e => toggleTargetSuspected(r.id, e)}
+                                                                    className={`p-1 rounded transition-colors ${
+                                                                        isSuspected 
+                                                                            ? 'text-amber-600 bg-amber-100' 
+                                                                            : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-amber-500 hover:bg-amber-50'
+                                                                    }`}
+                                                                    title="Sospechoso"
+                                                                >
+                                                                    <ExclamationTriangleIcon className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={e => toggleTargetRegistered(r.id, e)}
+                                                                    className={`p-1 rounded transition-colors ${
+                                                                        isRegistered 
+                                                                            ? 'text-emerald-600 bg-emerald-100' 
+                                                                            : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-emerald-500 hover:bg-emerald-50'
+                                                                    }`}
+                                                                    title="Ya registrado"
+                                                                >
+                                                                    <CheckCircleIcon className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
                                                     );
                                                 })}
                                             </tbody>
