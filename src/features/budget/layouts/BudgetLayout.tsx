@@ -17,6 +17,7 @@ import { useUI } from '../../../context/UIContext';
 export type BudgetContextType = {
     openForm: (date?: Date, commitment?: BudgetCommitment) => void;
     handleDelete: (commitment: BudgetCommitment) => Promise<void>;
+    refresh: () => void;
     refreshTrigger: number;
 };
 
@@ -76,7 +77,12 @@ export const BudgetLayout: React.FC = () => {
                     dueDate: data.date || data.dueDate,
                     status: data.status,
                     category: data.category,
-                    paidDate: data.paidDate
+                    paidDate: data.paidDate,
+                    // Si es recurrente y estamos cambiando la fecha por primera vez, 
+                    // preservamos la fecha anterior como 'original' para evitar duplicados proyectados.
+                    ...(data.recurrenceRuleId && (data.date && data.date !== data.dueDate) && !data.originalDueDate 
+                        ? { originalDueDate: data.dueDate } 
+                        : {})
                 });
                 setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Compromiso actualizado exitosamente' });
             } else {
@@ -90,6 +96,7 @@ export const BudgetLayout: React.FC = () => {
                         status: data.status,
                         category: data.category,
                         recurrenceRuleId: data.recurrenceRuleId, // VÍNCULO CRÍTICO: Para evitar duplicados
+                        originalDueDate: data.dueDate, // PREVENCIÓN DE DUPLICADOS: Guardamos la fecha original
                         paidDate: data.paidDate
                     });
                     setAlertModal({ isOpen: true, type: 'info', title: 'Información', message: 'Gasto guardado individualmente. Esta modificación solo afecta a este mes.' });
@@ -118,7 +125,7 @@ export const BudgetLayout: React.FC = () => {
     return (
         <div className="flex flex-col space-y-4">
             <div className="flex-1 min-h-0">
-                <Outlet context={{ openForm, handleDelete, refreshTrigger }} />
+                <Outlet context={{ openForm, handleDelete, refresh: () => setRefreshTrigger(p => p + 1), refreshTrigger }} />
             </div>
 
             <BudgetFormModal

@@ -22,6 +22,7 @@ export function mapCommitmentFromRow(row: any): BudgetCommitment {
         isProjected: row.is_projected,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        originalDueDate: row.original_due_date,
     };
 }
 

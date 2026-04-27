@@ -34,6 +34,7 @@ export interface BudgetCommitment {
     createdAt: number;
     updatedAt: number;
     isProjected?: boolean;
+    originalDueDate?: string; // Fecha original de la proyección
 }
 
 export interface BudgetKPIs {

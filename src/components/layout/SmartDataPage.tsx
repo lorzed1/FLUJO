@@ -36,6 +36,7 @@ export interface SmartDataPageProps<T extends Record<string, any>> {
     renderForm?: (isOpen: boolean, onClose: () => void, onSubmit: (data: Partial<T>) => Promise<void>, item?: T) => React.ReactNode;
     infoDefinitions?: { label: string; description: string; origin?: string; calculation?: string; }[];
     customActions?: React.ReactNode;
+    renderSelectionActions?: (selectedIds: Set<string>) => React.ReactNode;
 }
 
 export function SmartDataPage<T extends Record<string, any>>({
@@ -62,7 +63,8 @@ export function SmartDataPage<T extends Record<string, any>>({
     fetchData,
     renderForm,
     infoDefinitions,
-    customActions
+    customActions,
+    renderSelectionActions
 }: SmartDataPageProps<T>) {
     const [data, setData] = useState<T[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -429,6 +431,7 @@ export function SmartDataPage<T extends Record<string, any>>({
                         onDelete={onDelete || handleDeleteRow}
                         onEdit={handleEditRow}
                         onBulkDelete={onBulkDelete || handleBulkDeleteInternal}
+                        renderSelectionActions={renderSelectionActions}
                         onInfoClick={infoDefinitions ? () => setIsInfoOpen(true) : undefined}
                         id={supabaseTableName}
                         containerClassName="h-full flex flex-col border-none"

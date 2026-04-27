@@ -47,7 +47,7 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
             // Re-fetch all real commitments for deduplication including cancelled ones
             const { data: allRealRows } = await supabase
                 .from('budget_commitments')
-                .select('id, due_date, recurrence_rule_id, status');
+                .select('id, due_date, original_due_date, recurrence_rule_id, status');
             
             const allReal = allRealRows || [];
 
@@ -98,8 +98,12 @@ export async function getCommitments(startDate?: string, endDate?: string): Prom
                     // Use find to be more explicit and handle potential null comparisons
                     const hasRealCoverage = allReal.some(rc => {
                         const isSameRule = rc.recurrence_rule_id === rule.id;
-                        const isSameDay = rc.due_date === dateStr;
-                        return isSameRule && isSameDay;
+                        // DEDUPLICACIÓN MEJORADA: El compromiso real cubre la ocurrencia 
+                        // si coincide con la due_date original (la que la regla esperaba)
+                        // O si coincide con la due_date actual (comportamiento legacy).
+                        const isSameOriginalDay = rc.original_due_date === dateStr;
+                        const isSameCurrentDay = rc.due_date === dateStr;
+                        return isSameRule && (isSameOriginalDay || isSameCurrentDay);
                     });
 
                     if (!hasRealCoverage) {
@@ -197,6 +201,7 @@ export async function addCommitment(commitment: Omit<BudgetCommitment, 'id' | 'c
                 provider_name: commitment.providerName || null,
                 contact_info: commitment.contactInfo || null,
                 is_projected: commitment.isProjected || false,
+                original_due_date: commitment.originalDueDate || null,
                 created_at: now,
                 updated_at: now,
             })
@@ -233,6 +238,7 @@ export async function updateCommitment(id: string, updates: Partial<BudgetCommit
         if ('providerName' in updates) mapped.provider_name = updates.providerName ?? null;
         if ('contactInfo' in updates) mapped.contact_info = updates.contactInfo ?? null;
         if (updates.isProjected !== undefined) mapped.is_projected = updates.isProjected;
+        if ('originalDueDate' in updates) mapped.original_due_date = updates.originalDueDate ?? null;
 
         const { error } = await supabase
             .from('budget_commitments')

@@ -107,6 +107,8 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
                 amount: Number(formData.amount),
                 id: initialCommitment?.id,
                 recurrenceRuleId: initialCommitment?.recurrenceRuleId,
+                originalDueDate: initialCommitment?.originalDueDate,
+                dueDate: initialCommitment?.dueDate, // <--- ESTE ES EL CAMPO QUE FALTABA
                 paidDate: formData.status === 'paid' ? (formData.paymentDate || new Date().toISOString().split('T')[0]) : null
             });
             onClose();

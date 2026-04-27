@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BanknotesIcon, TableCellsIcon, TagIcon } from '../../../components/ui/Icons';
+import { BanknotesIcon, TableCellsIcon, TagIcon, TrashIcon } from '../../../components/ui/Icons';
 import { Button } from '../../../components/ui/Button';
 import { Column } from '../../../components/ui/SmartDataTable';
 import { CategoryBadge } from '../../../components/ui/CategoryBadge';
@@ -15,10 +15,12 @@ import { SmartDataPage } from '../../../components/layout/SmartDataPage';
 
 export const BudgetTable: React.FC = () => {
     const navigate = useNavigate();
-    const { openForm, refreshTrigger } = useBudgetContext();
+    const { openForm, handleDelete, refresh, refreshTrigger } = useBudgetContext();
+
     const { setAlertModal } = useUI();
     const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
     const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; item: BudgetCommitment | null }>({ isOpen: false, item: null });
+    const [bulkPayModal, setBulkPayModal] = useState<{ isOpen: boolean; ids: Set<string> }>({ isOpen: false, ids: new Set() });
     const loadData = useCallback(async () => {
         try {
             const start = format(startOfYear(new Date()), 'yyyy-MM-dd');
@@ -62,46 +64,57 @@ export const BudgetTable: React.FC = () => {
                 });
             }
 
-            await loadData();
+            await refresh();
             setPaymentModal({ isOpen: false, item: null });
         } catch (error) {
             console.error("Error paying commitment:", error);
             setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo registrar el pago.' });
         }
     };
-
-
-    const handleDelete = async (id: string) => {
-        const item = commitments.find(c => c.id === id);
-        if (!item) return;
-
-        const isProjected = item.id.startsWith('projected-');
-
-        setAlertModal({
-            isOpen: true,
-            type: 'warning',
-            title: 'Confirmar Eliminación',
-            message: `¿Deseas eliminar este registro de "${item.title}"?`,
-            showCancel: true,
-            confirmText: 'Eliminar',
-            onConfirm: async () => {
-                try {
-                    if (isProjected && item.recurrenceRuleId) {
-                        // For projections, we "cancel" the instance by creating a cancelled record
-                        await budgetService.cancelProjectedCommitment(item.recurrenceRuleId, item.dueDate);
-                    } else {
-                        // For real commitments, just delete
-                        await budgetService.deleteCommitment(id);
-                    }
-                    await loadData();
-                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Registro eliminado correctamente.' });
-                } catch (error) {
-                    console.error("Error deleting item:", error);
-                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar el registro.' });
+    
+    const handleBulkPaymentConfirm = async (dateStr: string) => {
+        if (bulkPayModal.ids.size === 0) return;
+        
+        try {
+            const selectedItems = commitments.filter(c => bulkPayModal.ids.has(c.id));
+            const promises: Promise<any>[] = [];
+            
+            for (const item of selectedItems) {
+                if (item.status === 'paid') continue; 
+                
+                if (item.id.startsWith('projected-')) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { id, isProjected, ...data } = item;
+                    promises.push(budgetService.addCommitment({
+                        ...data,
+                        status: 'paid',
+                        paidDate: dateStr,
+                        recurrenceRuleId: item.recurrenceRuleId,
+                        originalDueDate: item.dueDate 
+                    }));
+                } else {
+                    promises.push(budgetService.updateCommitment(item.id, {
+                        status: 'paid',
+                        paidDate: dateStr
+                    }));
                 }
             }
-        });
+            
+            await Promise.all(promises);
+            await refresh();
+            setBulkPayModal({ isOpen: false, ids: new Set() });
+            setAlertModal({ 
+                isOpen: true, 
+                type: 'success', 
+                title: 'Pagos Registrados', 
+                message: `Se han procesado ${promises.length} pagos exitosamente.` 
+            });
+        } catch (error) {
+            console.error("Error in bulk payment:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Hubo un error al procesar algunos pagos.' });
+        }
     };
+
 
     // Bulk delete logic...
     const handleBulkDelete = async (ids: Set<string>) => {
@@ -140,7 +153,7 @@ export const BudgetTable: React.FC = () => {
                         promises.push(budgetService.deleteCommitment(id));
                     });
                     await Promise.all(promises);
-                    loadData();
+                    refresh();
                     setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Elementos eliminados correctamente.' });
                 } catch (error) {
                     console.error("Error deleting commitments:", error);
@@ -280,8 +293,30 @@ export const BudgetTable: React.FC = () => {
                     </Button>
                 }
                 onEdit={handleEdit}
-                onDelete={(item) => handleDelete(item.id)}
+                onDelete={handleDelete}
                 onBulkDelete={handleBulkDelete}
+                renderSelectionActions={(selectedIds) => (
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="primary" 
+                            size="sm" 
+                            className="h-7 px-3 gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 border-none shadow-sm"
+                            onClick={() => setBulkPayModal({ isOpen: true, ids: selectedIds })}
+                        >
+                            <BanknotesIcon className="h-3.5 w-3.5" />
+                            Marcar Pagados
+                        </Button>
+                        <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleBulkDelete(selectedIds)}
+                            className="h-7 px-3 gap-1.5 text-xs font-bold rounded-md"
+                        >
+                            <TrashIcon className="h-3.5 w-3.5" /> 
+                            Eliminar
+                        </Button>
+                    </div>
+                )}
                 searchPlaceholder="Buscar por proveedor, categoría..."
                 infoDefinitions={[
                     {
@@ -326,6 +361,21 @@ export const BudgetTable: React.FC = () => {
                 label="Fecha del Pago"
                 confirmText="Confirmar"
                 initialDate={paymentModal.item?.paidDate}
+            />
+
+            <DateSelectionModal
+                isOpen={bulkPayModal.isOpen}
+                onClose={() => setBulkPayModal({ isOpen: false, ids: new Set() })}
+                onConfirm={handleBulkPaymentConfirm}
+                title="Pago Masivo"
+                description={
+                    <div className="space-y-1">
+                        <p>Vas a marcar como pagados <span className="font-bold text-emerald-600">{bulkPayModal.ids.size} registros</span> seleccionados.</p>
+                        <p className="text-xs text-slate-500 italic">Esta acción actualizará los compromisos reales y materializará las proyecciones automáticamente.</p>
+                    </div>
+                }
+                label="Fecha de Pago para el Lote"
+                confirmText="Procesar Pagos"
             />
         </>
     );
