@@ -14,8 +14,6 @@ interface AccountingConfigModalProps {
     title?: string;
     initialMappings?: AccountMapping[];
     hideNatureSelect?: boolean;
-    storageKey?: string;
-    availableFields?: { id: string; label: string }[];
 }
 
 const DEFAULT_STORAGE_KEY = 'accounting_export_config';

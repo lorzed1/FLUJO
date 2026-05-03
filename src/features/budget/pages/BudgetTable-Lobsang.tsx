@@ -1,0 +1,382 @@
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { BanknotesIcon, TableCellsIcon, TagIcon, TrashIcon } from '../../../components/ui/Icons';
+import { Button } from '../../../components/ui/Button';
+import { Column } from '../../../components/ui/SmartDataTable';
+import { CategoryBadge } from '../../../components/ui/CategoryBadge';
+import { StatusBadge } from '../../../components/ui/StatusBadge';
+import { budgetService } from '../../../services/budget';
+import { useBudgetContext } from '../layouts/BudgetLayout';
+import { BudgetCommitment } from '../../../types/budget';
+import { endOfYear, startOfYear, format } from 'date-fns';
+import { useUI } from '../../../context/UIContext';
+import { DateSelectionModal } from '../components/DateSelectionModal';
+import { SmartDataPage } from '../../../components/layout/SmartDataPage';
+
+export const BudgetTable: React.FC = () => {
+    const navigate = useNavigate();
+    const { openForm, handleDelete, refresh, refreshTrigger } = useBudgetContext();
+
+    const { setAlertModal } = useUI();
+    const [commitments, setCommitments] = useState<BudgetCommitment[]>([]);
+    const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; item: BudgetCommitment | null }>({ isOpen: false, item: null });
+    const [bulkPayModal, setBulkPayModal] = useState<{ isOpen: boolean; ids: Set<string> }>({ isOpen: false, ids: new Set() });
+    const loadData = useCallback(async () => {
+        try {
+            const start = format(startOfYear(new Date()), 'yyyy-MM-dd');
+            const end = format(endOfYear(new Date()), 'yyyy-MM-dd');
+            const data = await budgetService.getCommitments(start, end);
+            const mapped = data.map(d => ({ ...d, id: d.id || Math.random().toString() }));
+            setCommitments(mapped);
+            return mapped;
+        } catch (error) {
+            console.error("Error loading commitments:", error);
+            throw error;
+        }
+    }, []);
+
+    const handleEdit = (item: BudgetCommitment) => {
+        openForm(undefined, item);
+    };
+
+    const handleQuickPay = async (item: BudgetCommitment) => {
+        setPaymentModal({ isOpen: true, item });
+    };
+
+    const handleConfirmPayment = async (dateStr: string) => {
+        if (!paymentModal.item) return;
+        const item = paymentModal.item;
+
+        try {
+            if (item.id.startsWith('projected-')) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, isProjected, ...data } = item;
+                await budgetService.addCommitment({
+                    ...data,
+                    status: 'paid',
+                    paidDate: dateStr,
+                    recurrenceRuleId: item.recurrenceRuleId
+                });
+            } else {
+                await budgetService.updateCommitment(item.id, {
+                    status: 'paid',
+                    paidDate: dateStr
+                });
+            }
+
+            await refresh();
+            setPaymentModal({ isOpen: false, item: null });
+        } catch (error) {
+            console.error("Error paying commitment:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'No se pudo registrar el pago.' });
+        }
+    };
+    
+    const handleBulkPaymentConfirm = async (dateStr: string) => {
+        if (bulkPayModal.ids.size === 0) return;
+        
+        try {
+            const selectedItems = commitments.filter(c => bulkPayModal.ids.has(c.id));
+            const promises: Promise<any>[] = [];
+            
+            for (const item of selectedItems) {
+                if (item.status === 'paid') continue; 
+                
+                if (item.id.startsWith('projected-')) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { id, isProjected, ...data } = item;
+                    promises.push(budgetService.addCommitment({
+                        ...data,
+                        status: 'paid',
+                        paidDate: dateStr,
+                        recurrenceRuleId: item.recurrenceRuleId,
+                        originalDueDate: item.dueDate 
+                    }));
+                } else {
+                    promises.push(budgetService.updateCommitment(item.id, {
+                        status: 'paid',
+                        paidDate: dateStr
+                    }));
+                }
+            }
+            
+            await Promise.all(promises);
+            await refresh();
+            setBulkPayModal({ isOpen: false, ids: new Set() });
+            setAlertModal({ 
+                isOpen: true, 
+                type: 'success', 
+                title: 'Pagos Registrados', 
+                message: `Se han procesado ${promises.length} pagos exitosamente.` 
+            });
+        } catch (error) {
+            console.error("Error in bulk payment:", error);
+            setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Hubo un error al procesar algunos pagos.' });
+        }
+    };
+
+
+    // Bulk delete logic...
+    const handleBulkDelete = async (ids: Set<string>) => {
+        const selectedItems = commitments.filter(c => ids.has(c.id));
+        const ruleIds = new Set<string>();
+        const standaloneIds: string[] = [];
+
+        selectedItems.forEach(item => {
+            if (item.recurrenceRuleId && (item.status === 'pending' || item.id.startsWith('projected-'))) {
+                ruleIds.add(item.recurrenceRuleId);
+            } else {
+                standaloneIds.push(item.id);
+            }
+        });
+
+        const messages = [];
+        if (ruleIds.size > 0) messages.push(`Se eliminarán ${ruleIds.size} reglas recurrentes y sus proyecciones futuras.`);
+        if (standaloneIds.length > 0) messages.push(`Se eliminarán ${standaloneIds.length} compromisos individuales.`);
+
+        setAlertModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Confirmar Eliminación Masiva',
+            message: messages.join(' ') || '¿Eliminar elementos seleccionados?',
+            showCancel: true,
+            confirmText: 'Eliminar Todo',
+            onConfirm: async () => {
+                try {
+                    const promises: Promise<any>[] = [];
+                    // Delete rules
+                    ruleIds.forEach(ruleId => {
+                        promises.push(budgetService.deleteRecurrenceRule(ruleId));
+                    });
+                    // Delete standalone
+                    standaloneIds.forEach(id => {
+                        promises.push(budgetService.deleteCommitment(id));
+                    });
+                    await Promise.all(promises);
+                    refresh();
+                    setAlertModal({ isOpen: true, type: 'success', title: 'Éxito', message: 'Elementos eliminados correctamente.' });
+                } catch (error) {
+                    console.error("Error deleting commitments:", error);
+                    setAlertModal({ isOpen: true, type: 'error', title: 'Error', message: 'Error al eliminar elementos seleccionados.' });
+                }
+            }
+        });
+    };
+
+    const columns: Column<BudgetCommitment>[] = useMemo(() => [
+        {
+            key: 'title',
+            label: 'Descripción / Proveedor',
+            sortable: true,
+            filterable: true,
+            render: (value: string) => (
+                <span className="block">{value}</span>
+            )
+        },
+        {
+            key: 'amount',
+            label: 'Monto',
+            type: 'currency',
+            sortable: true,
+            align: 'text-right' as const,
+        },
+        {
+            key: 'dueDate',
+            label: 'Vencimiento',
+            sortable: true,
+            filterable: true,
+            width: 'w-24',
+            render: (value: string) => {
+                if (!value) return <span className="text-slate-300">-</span>;
+                try {
+                    const parts = value.split('T')[0].split('-');
+                    if (parts.length === 3) return <span>{parts[2]}/{parts[1]}/{parts[0]}</span>;
+                } catch (e) { }
+                return <span>{value}</span>;
+            }
+        },
+        {
+            key: 'paidDate',
+            label: 'Fecha Pago',
+            sortable: true,
+            filterable: true,
+            width: 'w-24',
+            render: (value: string, item: BudgetCommitment) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.status === 'paid') handleQuickPay(item);
+                    }}
+                    className={`transition-colors border-b border-transparent hover:border-current ${value
+                        ? 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 cursor-pointer'
+                        : 'text-gray-400 dark:text-gray-500 cursor-default'
+                        }`}
+                    disabled={item.status !== 'paid'}
+                    title={item.status === 'paid' ? "Cambiar fecha de pago" : ""}
+                >
+                    {value ? (() => {
+                        try {
+                            const parts = value.split('T')[0].split('-');
+                            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                        } catch (e) { }
+                        return value;
+                    })() : '-'}
+                </button>
+            )
+        },
+        {
+            key: 'category',
+            label: 'Categoría',
+            sortable: true,
+            filterable: true,
+            render: (value: string) => <CategoryBadge>{value}</CategoryBadge>
+        },
+        {
+            key: 'status',
+            label: 'Estado',
+            sortable: true,
+            filterable: true,
+            align: 'text-center' as const,
+            render: (value: string) => {
+                const statusMap: Record<string, { variant: 'success' | 'warning' | 'danger' | 'neutral'; label: string }> = {
+                    paid: { variant: 'success', label: 'Pagado' },
+                    pending: { variant: 'warning', label: 'Pendiente' },
+                    overdue: { variant: 'danger', label: 'Vencido' }
+                };
+                const s = statusMap[value] || { variant: 'neutral' as const, label: value };
+                return <StatusBadge variant={s.variant} label={s.label} />;
+            }
+        },
+        {
+            key: 'quickPay',
+            label: '',
+            width: 'w-10',
+            align: 'text-center' as const,
+            filterable: false,
+            sortable: false,
+            render: (_: any, item: BudgetCommitment) => (
+                item.status !== 'paid' ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleQuickPay(item); }}
+                        className="text-emerald-400 hover:text-emerald-600 dark:text-emerald-500 dark:hover:text-emerald-300 transition-all p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                        title="Marcar como Pagado"
+                    >
+                        <BanknotesIcon className="w-4 h-4" />
+                    </button>
+                ) : null
+            )
+        }
+    ], [openForm, loadData]);
+
+
+
+    // --- RENDER ---
+    return (
+        <>
+            <SmartDataPage<BudgetCommitment>
+                key={refreshTrigger}
+                title="BD de gastos"
+                icon={<TableCellsIcon className="h-6 w-6 text-purple-600" />}
+                breadcrumbs={[
+                    { label: 'Egresos', href: '/budget' },
+                    { label: 'Tabla' }
+                ]}
+                supabaseTableName="budget_commitments"
+                fetchData={loadData as any}
+                columns={columns}
+                enableAdd={true}
+                onAdd={() => openForm()}
+                customActions={
+                    <Button variant="secondary" onClick={() => navigate('/budget/categories')}>
+                        <TagIcon className="w-5 h-5 mr-2" />
+                        <span className="hidden sm:inline text-xs font-semibold uppercase tracking-widest">Categorías</span>
+                    </Button>
+                }
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onBulkDelete={handleBulkDelete}
+                renderSelectionActions={(selectedIds) => (
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="primary" 
+                            size="sm" 
+                            className="h-7 px-3 gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 border-none shadow-sm"
+                            onClick={() => setBulkPayModal({ isOpen: true, ids: selectedIds })}
+                        >
+                            <BanknotesIcon className="h-3.5 w-3.5" />
+                            Marcar Pagados
+                        </Button>
+                        <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleBulkDelete(selectedIds)}
+                            className="h-7 px-3 gap-1.5 text-xs font-bold rounded-md"
+                        >
+                            <TrashIcon className="h-3.5 w-3.5" /> 
+                            Eliminar
+                        </Button>
+                    </div>
+                )}
+                searchPlaceholder="Buscar por proveedor, categoría..."
+                infoDefinitions={[
+                    {
+                        label: 'Descripción / Proveedor',
+                        description: 'Indica el concepto del gasto o el nombre del tercero a quien se adeuda el pago.',
+                        origin: 'Registro de Compromiso'
+                    },
+                    {
+                        label: 'Monto',
+                        description: 'Valor monetario total de la obligación registrada.',
+                        origin: 'Factura / Cotización'
+                    },
+                    {
+                        label: 'Vencimiento',
+                        description: 'Fecha límite estipulada para cumplir con el pago sin generar intereses o moras.',
+                        origin: 'Términos de Pago'
+                    },
+                    {
+                        label: 'Fecha Pago',
+                        description: 'Día exacto en que se registró la salida de dinero en el sistema.',
+                        origin: 'Comprobante de Pago'
+                    },
+                    {
+                        label: 'Categoría',
+                        description: 'Clasificación administrativa para agrupar los gastos (ej. Operativos, Fijos, Nómina).',
+                        origin: 'Configuración de Categorías'
+                    },
+                    {
+                        label: 'Estado',
+                        description: 'Muestra si el gasto está al día (Pagado), pendiente de pago o si ya superó su fecha límite (Vencido).',
+                        calculation: 'Filtro por Fecha de Vencimiento vs Fecha Actual'
+                    }
+                ]}
+            />
+
+            <DateSelectionModal
+                isOpen={paymentModal.isOpen}
+                onClose={() => setPaymentModal({ isOpen: false, item: null })}
+                onConfirm={handleConfirmPayment}
+                title="Registrar Pago"
+                description={<p>Estás registrando el pago de <span className="font-semibold text-slate-800 dark:text-slate-100 block mt-1">"{paymentModal.item?.title || ''}"</span></p>}
+                label="Fecha del Pago"
+                confirmText="Confirmar"
+                initialDate={paymentModal.item?.paidDate}
+            />
+
+            <DateSelectionModal
+                isOpen={bulkPayModal.isOpen}
+                onClose={() => setBulkPayModal({ isOpen: false, ids: new Set() })}
+                onConfirm={handleBulkPaymentConfirm}
+                title="Pago Masivo"
+                description={
+                    <div className="space-y-1">
+                        <p>Vas a marcar como pagados <span className="font-bold text-emerald-600">{bulkPayModal.ids.size} registros</span> seleccionados.</p>
+                        <p className="text-xs text-slate-500 italic">Esta acción actualizará los compromisos reales y materializará las proyecciones automáticamente.</p>
+                    </div>
+                }
+                label="Fecha de Pago para el Lote"
+                confirmText="Procesar Pagos"
+            />
+        </>
+    );
+};
