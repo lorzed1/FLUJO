@@ -1,0 +1,76 @@
+import React from 'react';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '../../../components/ui/Icons';
+import { Button } from '../../../components/ui/Button';
+
+interface DashboardControlsProps {
+    selectedDate: Date;
+    onDateChange: (date: Date) => void;
+}
+
+export const DashboardControls: React.FC<DashboardControlsProps> = ({ selectedDate, onDateChange }) => {
+    const handleMonthChange = (offset: number) => {
+        const newDate = new Date(selectedDate);
+        newDate.setMonth(newDate.getMonth() + offset);
+        onDateChange(newDate);
+    };
+
+    const handleYearChange = (year: number) => {
+        const newDate = new Date(selectedDate);
+        newDate.setFullYear(year);
+        onDateChange(newDate);
+    };
+
+    return (
+        <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5 gap-3">
+            <div className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <span className="text-xs2 font-medium text-slate-500 dark:text-slate-400 uppercase">Período:</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 capitalize">
+                    {selectedDate.toLocaleDateString('es-CO', { month: 'long' })}
+                </span>
+            </div>
+
+            <div className="flex items-center gap-1">
+                {/* Navegación Mes */}
+                <Button
+                    variant="icon" size="icon-sm"
+                    onClick={() => handleMonthChange(-1)}
+                    title="Mes anterior"
+                >
+                    <ChevronLeftIcon className="h-3.5 w-3.5" />
+                </Button>
+
+                <Button
+                    variant="icon" size="icon-sm"
+                    onClick={() => handleMonthChange(1)}
+                    title="Mes siguiente"
+                >
+                    <ChevronRightIcon className="h-3.5 w-3.5" />
+                </Button>
+
+                <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+
+                {/* Selector de Año */}
+                <select
+                    value={selectedDate.getFullYear()}
+                    onChange={(e) => handleYearChange(parseInt(e.target.value))}
+                    className="px-2 py-1 text-sm bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded font-medium text-slate-700 dark:text-slate-300 hover:border-purple-400 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors cursor-pointer"
+                >
+                    {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                    ))}
+                </select>
+
+                <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+
+                {/* Botón Hoy */}
+                <Button
+                    variant="primary" size="xs"
+                    onClick={() => onDateChange(new Date())}
+                >
+                    Hoy
+                </Button>
+            </div>
+        </div>
+    );
+};

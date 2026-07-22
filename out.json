@@ -1,0 +1,38 @@
+[
+  {
+    "id": "aa3ed70d-25be-4665-8969-83198f1841a4",
+    "cuenta": "11100101",
+    "contacto": "FUDO DL",
+    "identificacion": "240",
+    "centro_costo": "Principal",
+    "documento": "RC-1018",
+    "fecha": "2026-01-01",
+    "descripcion": "Pago Gasto 390",
+    "descripcion_movimiento": "",
+    "base": 0,
+    "saldo_inicial": 0,
+    "debito": 0,
+    "credito": 131860,
+    "saldo_final": -131860,
+    "created_at": "2026-03-23T22:08:19.524568+00:00",
+    "import_id": null
+  },
+  {
+    "id": "5d2d594d-60e1-4392-a8d5-84379bb70688",
+    "cuenta": "11100101",
+    "contacto": "FUDO DL",
+    "identificacion": "240",
+    "centro_costo": "Principal",
+    "documento": "RC-1018",
+    "fecha": "2026-01-01",
+    "descripcion": "Pago Gasto 390",
+    "descripcion_movimiento": "",
+    "base": 0,
+    "saldo_inicial": 0,
+    "debito": 0,
+    "credito": 131860,
+    "saldo_final": -131860,
+    "created_at": "2026-03-24T00:57:18.830272+00:00",
+    "import_id": null
+  }
+]
