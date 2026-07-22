@@ -1,0 +1,4 @@
+Tipo documento;Consecutivo;Fecha;Fecha vencimiento;Codigo cuenta;Id contacto;Centro costo;Debito;Credito;Base;Descripcion;Descripcion movimiento
+FV;1;31/01/2019;31/01/2019;415505;1013618581;DFLT;;1000000;;Factura de prueba # 1;Ingreso
+FV;1;31/01/2019;31/01/2019;240805;1013618581;DFLT;;160000;1000000;Factura de prueba # 1;IVA
+FV;1;31/01/2019;31/01/2019;130505;1013618581;DFLT;1160000;;;Factura de prueba # 1;Cuenta x cobrar
