@@ -74,3 +74,5 @@ Ejemplos/
 *data.json
 *data_array.json
 pyg_data*.json
+
+.venv

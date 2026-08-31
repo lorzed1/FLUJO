@@ -9,12 +9,14 @@ interface ArqueoDateSelectorProps {
     currentDate: string;
     onDateChange: (date: string) => void;
     onConfirm: () => void;
+    onCancel?: () => void;
 }
 
 export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
     currentDate,
     onDateChange,
-    onConfirm
+    onConfirm,
+    onCancel
 }) => {
 
     // Ensure we don't start with an empty date
@@ -41,11 +43,11 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
     return (
         <Modal
             isOpen={true}
-            onClose={() => { }} // Can't be closed directly
+            onClose={onCancel || (() => { })}
             title={headerTitle}
             maxWidth="max-w-md"
-            hideCloseIcon={true}
-            disableClickOutside={true}
+            hideCloseIcon={!onCancel}
+            disableClickOutside={!onCancel}
             className="p-0 overflow-hidden"
         >
             <form onSubmit={handleSubmit}>
@@ -73,7 +75,17 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
                 </div>
 
                 {/* Footer (Right Aligned Actions) */}
-                <div className="bg-gray-50 dark:bg-slate-900/50 px-5 py-3 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+                <div className="bg-gray-50 dark:bg-slate-900/50 px-5 py-3 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3">
+                    {onCancel && (
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={onCancel}
+                            className="h-8 text-xs font-medium px-4 rounded shadow-sm"
+                        >
+                            Cancelar
+                        </Button>
+                    )}
                     <Button
                         type="submit"
                         className="bg-purple-600 hover:bg-purple-700 text-white h-8 text-xs font-medium px-4 rounded shadow-sm"

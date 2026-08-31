@@ -29,6 +29,12 @@ export interface PaymentDetails {
     transfBancolombia: number[];
 }
 
+export interface GastoRecord {
+    id: string;
+    descripcion: string;
+    valor: number;
+}
+
 export interface ConfirmationData {
     descuadre: number;
     ventaEsperada: number;
@@ -45,9 +51,12 @@ const STORAGE_KEYS = {
     PAYMENT_DETAILS: 'arqueo_paymentDetails',
     BASE_CAJA: 'arqueo_baseCaja',
     CUADRE_VENTA: 'arqueo_cuadreVenta',
-    CONSUMO: 'arqueo_consumoPersonal',
-    FACTURAS: 'arqueo_facturas',
+    GASTOS_PERSONAL: 'arqueo_gastosPersonal',
+    GASTOS_PROVEEDORES: 'arqueo_gastosProveedores',
+    BASE_INICIAL_DECLARADA: 'arqueo_baseInicialDeclarada',
     ACTIVE_TAB: 'arqueo_activeTab',
+    CURRENT_STEP: 'arqueo_currentStep',
+    HAS_COVERS: 'arqueo_hasCovers',
     THEME: 'arqueo_theme'
 } as const;
 
@@ -142,8 +151,17 @@ export function useArqueoForm() {
     const [cuadreVenta, setCuadreVenta] = useState<Record<string, number>>(() =>
         getInitialState(STORAGE_KEYS.CUADRE_VENTA, { ...INITIAL_DENOMINATIONS })
     );
-    const [consumoPersonal, setConsumoPersonal] = useState(() => getInitialState(STORAGE_KEYS.CONSUMO, 0));
-    const [facturas, setFacturas] = useState(() => getInitialState(STORAGE_KEYS.FACTURAS, 0));
+    
+    // --- New Wizard & Expenses State ---
+    const [currentStep, setCurrentStep] = useState(() => getInitialState(STORAGE_KEYS.CURRENT_STEP, 1));
+    const [hasCovers, setHasCovers] = useState(() => getInitialState(STORAGE_KEYS.HAS_COVERS, false));
+    const [baseInicialDeclarada, setBaseInicialDeclarada] = useState(() => getInitialState(STORAGE_KEYS.BASE_INICIAL_DECLARADA, 0));
+    const [gastosPersonal, setGastosPersonal] = useState<GastoRecord[]>(() => getInitialState(STORAGE_KEYS.GASTOS_PERSONAL, []));
+    const [gastosProveedores, setGastosProveedores] = useState<GastoRecord[]>(() => getInitialState(STORAGE_KEYS.GASTOS_PROVEEDORES, []));
+
+    // Calculate sum for expenses
+    const totalGastosPersonal = gastosPersonal.reduce((sum, item) => sum + (Number(item.valor) || 0), 0);
+    const totalGastosProveedores = gastosProveedores.reduce((sum, item) => sum + (Number(item.valor) || 0), 0);
 
     // --- Modals State ---
     const [showImportModal, setShowImportModal] = useState(false);
@@ -173,7 +191,7 @@ export function useArqueoForm() {
     // Calculator totals
     const totalBaseCaja = calculateDenominationTotal(baseCaja);
     const totalCuadreVenta = calculateDenominationTotal(cuadreVenta);
-    const totalFinalCuadre = totalCuadreVenta + consumoPersonal + facturas;
+    const totalFinalCuadre = totalCuadreVenta + totalGastosPersonal + totalGastosProveedores;
 
     // ============================================
     // Persistence Effects
@@ -182,8 +200,11 @@ export function useArqueoForm() {
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.PAYMENT_DETAILS, JSON.stringify(paymentDetails)); }, [paymentDetails]);
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.BASE_CAJA, JSON.stringify(baseCaja)); }, [baseCaja]);
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.CUADRE_VENTA, JSON.stringify(cuadreVenta)); }, [cuadreVenta]);
-    useEffect(() => { localStorage.setItem(STORAGE_KEYS.CONSUMO, JSON.stringify(consumoPersonal)); }, [consumoPersonal]);
-    useEffect(() => { localStorage.setItem(STORAGE_KEYS.FACTURAS, JSON.stringify(facturas)); }, [facturas]);
+    useEffect(() => { localStorage.setItem(STORAGE_KEYS.GASTOS_PERSONAL, JSON.stringify(gastosPersonal)); }, [gastosPersonal]);
+    useEffect(() => { localStorage.setItem(STORAGE_KEYS.GASTOS_PROVEEDORES, JSON.stringify(gastosProveedores)); }, [gastosProveedores]);
+    useEffect(() => { localStorage.setItem(STORAGE_KEYS.BASE_INICIAL_DECLARADA, JSON.stringify(baseInicialDeclarada)); }, [baseInicialDeclarada]);
+    useEffect(() => { localStorage.setItem(STORAGE_KEYS.CURRENT_STEP, JSON.stringify(currentStep)); }, [currentStep]);
+    useEffect(() => { localStorage.setItem(STORAGE_KEYS.HAS_COVERS, JSON.stringify(hasCovers)); }, [hasCovers]);
     useEffect(() => { localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(isDarkMode)); }, [isDarkMode]);
 
     // Apply dark mode class to the root HTML element so it affects the entire page
@@ -252,9 +273,23 @@ export function useArqueoForm() {
             }));
         }
     };
+    
+    // Gastos handlers
+    const handleAddGastoPersonal = (descripcion: string, valor: number) => {
+        setGastosPersonal(prev => [...prev, { id: Date.now().toString(), descripcion, valor }]);
+    };
+    const handleRemoveGastoPersonal = (id: string) => {
+        setGastosPersonal(prev => prev.filter(g => g.id !== id));
+    };
+    const handleAddGastoProveedor = (descripcion: string, valor: number) => {
+        setGastosProveedores(prev => [...prev, { id: Date.now().toString(), descripcion, valor }]);
+    };
+    const handleRemoveGastoProveedor = (id: string) => {
+        setGastosProveedores(prev => prev.filter(g => g.id !== id));
+    };
 
     const handleSendToArqueo = () => {
-        const calculatedTotal = calculateDenominationTotal(cuadreVenta) + consumoPersonal + facturas;
+        const calculatedTotal = calculateDenominationTotal(cuadreVenta) + totalGastosPersonal + totalGastosProveedores;
         setFormData(prev => ({ ...prev, efectivo: calculatedTotal }));
         setIsCalculatorExpanded(false);
     };
@@ -290,8 +325,8 @@ export function useArqueoForm() {
         setPaymentDetails({ nequi: [60000, 40000], transfBancolombia: [150000] });
         setBaseCaja({ '50': 0, '100': 0, '200': 0, '500': 0, '1000': 0, '2000': 0, '5000': 0, '10000': 10, '20000': 10, '50000': 6, '100000': 2 });
         setCuadreVenta({ '50': 0, '100': 0, '200': 0, '500': 0, '1000': 0, '2000': 0, '5000': 10, '10000': 20, '20000': 20, '50000': 4, '100000': 0 });
-        setConsumoPersonal(15000);
-        setFacturas(35000);
+        setGastosPersonal([{ id: '1', descripcion: 'Comida', valor: 15000 }]);
+        setGastosProveedores([{ id: '2', descripcion: 'Hielo', valor: 35000 }]);
         setAlertConfig({ isOpen: true, title: 'Simulación Activada', message: 'Se han cargado datos de prueba en todos los campos. ¡Ya puedes intentar guardar!', type: 'success' });
     };
 
@@ -300,8 +335,11 @@ export function useArqueoForm() {
         Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
         setBaseCaja({ ...INITIAL_DENOMINATIONS });
         setCuadreVenta({ ...INITIAL_DENOMINATIONS });
-        setConsumoPersonal(0);
-        setFacturas(0);
+        setGastosPersonal([]);
+        setGastosProveedores([]);
+        setCurrentStep(1);
+        setHasCovers(false);
+        setBaseInicialDeclarada(0);
         setFormData(INITIAL_FORM_DATA(today));
         setPaymentDetails({ nequi: [], transfBancolombia: [] });
     };
@@ -336,8 +374,13 @@ export function useArqueoForm() {
         isCalculatorExpanded,
         baseCaja,
         cuadreVenta,
-        consumoPersonal,
-        facturas,
+        gastosPersonal,
+        gastosProveedores,
+        totalGastosPersonal,
+        totalGastosProveedores,
+        currentStep,
+        hasCovers,
+        baseInicialDeclarada,
         showImportModal,
         showAccountingWizard,
         showKlaveWizard,
@@ -357,8 +400,11 @@ export function useArqueoForm() {
         setShowConfirmation,
         setIsSaving,
         setIsCalculatorExpanded,
-        setConsumoPersonal,
-        setFacturas,
+        setGastosPersonal,
+        setGastosProveedores,
+        setCurrentStep,
+        setHasCovers,
+        setBaseInicialDeclarada,
         setShowImportModal,
         setShowAccountingWizard,
         setShowKlaveWizard,
@@ -374,6 +420,10 @@ export function useArqueoForm() {
         openDetailModal,
         handleAddDetail,
         handleRemoveDetail,
+        handleAddGastoPersonal,
+        handleRemoveGastoPersonal,
+        handleAddGastoProveedor,
+        handleRemoveGastoProveedor,
         handleSendToArqueo,
         updateDenomination,
         handleSubmit,

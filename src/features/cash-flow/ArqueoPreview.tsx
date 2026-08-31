@@ -9,7 +9,8 @@ import {
     SunIcon,
     CalendarDaysIcon,
     QuestionMarkCircleIcon,
-    DocumentTextIcon
+    DocumentTextIcon,
+    TrashIcon
 } from '../../components/ui/Icons';
 import { InfoModal, DataDefinition } from '../../components/ui/InfoModal';
 import AlertModal from '../../components/ui/AlertModal';
@@ -22,8 +23,11 @@ import { AccountingExportWizard } from './components/AccountingExportWizard';
 import { KlaveExportWizard } from './components/KlaveExportWizard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '../../components/ui/Input';
 import ExcelImportTab from './ExcelImportTab';
 import ArqueosTable, { type ArqueosTableHandle } from './ArqueosTable';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { DenominationTable } from './components/DenominationTable';
 import { DatabaseService } from '../../services/database';
 import { tipsService } from '../../services/tipsService';
 import { jsPDF } from 'jspdf';
@@ -34,7 +38,6 @@ import { FormGroup } from '../../components/ui/FormGroup';
 import { CurrencyInput } from './components/CurrencyInput';
 import { PaymentDetailModal } from './components/PaymentDetailModal';
 import { ArqueoConfirmationModal } from './components/ArqueoConfirmationModal';
-import { CashCalculator } from './components/CashCalculator';
 import { useArqueoForm, formatCurrencyValue } from './hooks/useArqueoForm';
 import { ArqueoDateSelector } from './components/ArqueoDateSelector';
 import { cn } from '../../lib/utils';
@@ -57,6 +60,7 @@ const ArqueoPreview: React.FC = () => {
     const form = useArqueoForm();
     const tableRef = useRef<ArqueosTableHandle>(null);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
+    const [alertState, setAlertState] = useState<{isOpen: boolean, message: string}>({isOpen: false, message: ''});
 
     const arqueoInfoDefinitions: DataDefinition[] = [
         {
@@ -103,6 +107,7 @@ const ArqueoPreview: React.FC = () => {
 
     // --- Date Selection Logic ---
     const [isDateConfirmed, setIsDateConfirmed] = useState(false);
+    const [showDateModal, setShowDateModal] = useState(false);
 
     useEffect(() => {
         if (location.pathname.includes('/history')) {
@@ -111,6 +116,7 @@ const ArqueoPreview: React.FC = () => {
         } else {
             setActiveTab('arqueo');
             setIsDateConfirmed(false);
+            setShowDateModal(false);
         }
     }, [location.pathname]);
 
@@ -258,18 +264,6 @@ const ArqueoPreview: React.FC = () => {
             form.setIsSaving(false);
         }
     };
-
-    if (activeTab === 'arqueo' && !isDateConfirmed) {
-        return (
-            <div className={form.isDarkMode ? 'dark' : ''}>
-                <ArqueoDateSelector
-                    currentDate={form.formData.fecha}
-                    onDateChange={(date) => form.setFormData(prev => ({ ...prev, fecha: date }))}
-                    onConfirm={() => setIsDateConfirmed(true)}
-                />
-            </div>
-        );
-    }
 
     return (
         <div className={cn("animate-fadeIn", form.isDarkMode ? 'dark' : '')}>
@@ -434,174 +428,366 @@ const ArqueoPreview: React.FC = () => {
                     </main>
                 )}
 
-                <div className={activeTab === 'historial' ? 'hidden' : 'mt-4 sm:mt-6'}>
+                <div className={activeTab === 'historial' ? 'hidden' : 'mt-2 sm:mt-4'}>
 
                     {activeTab === 'arqueo' && (
-                        <div className="mx-auto w-full lg:max-w-6xl pb-24 px-0 sm:px-0">
-                            <form onSubmit={form.handleSubmit} className="space-y-4 sm:space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
+                        !isDateConfirmed ? (
+                            <div className="flex flex-col items-center justify-center p-8 mt-12 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700 min-h-[400px]">
+                                <EmptyState
+                                    icon={<CalendarDaysIcon className="h-16 w-16 text-purple-500 opacity-80" />}
+                                    title="Ningún arqueo en curso"
+                                    description="Para comenzar a registrar el cierre de caja, inicia un nuevo arqueo."
+                                    action={
+                                        <Button 
+                                            variant="primary" 
+                                            size="lg" 
+                                            onClick={() => setShowDateModal(true)}
+                                            className="mt-4 shadow-lg shadow-purple-500/30 font-semibold tracking-wide"
+                                        >
+                                            Iniciar Nuevo Arqueo
+                                        </Button>
+                                    }
+                                />
+                                {showDateModal && (
+                                    <ArqueoDateSelector
+                                        currentDate={form.formData.fecha}
+                                        onDateChange={(date) => form.setFormData(prev => ({ ...prev, fecha: date }))}
+                                        onConfirm={() => {
+                                            setIsDateConfirmed(true);
+                                            setShowDateModal(false);
+                                        }}
+                                        onCancel={() => setShowDateModal(false)}
+                                    />
+                                )}
+                            </div>
+                        ) : (
+                        <div className="mx-auto w-full max-w-3xl pb-24 px-4 sm:px-0">
+                            {/* Stepper Header */}
+                            <div className="flex justify-between items-center mb-4 overflow-x-auto hide-scrollbar">
+                                {['Info', 'Ventas', 'Base', 'Conteo', 'Gastos', 'Pagos', 'Resumen'].map((label, idx) => {
+                                    const stepNumber = idx + 1;
+                                    const isActive = form.currentStep === stepNumber;
+                                    const isPast = form.currentStep > stepNumber;
+                                    return (
+                                        <div key={label} className="flex flex-col items-center flex-1 min-w-[50px] sm:min-w-[70px]">
+                                            <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm mb-1 transition-colors", 
+                                                isActive ? "bg-purple-600 text-white shadow-md shadow-purple-500/30" : 
+                                                isPast ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-gray-400"
+                                            )}>
+                                                {stepNumber}
+                                            </div>
+                                            <span className={cn("text-[10px] sm:text-xs text-center", isActive ? "font-bold text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400")}>
+                                                {label}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
 
-                                {/* LEFT COLUMN */}
-                                <div className="space-y-6">
-                                    {/* Info General Card */}
-                                    <Card className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800">
-                                        <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 flex items-center gap-2">
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                form.handleSendToArqueo(); // ensure synced
+                                form.handleSubmit(e);
+                            }} className="space-y-4">
+                                
+                                {form.currentStep === 1 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
                                             <span className="w-1.5 h-6 bg-purple-500 rounded-full"></span>
                                             Información General
                                         </h3>
-
-                                        <div className="space-y-3 sm:space-y-5">
+                                        <div className="space-y-5">
                                             <FormGroup label="Fecha del Arqueo" required>
-                                                <DatePicker
-                                                    value={form.formData.fecha}
-                                                    onChange={() => { }} // ReadOnly visually
-                                                    className="w-full h-14"
-                                                    required
-                                                />
+                                                <DatePicker value={form.formData.fecha} onChange={() => {}} className="w-full h-10" required />
                                             </FormGroup>
-
                                             <FormGroup label="Cajero Responsable" required>
-                                                <input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange}
-                                                    placeholder="Nombre..."
-                                                    className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                                    required />
-                                            </FormGroup>
-
-                                            <FormGroup label="Total Visitas">
-                                                <input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange}
-                                                    className="w-full h-14 px-4 text-lg font-medium rounded-xl border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                                    placeholder="0" />
+                                                <Input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange} placeholder="Nombre..." className="text-sm h-10" required />
                                             </FormGroup>
                                         </div>
                                     </Card>
+                                )}
 
-                                    {/* Ventas y Esperado Card */}
-                                    <Card className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800">
-                                        <div className="flex justify-between items-end mb-4 sm:mb-6">
-                                            <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                                <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
-                                                Ventas
-                                            </h3>
-                                            <div className="text-right">
-                                                <div className="text-xs2 text-gray-400 font-bold uppercase mb-1">Total Esperado</div>
-                                                <div className="text-xl font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg">
-                                                    {formatCurrencyValue(form.ventaTotalEsperada)}
+                                {form.currentStep === 2 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
+                                            Registro de Venta
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <CurrencyInput label="Venta POS" name="ventaPos" value={form.formData.ventaPos} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
+                                            <CurrencyInput label="Propinas Recaudadas" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            
+                                            <FormGroup label="¿Hubo Cover?" className="mt-4">
+                                                <div className="flex gap-4 mb-2">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" name="hasCovers" checked={form.hasCovers} onChange={() => form.setHasCovers(true)} className="w-4 h-4 text-purple-600 focus:ring-purple-500" />
+                                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sí</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" name="hasCovers" checked={!form.hasCovers} onChange={() => form.setHasCovers(false)} className="w-4 h-4 text-purple-600 focus:ring-purple-500" />
+                                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">No</span>
+                                                    </label>
                                                 </div>
+                                            </FormGroup>
+                                            
+                                            {form.hasCovers && (
+                                                <div className="animate-in fade-in slide-in-from-top-2">
+                                                    <CurrencyInput label="Ingreso Covers" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al total esperado" useMonoFont={useMonoFont} />
+                                                </div>
+                                            )}
+                                            
+                                            <FormGroup label="Total Visitas" className="pt-4 border-t border-gray-100 dark:border-slate-700 mt-4">
+                                                <Input type="number" name="visitas" value={form.formData.visitas || ''} onChange={form.handleSimpleChange} onWheel={(e) => e.currentTarget.blur()} className="text-sm h-10" placeholder="0" />
+                                            </FormGroup>
+                                        </div>
+                                    </Card>
+                                )}
+
+                                {form.currentStep === 3 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
+                                            Base de Caja
+                                        </h3>
+                                        <div className="space-y-6">
+                                            <FormGroup label="Base Inicial Declarada (Informativo)">
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                                                    <Input 
+                                                        type="text" 
+                                                        value={form.baseInicialDeclarada || ''} 
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                                                            form.setBaseInicialDeclarada(val);
+                                                        }}
+                                                        className="pl-7 text-sm h-10" 
+                                                        placeholder="Ej. 200000" 
+                                                    />
+                                                </div>
+                                            </FormGroup>
+                                            
+                                            <div className="pt-4 border-t border-gray-100 dark:border-slate-700">
+                                                <DenominationTable 
+                                                    title="Conteo Físico Base" 
+                                                    denominations={form.baseCaja} 
+                                                    total={form.totalBaseCaja} 
+                                                    onUpdate={(denom, value) => form.updateDenomination(form.setBaseCaja, denom, value)} 
+                                                    keyPrefix="base" 
+                                                />
+                                            </div>
+                                            
+                                            {form.baseInicialDeclarada > 0 && (
+                                                <div className={cn("p-4 rounded-xl text-center font-bold", 
+                                                    form.totalBaseCaja === form.baseInicialDeclarada ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
+                                                    Diferencia: {formatCurrencyValue(form.totalBaseCaja - form.baseInicialDeclarada)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Card>
+                                )}
+
+                                {form.currentStep === 4 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                                            Conteo Efectivo (Ventas)
+                                        </h3>
+                                        <DenominationTable 
+                                            title="Billetes y Monedas" 
+                                            denominations={form.cuadreVenta} 
+                                            total={form.totalCuadreVenta} 
+                                            onUpdate={(denom, value) => form.updateDenomination(form.setCuadreVenta, denom, value)} 
+                                            keyPrefix="venta" 
+                                        />
+                                    </Card>
+                                )}
+
+                                {form.currentStep === 5 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                                            Gastos de Caja
+                                        </h3>
+                                        <div className="space-y-6">
+                                            <GastoList 
+                                                title="Facturas Personal" 
+                                                gastos={form.gastosPersonal} 
+                                                total={form.totalGastosPersonal} 
+                                                onAdd={form.handleAddGastoPersonal} 
+                                                onRemove={form.handleRemoveGastoPersonal} 
+                                            />
+                                            <GastoList 
+                                                title="Facturas Proveedores" 
+                                                gastos={form.gastosProveedores} 
+                                                total={form.totalGastosProveedores} 
+                                                onAdd={form.handleAddGastoProveedor} 
+                                                onRemove={form.handleRemoveGastoProveedor} 
+                                            />
+                                            <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center text-lg">
+                                                <span className="font-bold text-gray-700 dark:text-gray-300">Total Gastos:</span>
+                                                <span className="font-black text-indigo-600 dark:text-indigo-400">{formatCurrencyValue(form.totalGastosPersonal + form.totalGastosProveedores)}</span>
                                             </div>
                                         </div>
-
-                                        <div className="space-y-3 sm:space-y-4">
-                                            <CurrencyInput label="Covers (Ingreso)" name="ingresoCovers" value={form.formData.ingresoCovers} onChange={form.handleCurrencyChange} sublabel="No suma al total esperado" useMonoFont={useMonoFont} />
-                                            <CurrencyInput label="Venta POS" name="ventaPos" value={form.formData.ventaPos} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
-                                            <CurrencyInput label="Propina Recaudada" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                        </div>
                                     </Card>
-                                </div>
+                                )}
 
-                                {/* RIGHT COLUMN */}
-                                <div className="space-y-4 sm:space-y-6">
-                                    {/* Calculadora Button / Wrapper */}
-                                    <div className="rounded-2xl overflow-hidden shadow-sm">
-                                        <CashCalculator
-                                            isExpanded={form.isCalculatorExpanded}
-                                            onToggleExpanded={() => form.setIsCalculatorExpanded(!form.isCalculatorExpanded)}
-                                            baseCaja={form.baseCaja}
-                                            cuadreVenta={form.cuadreVenta}
-                                            consumoPersonal={form.consumoPersonal}
-                                            facturas={form.facturas}
-                                            totalBaseCaja={form.totalBaseCaja}
-                                            totalCuadreVenta={form.totalCuadreVenta}
-                                            totalFinalCuadre={form.totalFinalCuadre}
-                                            onUpdateDenomination={form.updateDenomination}
-                                            onSetBaseCaja={form.setBaseCaja}
-                                            onSetCuadreVenta={form.setCuadreVenta}
-                                            onSetConsumoPersonal={form.setConsumoPersonal}
-                                            onSetFacturas={form.setFacturas}
-                                            onSendToArqueo={form.handleSendToArqueo}
-                                        />
-                                    </div>
-
-                                    {/* Medios de Pago Card */}
-                                    <Card className="p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
-                                        <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
-                                            Recaudo y Medios
+                                {form.currentStep === 6 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-cyan-500 rounded-full"></span>
+                                            Medios Digitales
                                         </h3>
-
-                                        <div className="space-y-6">
-                                            {/* Primary */}
-                                            <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                        <div className="space-y-4">
+                                            <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            
+                                            <div className="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700 space-y-4">
                                                 <CurrencyInput
-                                                    label="Efectivo en Caja"
-                                                    name="efectivo"
-                                                    value={form.formData.efectivo}
+                                                    label="Código QR"
+                                                    name="transfBancolombia"
+                                                    value={form.formData.transfBancolombia}
                                                     onChange={form.handleCurrencyChange}
+                                                    onDetailClick={() => form.openDetailModal('transfBancolombia', 'Código QR')}
                                                     readOnly={true}
-                                                    onDetailClick={() => form.setIsCalculatorExpanded(true)}
-                                                    sublabel="Sincronizado desde Calculadora"
                                                     useMonoFont={useMonoFont}
                                                 />
-                                            </div>
-
-                                            {/* Datafonos */}
-                                            <div className="space-y-4">
-                                                <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                                <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                            </div>
-
-                                            {/* Digital */}
-                                            <div className="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700 space-y-4">
+                                                <CurrencyInput
+                                                    label="Nequi"
+                                                    name="nequi"
+                                                    value={form.formData.nequi}
+                                                    onChange={form.handleCurrencyChange}
+                                                    onDetailClick={() => form.openDetailModal('nequi', 'Nequi')}
+                                                    readOnly={true}
+                                                    useMonoFont={useMonoFont}
+                                                />
                                                 <CurrencyInput label="Rappi" name="rappi" value={form.formData.rappi} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
-                                                    <CurrencyInput
-                                                        label="Bancolombia"
-                                                        name="transfBancolombia"
-                                                        value={form.formData.transfBancolombia}
-                                                        onChange={form.handleCurrencyChange}
-                                                        onDetailClick={() => form.openDetailModal('transfBancolombia', 'Transf. Bancolombia')}
-                                                        readOnly={true}
-                                                        useMonoFont={useMonoFont}
-                                                    />
-                                                    <CurrencyInput
-                                                        label="Nequi"
-                                                        name="nequi"
-                                                        value={form.formData.nequi}
-                                                        onChange={form.handleCurrencyChange}
-                                                        onDetailClick={() => form.openDetailModal('nequi', 'Nequi')}
-                                                        readOnly={true}
-                                                        useMonoFont={useMonoFont}
-                                                    />
-                                                </div>
                                             </div>
-                                        </div>
-
-                                        <div className="mt-8 pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                            <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Total Recaudado</span>
-                                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrencyValue(form.totalRecaudado)}</span>
                                         </div>
                                     </Card>
-                                </div>
+                                )}
 
-                                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 z-50 flex justify-center shadow-2xl lg:static lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:border-0 lg:shadow-none lg:p-0 lg:mt-8 col-span-1 lg:col-span-2">
-                                    <div className="max-w-xl lg:max-w-none w-full">
+                                {form.currentStep === 7 && (
+                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">
+                                            Resumen del Arqueo
+                                        </h3>
+                                        
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center">
+                                                <span className="block text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Total Esperado</span>
+                                                <span className="block text-base font-bold text-blue-700 dark:text-blue-300">{formatCurrencyValue(form.ventaTotalEsperada)}</span>
+                                            </div>
+                                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl text-center">
+                                                <span className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Total Recaudado</span>
+                                                <span className="block text-base font-bold text-emerald-700 dark:text-emerald-300">{formatCurrencyValue(form.totalRecaudado)}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className={cn("p-3 rounded-xl text-center font-bold text-sm mb-6", 
+                                            form.descuadre === 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                                            Descuadre Final: {formatCurrencyValue(form.descuadre)}
+                                        </div>
+                                        
                                         <Button
                                             type="submit"
-                                            className="w-full h-14 bg-gray-900 dark:bg-blue-600 text-white text-lg font-bold rounded-2xl shadow-xl hover:shadow-2xl border-0 flex justify-center items-center gap-3"
+                                            variant="primary"
+                                            size="md"
+                                            className="w-full flex justify-center items-center gap-2"
                                         >
                                             <span>Finalizar Arqueo</span>
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                         </Button>
-                                    </div>
+                                    </Card>
+                                )}
+
+                                {/* Nav Buttons */}
+                                <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+                                    <Button 
+                                        variant="secondary" 
+                                        type="button" 
+                                        onClick={() => form.setCurrentStep(s => Math.max(1, s - 1))}
+                                        disabled={form.currentStep === 1}
+                                        className="w-32"
+                                    >
+                                        Atrás
+                                    </Button>
+                                    {form.currentStep < 7 ? (
+                                        <Button 
+                                            variant="primary" 
+                                            type="button" 
+                                            onClick={() => {
+                                                if (form.currentStep === 3 && form.totalBaseCaja !== form.baseInicialDeclarada) {
+                                                    setAlertState({
+                                                        isOpen: true,
+                                                        message: "El conteo físico no concuerda con la Base Inicial Declarada. Ajusta el conteo o el valor inicial para continuar."
+                                                    });
+                                                    return;
+                                                }
+                                                if (form.currentStep === 4 || form.currentStep === 5) {
+                                                    form.handleSendToArqueo();
+                                                }
+                                                form.setCurrentStep(s => Math.min(7, s + 1));
+                                            }}
+                                            className="w-32"
+                                        >
+                                            Siguiente
+                                        </Button>
+                                    ) : (
+                                        <div className="w-32" />
+                                    )}
                                 </div>
-                                {/* Spacer for sticky button on mobile only */}
-                                <div className="h-24 lg:h-0"></div>
                             </form>
                         </div>
+                        )
                     )}
                 </div>
             </div>
+            
+            <AlertModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState({isOpen: false, message: ''})}
+                title="Validación requerida"
+                message={alertState.message}
+                type="warning"
+            />
         </div >
+    );
+};
+
+const GastoList = ({ title, gastos, total, onAdd, onRemove }: { title: string, gastos: any[], total: number, onAdd: (desc: string, val: number) => void, onRemove: (id: string) => void }) => {
+    const [desc, setDesc] = useState('');
+    const [val, setVal] = useState('');
+    return (
+        <div className="space-y-3">
+            <div className="flex justify-between items-center px-2">
+                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">{title}</h4>
+                <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatCurrencyValue(total)}</span>
+            </div>
+            <div className="bg-gray-50 dark:bg-slate-900/30 rounded-xl p-3 space-y-3 border border-gray-100 dark:border-slate-700">
+                {gastos.map(g => (
+                    <div key={g.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm">
+                        <span className="text-sm font-medium flex-1 truncate">{g.descripcion}</span>
+                        <span className="text-sm font-bold w-24 text-right mx-2">{formatCurrencyValue(g.valor)}</span>
+                        <Button variant="icon-danger" size="icon-sm" type="button" onClick={() => onRemove(g.id)}>
+                            <TrashIcon className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+                
+                <div className="flex gap-2 items-center pt-2">
+                    <div className="flex-1 min-w-0">
+                        <Input type="text" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Descripción" className="text-sm h-9" />
+                    </div>
+                    <div className="w-28 shrink-0">
+                        <Input type="text" value={val} onChange={e => setVal(e.target.value.replace(/\D/g, ''))} placeholder="Valor" className="text-sm text-right h-9" />
+                    </div>
+                    <Button variant="primary" size="sm" type="button" disabled={!desc || !val} onClick={() => { onAdd(desc, parseInt(val) || 0); setDesc(''); setVal(''); }}>
+                        Añadir
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 };
 
