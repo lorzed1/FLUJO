@@ -20,14 +20,17 @@ interface KlaveExportWizardProps {
 const STORAGE_KEY = 'klave_export_config';
 
 const DEFAULT_KLAVE_MAPPINGS = [
-    { sourceField: 'ventaSC', label: 'VENTA BRUTA (Base + INC)', accountCode: '41402001', thirdPartyId: '222222222222', costCenter: 'Principal', nature: 'Credit' },
-    { sourceField: 'propina', label: 'PROPINA', accountCode: '281501', thirdPartyId: '12345678', costCenter: 'Principal', nature: 'Credit' },
-    { sourceField: 'ingresoCovers', label: 'COVERS', accountCode: '281502', thirdPartyId: '55555', costCenter: 'Principal', nature: 'Credit' },
-    { sourceField: 'efectivo', label: 'EFECTIVO', accountCode: '11050501', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'datafonoDavid', label: 'DATAFONO 1', accountCode: '13050102', thirdPartyId: '860032909', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'datafonoJulian', label: 'DATAFONO 2', accountCode: '13050102', thirdPartyId: '86003290', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'transfBancolombia', label: 'BANCOLOMBIA', accountCode: '11100103', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'faltante', label: 'DESCUADRE (Faltante)', accountCode: '53059502', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' }
+    { sourceField: 'ventaSC', label: 'VENTA BRUTA POS', accountCode: '414005', thirdPartyId: '222222222222', costCenter: '01', nature: 'Credit' },
+    { sourceField: 'propina', label: 'PROPINA', accountCode: '28150501', thirdPartyId: '12345678', costCenter: '01', nature: 'Credit' },
+    { sourceField: 'ingresoCovers', label: 'COVERS', accountCode: '28150502', thirdPartyId: '55555', costCenter: '01', nature: 'Credit' },
+    { sourceField: 'efectivo', label: 'EFECTIVO', accountCode: '110502', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'datafonoDavid', label: 'DATAFONO 1', accountCode: '13050504', thirdPartyId: '86003290', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'datafonoJulian', label: 'DATAFONO 2', accountCode: '13050504', thirdPartyId: '86003290', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'transfBancolombia', label: 'BANCOLOMBIA', accountCode: '111006', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'nequi', label: 'NEQUI', accountCode: '111003', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'rappi', label: 'RAPPI', accountCode: '13050502', thirdPartyId: '900843898', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'faltante', label: 'DESCUADRE (Faltante)', accountCode: '5395', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'sobrante', label: 'DESCUADRE (Sobrante)', accountCode: '42959502', thirdPartyId: '1087993520', costCenter: '01', nature: 'Credit' }
 ];
 
 export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, onClose, selectedArqueos = [] }) => {
@@ -37,8 +40,8 @@ export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, on
     const [showConfigModal, setShowConfigModal] = useState(false);
 
     // Step 2 State
-    const [consecutive, setConsecutive] = useState<number>(0);
-    const [docType, setDocType] = useState('FV');
+    const [consecutive, setConsecutive] = useState<number>(1);
+    const [docType, setDocType] = useState('AC');
 
     // Helper for safe check
     const hasValidConfig = config && Array.isArray(config.mappings) && config.mappings.length > 0;
@@ -105,7 +108,7 @@ export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, on
                 const parsed = JSON.parse(saved);
                 if (!parsed.mappings) parsed.mappings = [];
                 setConfig(parsed);
-                setDocType(parsed.defaultDocumentType || 'FV');
+                setDocType(parsed.defaultDocumentType || 'AC');
             } catch (e) {
                 setConfig(null);
             }
@@ -113,9 +116,9 @@ export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, on
             // Use defaults if nothing in localStorage
             setConfig({
                 mappings: DEFAULT_KLAVE_MAPPINGS as any[],
-                defaultDocumentType: 'FV'
+                defaultDocumentType: 'AC'
             });
-            setDocType('FV');
+            setDocType('AC');
         }
     };
 
@@ -218,12 +221,13 @@ export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, on
     const handleDownloadCSV = () => {
         if (!previewEntries.length) return;
 
-        const header = "Tipo de documento;Consecutivo;Fecha de elaboración;Fecha de vencimiento;Código de cuenta;Id contacto;Centro de costos;Débito;Crédito;Base;Descripción;Descripción movimiento";
+        // Formato Canónico Klave Enterprise:
+        // F. Emision;F. Vencimiento;Tipo documento;No consecutivo;Id tercero;Cod cuenta;Centro costo;Debito;Credito;Descripcion linea;Descripcion documento
+        const header = "F. Emision;F. Vencimiento;Tipo documento;No consecutivo;Id tercero;Cod cuenta;Centro costo;Debito;Credito;Descripcion linea;Descripcion documento";
 
         const rows = previewEntries.map(e => {
-            const debitStr = e.debito > 0 ? e.debito.toString().replace('.', ',') : '';
-            const creditStr = e.credito > 0 ? e.credito.toString().replace('.', ',') : '';
-            const baseStr = e.base > 0 ? e.base.toString().replace('.', ',') : '';
+            const debitStr = e.debito > 0 ? e.debito.toString().replace('.', ',') : '0';
+            const creditStr = e.credito > 0 ? e.credito.toString().replace('.', ',') : '0';
 
             const cleanId = (e.idTercero || '').toString().replace(/[^\d]/g, '');
 
@@ -252,18 +256,17 @@ export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, on
             const fDue = formatDate(e.fechaVencimiento);
 
             return [
-                e.tipoDocumento,
-                e.consecutivo,
-                fDate,
-                fDue,
-                e.codigoCuenta,
-                cleanId,
-                e.centroCosto,
-                debitStr,
-                creditStr,
-                baseStr,
-                e.descripcion,
-                e.descripcionMovimiento
+                fDate,                             // F. Emision
+                fDue,                              // F. Vencimiento
+                e.tipoDocumento || 'AC',           // Tipo documento
+                e.consecutivo,                     // No consecutivo (grupo_asiento)
+                cleanId,                           // Id tercero
+                e.codigoCuenta,                    // Cod cuenta
+                e.centroCosto || '01',             // Centro costo
+                debitStr,                          // Debito
+                creditStr,                         // Credito
+                e.descripcionMovimiento || '',     // Descripcion linea
+                e.descripcion || ''                // Descripcion documento
             ].join(';');
         });
 
@@ -271,11 +274,11 @@ export const KlaveExportWizard: React.FC<KlaveExportWizardProps> = ({ isOpen, on
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `klave_${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `klave_arqueos_${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
 
         onClose();
-        setAlertModal({ isOpen: true, type: 'success', title: 'Exportación Exitosa', message: 'El archivo CSV de Klave se ha generado correctamente.' });
+        setAlertModal({ isOpen: true, type: 'success', title: 'Exportación Exitosa', message: 'El archivo CSV para Klave se ha generado correctamente con el formato canónico.' });
     };
 
     const headerTitle = (

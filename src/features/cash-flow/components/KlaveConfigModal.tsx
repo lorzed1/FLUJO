@@ -21,14 +21,17 @@ interface KlaveConfigModalProps {
 const DEFAULT_STORAGE_KEY = 'klave_export_config';
 
 const DEFAULT_KLAVE_MAPPINGS: AccountMapping[] = [
-    { sourceField: 'ventaSC', label: 'VENTA BRUTA (Base + INC)', accountCode: '41402001', thirdPartyId: '222222222222', costCenter: 'Principal', nature: 'Credit' },
-    { sourceField: 'propina', label: 'PROPINA', accountCode: '281501', thirdPartyId: '12345678', costCenter: 'Principal', nature: 'Credit' },
-    { sourceField: 'ingresoCovers', label: 'COVERS', accountCode: '281502', thirdPartyId: '55555', costCenter: 'Principal', nature: 'Credit' },
-    { sourceField: 'efectivo', label: 'EFECTIVO', accountCode: '11050501', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'datafonoDavid', label: 'DATAFONO 1', accountCode: '13050102', thirdPartyId: '860032909', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'datafonoJulian', label: 'DATAFONO 2', accountCode: '13050102', thirdPartyId: '86003290', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'transfBancolombia', label: 'BANCOLOMBIA', accountCode: '11100103', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' },
-    { sourceField: 'faltante', label: 'DESCUADRE (Faltante)', accountCode: '53059502', thirdPartyId: '1087993520', costCenter: 'Principal', nature: 'Debit' }
+    { sourceField: 'ventaSC', label: 'VENTA BRUTA POS', accountCode: '414005', thirdPartyId: '222222222222', costCenter: '01', nature: 'Credit' },
+    { sourceField: 'propina', label: 'PROPINA', accountCode: '28150501', thirdPartyId: '12345678', costCenter: '01', nature: 'Credit' },
+    { sourceField: 'ingresoCovers', label: 'COVERS', accountCode: '28150502', thirdPartyId: '55555', costCenter: '01', nature: 'Credit' },
+    { sourceField: 'efectivo', label: 'EFECTIVO', accountCode: '110502', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'datafonoDavid', label: 'DATAFONO 1', accountCode: '13050504', thirdPartyId: '86003290', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'datafonoJulian', label: 'DATAFONO 2', accountCode: '13050504', thirdPartyId: '86003290', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'transfBancolombia', label: 'BANCOLOMBIA', accountCode: '111006', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'nequi', label: 'NEQUI', accountCode: '111003', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'rappi', label: 'RAPPI', accountCode: '13050502', thirdPartyId: '900843898', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'faltante', label: 'DESCUADRE (Faltante)', accountCode: '5395', thirdPartyId: '1087993520', costCenter: '01', nature: 'Debit' },
+    { sourceField: 'sobrante', label: 'DESCUADRE (Sobrante)', accountCode: '42959502', thirdPartyId: '1087993520', costCenter: '01', nature: 'Credit' }
 ];
 
 export const KlaveConfigModal: React.FC<KlaveConfigModalProps> = ({ 
@@ -43,7 +46,7 @@ export const KlaveConfigModal: React.FC<KlaveConfigModalProps> = ({
 }) => {
     const { setAlertModal } = useUI();
     const [mappings, setMappings] = useState<AccountMapping[]>([]);
-    const [defaultDocType, setDefaultDocType] = useState('FV');
+    const [defaultDocType, setDefaultDocType] = useState('AC');
 
     // Load from Local Storage on mount
     useEffect(() => {
@@ -53,17 +56,29 @@ export const KlaveConfigModal: React.FC<KlaveConfigModalProps> = ({
                 try {
                     const parsed = JSON.parse(savedConfig);
                     setMappings(parsed.mappings || []);
-                    setDefaultDocType(parsed.defaultDocumentType || 'FV');
+                    setDefaultDocType(parsed.defaultDocumentType || 'AC');
                 } catch (e) {
                     console.error("Error parsing klave config", e);
                 }
             } else {
                 // Initialize with defaults
                 setMappings(initialMappings);
-                setDefaultDocType('FV');
+                setDefaultDocType('AC');
             }
         }
     }, [isOpen, storageKey, initialMappings]);
+
+    const handleResetToDefaults = () => {
+        setMappings(DEFAULT_KLAVE_MAPPINGS);
+        setDefaultDocType('AC');
+        localStorage.removeItem(storageKey);
+        setAlertModal({
+            isOpen: true,
+            type: 'info',
+            title: 'Parámetros Restablecidos',
+            message: 'Se han cargado las cuentas, terceros y parámetros oficiales de Klave.'
+        });
+    };
 
     const handleSave = () => {
         const config = {
@@ -89,7 +104,7 @@ export const KlaveConfigModal: React.FC<KlaveConfigModalProps> = ({
                 label: availableFields[0].label,
                 accountCode: '',
                 thirdPartyId: '',
-                costCenter: 'Principal',
+                costCenter: '01',
                 nature: 'Debit'
             }
         ]);
@@ -278,13 +293,18 @@ export const KlaveConfigModal: React.FC<KlaveConfigModalProps> = ({
                     </Button>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-slate-700 pb-2">
-                    <Button variant="secondary" onClick={onClose}>
-                        Cancelar
+                <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t border-gray-100 dark:border-slate-700 pb-2">
+                    <Button variant="secondary" onClick={handleResetToDefaults} className="text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 border-amber-300 w-full sm:w-auto">
+                        Restablecer Parámetros Oficiales Klave
                     </Button>
-                    <Button onClick={handleSave} className="bg-indigo-600 text-white hover:bg-indigo-700">
-                        Guardar Configuración
-                    </Button>
+                    <div className="flex gap-3 w-full sm:w-auto justify-end">
+                        <Button variant="secondary" onClick={onClose}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleSave} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                            Guardar Configuración
+                        </Button>
+                    </div>
                 </div>
             </div>
         </Modal>
