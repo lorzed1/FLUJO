@@ -8,9 +8,11 @@ import {
     MoonIcon,
     SunIcon,
     CalendarDaysIcon,
-    QuestionMarkCircleIcon,
     DocumentTextIcon,
-    TrashIcon
+    Cog6ToothIcon,
+    ArrowPathIcon,
+    CheckIcon,
+    XMarkIcon,
 } from '../../components/ui/Icons';
 import { InfoModal, DataDefinition } from '../../components/ui/InfoModal';
 import AlertModal from '../../components/ui/AlertModal';
@@ -23,11 +25,13 @@ import { AccountingExportWizard } from './components/AccountingExportWizard';
 import { KlaveExportWizard } from './components/KlaveExportWizard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Input } from '../../components/ui/Input';
+import { Input, formatCOP } from '../../components/ui/Input';
 import ExcelImportTab from './ExcelImportTab';
 import ArqueosTable, { type ArqueosTableHandle } from './ArqueosTable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { DenominationTable } from './components/DenominationTable';
+import { ArqueoStepper, ARQUEO_STEPS } from './components/ArqueoStepper';
+import { GastoList } from './components/GastoList';
 import { DatabaseService } from '../../services/database';
 import { tipsService } from '../../services/tipsService';
 import { jsPDF } from 'jspdf';
@@ -37,10 +41,12 @@ import { FormGroup } from '../../components/ui/FormGroup';
 // Extracted components & hook
 import { CurrencyInput } from './components/CurrencyInput';
 import { PaymentDetailModal } from './components/PaymentDetailModal';
-import { ArqueoConfirmationModal } from './components/ArqueoConfirmationModal';
+import { ArqueoConfirmationModal, type RestofyConfirmationStatus } from './components/ArqueoConfirmationModal';
+import { RestofyConfigModal } from './components/RestofyConfigModal';
 import { useArqueoForm, formatCurrencyValue } from './hooks/useArqueoForm';
 import { ArqueoDateSelector } from './components/ArqueoDateSelector';
 import { cn } from '../../lib/utils';
+import { getRestofyConfig, restofyService } from '../../services/restofyService';
 
 // ============================================
 // Types (re-exported for external consumers)
@@ -56,8 +62,140 @@ const ArqueoPreview: React.FC = () => {
     } = useArqueos();
 
     const { userRole } = useAuth();
+    const isBlindMode = userRole === 'cajero';
     const useMonoFont = userRole === 'admin';
     const form = useArqueoForm();
+
+    const [showRestofyConfig, setShowRestofyConfig] = useState(false);
+    const [isImportingRestofy, setIsImportingRestofy] = useState(false);
+    const [flujoSavedForCurrentModal, setFlujoSavedForCurrentModal] = useState(false);
+    const [restofyStatus, setRestofyStatus] = useState<RestofyConfirmationStatus>({
+        enabled: false,
+        loading: false,
+        sessionId: null,
+        baseReturnPesos: 0,
+        blockers: [],
+        error: null,
+        syncResult: null,
+    });
+
+    const loadRestofyPreCheck = async () => {
+        const cfg = getRestofyConfig();
+        if (!cfg.enabled) {
+            setRestofyStatus({
+                enabled: false,
+                loading: false,
+                sessionId: null,
+                baseReturnPesos: form.totalBaseCaja,
+                blockers: [],
+                error: null,
+                syncResult: null,
+            });
+            return;
+        }
+
+        if (!cfg.cashRegisterId) {
+            setRestofyStatus({
+                enabled: true,
+                loading: false,
+                sessionId: null,
+                baseReturnPesos: form.totalBaseCaja,
+                blockers: [],
+                error: 'Selecciona una caja registradora en Configuración de Restofy.',
+                syncResult: null,
+            });
+            return;
+        }
+
+        setRestofyStatus((prev) => ({
+            ...prev,
+            enabled: true,
+            loading: true,
+            baseReturnPesos: form.totalBaseCaja,
+            error: null,
+            blockers: [],
+        }));
+
+        try {
+            const registers = await restofyService.listCashRegisters();
+            const targetReg = registers.find((r) => r.cashRegisterId === cfg.cashRegisterId);
+            if (!targetReg) {
+                throw new Error('La caja configurada no existe en Restofy.');
+            }
+            if (!targetReg.activeSessionId) {
+                setRestofyStatus({
+                    enabled: true,
+                    loading: false,
+                    sessionId: null,
+                    registerName: targetReg.name,
+                    baseReturnPesos: form.totalBaseCaja,
+                    blockers: [],
+                    error: null,
+                    syncResult: null,
+                });
+                return;
+            }
+
+            const summary = await restofyService.getCloseSummary(targetReg.activeSessionId);
+            const blockers = (summary.blockers || []).map((b) =>
+                typeof b === 'string' ? b : b.message || b.code || 'Bloqueador activo en Restofy'
+            );
+
+            setRestofyStatus({
+                enabled: true,
+                loading: false,
+                sessionId: targetReg.activeSessionId,
+                registerName: targetReg.name,
+                baseReturnPesos: form.totalBaseCaja,
+                blockers,
+                error: null,
+                syncResult: null,
+            });
+        } catch (err: unknown) {
+            setRestofyStatus({
+                enabled: true,
+                loading: false,
+                sessionId: null,
+                baseReturnPesos: form.totalBaseCaja,
+                blockers: [],
+                error: err instanceof Error ? err.message : 'Error consultando Restofy Pro',
+                syncResult: null,
+            });
+        }
+    };
+
+    useEffect(() => {
+        if (form.showConfirmation) {
+            setFlujoSavedForCurrentModal(false);
+            loadRestofyPreCheck();
+        }
+    }, [form.showConfirmation]);
+
+    useEffect(() => {
+        if (form.currentStep !== 2 || form.formData.visitas > 0) return;
+        const cfg = getRestofyConfig();
+        if (!cfg.enabled || !cfg.cashRegisterId) return;
+
+        let cancelled = false;
+        const loadGuests = async () => {
+            try {
+                const registers = await restofyService.listCashRegisters();
+                const target = registers.find((r) => r.cashRegisterId === cfg.cashRegisterId);
+                if (!target?.activeSessionId || cancelled) return;
+                const guests = await restofyService.fetchSessionGuestsCount(target.activeSessionId);
+                if (!cancelled && guests > 0) {
+                    form.setFormData((prev) => (prev.visitas === 0 ? { ...prev, visitas: guests } : prev));
+                }
+            } catch (err) {
+                console.warn('No se pudo autocompletar visitas desde Restofy:', err);
+            }
+        };
+        loadGuests();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [form.currentStep]);
     const tableRef = useRef<ArqueosTableHandle>(null);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [alertState, setAlertState] = useState<{isOpen: boolean, message: string}>({isOpen: false, message: ''});
@@ -105,9 +243,24 @@ const ArqueoPreview: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // --- Date Selection Logic ---
+    // --- Date Selection & Stepper Validation Logic ---
     const [isDateConfirmed, setIsDateConfirmed] = useState(false);
     const [showDateModal, setShowDateModal] = useState(false);
+    const [maxStepReached, setMaxStepReached] = useState<number>(form.currentStep);
+    const [cajeroError, setCajeroError] = useState<string>('');
+
+    useEffect(() => {
+        setMaxStepReached((prev) => Math.max(prev, form.currentStep));
+    }, [form.currentStep]);
+
+    const hasDraftInProgress =
+        form.currentStep > 1 ||
+        form.formData.cajero.trim() !== '' ||
+        form.formData.ventaPos > 0 ||
+        form.totalBaseCaja > 0 ||
+        form.totalCuadreVenta > 0 ||
+        form.gastosPersonal.length > 0 ||
+        form.gastosProveedores.length > 0;
 
     useEffect(() => {
         if (location.pathname.includes('/history')) {
@@ -143,22 +296,24 @@ const ArqueoPreview: React.FC = () => {
         doc.text(`Fecha: ${summary.fecha}`, 20, 35);
         doc.text(`Cajero: ${summary.cajero}`, 20, 42);
 
+        const tableRows: Array<[string, string]> = [
+            ['Ingreso Covers', formatCurrencyValue(summary.ingresoCovers)],
+            ['Efectivo', formatCurrencyValue(summary.efectivo)],
+            ['Datáfono Bold', formatCurrencyValue(summary.datafonoDavid)],
+            ['Datáfono Credibanco', formatCurrencyValue(summary.datafonoJulian)],
+            ['Bancolombia', formatCurrencyValue(summary.transfBancolombia)],
+            ['Nequi', formatCurrencyValue(summary.nequi)],
+            ['Rappi', formatCurrencyValue(summary.rappi)],
+            ['-----------------------', '-----------------------'],
+            ...(!isBlindMode ? [['VENTA ESPERADA', formatCurrencyValue(ventaEsperada)] as [string, string]] : []),
+            ['TOTAL RECAUDADO', formatCurrencyValue(totalRecaudado)],
+            ...(!isBlindMode ? [['DESCUADRE FINAL', formatCurrencyValue(descuadre)] as [string, string]] : []),
+        ];
+
         autoTable(doc, {
             startY: 55,
             head: [['Concepto', 'Monto']],
-            body: [
-                ['Ingreso Covers', formatCurrencyValue(summary.ingresoCovers)],
-                ['Efectivo', formatCurrencyValue(summary.efectivo)],
-                ['Datáfono David', formatCurrencyValue(summary.datafonoDavid)],
-                ['Datáfono Julián', formatCurrencyValue(summary.datafonoJulian)],
-                ['Bancolombia', formatCurrencyValue(summary.transfBancolombia)],
-                ['Nequi', formatCurrencyValue(summary.nequi)],
-                ['Rappi', formatCurrencyValue(summary.rappi)],
-                ['-----------------------', '-----------------------'],
-                ['VENTA ESPERADA', formatCurrencyValue(ventaEsperada)],
-                ['TOTAL RECAUDADO', formatCurrencyValue(totalRecaudado)],
-                ['DESCUADRE FINAL', formatCurrencyValue(descuadre)],
-            ],
+            body: tableRows,
             theme: 'striped',
             headStyles: { fillColor: [79, 70, 229] }
         });
@@ -166,19 +321,153 @@ const ArqueoPreview: React.FC = () => {
         doc.save(`Arqueo_${summary.fecha}.pdf`);
     };
 
+    const runRestofySync = async (): Promise<boolean> => {
+        const cfg = getRestofyConfig();
+        if (!cfg.enabled) return true;
+
+        if (!restofyStatus.sessionId) {
+            setRestofyStatus((prev) => ({
+                ...prev,
+                error: 'No hay una sesión de caja abierta en Restofy para completar el cierre.',
+            }));
+            return false;
+        }
+
+        const result = await restofyService.executeCountAndClose({
+            cashRegisterSessionId: restofyStatus.sessionId,
+            cuadreDetail: form.cuadreVenta,
+            cashExpensesPesos: form.totalGastosPersonal + form.totalGastosProveedores,
+            paymentAmounts: {
+                datafonoDavid: form.formData.datafonoDavid,
+                datafonoJulian: form.formData.datafonoJulian,
+                transfBancolombia: form.formData.transfBancolombia,
+                nequi: form.formData.nequi,
+                rappi: form.formData.rappi,
+            },
+            paymentMapping: cfg.paymentMethodMapping,
+            baseReturnPesos: form.totalBaseCaja,
+            notes: `Cierre FLUJO ${form.formData.fecha}${form.formData.cajero ? ` - Cajero: ${form.formData.cajero}` : ''}`,
+        });
+
+        setRestofyStatus((prev) => ({ ...prev, syncResult: result }));
+        return result.success;
+    };
+
+    const handleImportSalesFromRestofy = async () => {
+        const cfg = getRestofyConfig();
+        if (!cfg.enabled || !cfg.cashRegisterId) {
+            setShowRestofyConfig(true);
+            return;
+        }
+        setIsImportingRestofy(true);
+        try {
+            const imported = await restofyService.fetchSessionSalesAndTips(cfg.cashRegisterId);
+            form.setFormData((prev) => ({
+                ...prev,
+                ventaPos: imported.ventaPos,
+                propina: imported.propina,
+                ...(imported.visitas > 0 ? { visitas: imported.visitas } : {}),
+            }));
+            if (imported.baseInicial > 0) {
+                form.setBaseInicialDeclarada(imported.baseInicial);
+            }
+            form.setAlertConfig({
+                isOpen: true,
+                title: 'Datos importados de Restofy',
+                message: `Sesión #${imported.cashRegisterSessionId} (${imported.registerName}): Venta POS ${formatCurrencyValue(imported.ventaPos)}, Propinas ${formatCurrencyValue(imported.propina)} y Comensales: ${imported.visitas}.`,
+                type: 'success',
+                confirmText: 'Entendido',
+                showCancel: false,
+            });
+        } catch (err: unknown) {
+            form.setAlertConfig({
+                isOpen: true,
+                title: 'Error importando de Restofy',
+                message: err instanceof Error ? err.message : 'No se pudieron obtener los datos de la sesión.',
+                type: 'error',
+                confirmText: 'Entendido',
+                showCancel: false,
+            });
+        } finally {
+            setIsImportingRestofy(false);
+        }
+    };
+
+    const handleRetryRestofyClose = async () => {
+        if (!restofyStatus.sessionId) return;
+        form.setIsSaving(true);
+        try {
+            await restofyService.confirmClose(
+                restofyStatus.sessionId,
+                `Cierre FLUJO ${form.formData.fecha}${form.formData.cajero ? ` - Cajero: ${form.formData.cajero}` : ''}`
+            );
+            setRestofyStatus((prev) => ({
+                ...prev,
+                syncResult: {
+                    success: true,
+                    cashRegisterSessionId: restofyStatus.sessionId!,
+                    declarationConfirmed: true,
+                    baseReturnSet: true,
+                    closed: true,
+                    message: 'Cierre completado en Restofy.',
+                },
+            }));
+            form.resetForm();
+            await DatabaseService.autoPurgeOldData();
+            form.setShowConfirmation(false);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'No se pudo completar el cierre en Restofy.';
+            setRestofyStatus((prev) => ({
+                ...prev,
+                syncResult: prev.syncResult
+                    ? { ...prev.syncResult, success: false, message: msg }
+                    : null,
+            }));
+        } finally {
+            form.setIsSaving(false);
+        }
+    };
+
     const handleConfirmSave = async () => {
         form.setIsSaving(true);
         try {
-            const dataToSave = {
-                ...form.formData,
-                baseDetail: form.baseCaja,
-                cuadreDetail: form.cuadreVenta
-            };
-            const result = await onSave(dataToSave, form.totalRecaudado);
+            let savedOk = flujoSavedForCurrentModal;
+            if (!savedOk) {
+                let ventaPosToSave = form.formData.ventaPos;
+                let propinaToSave = form.formData.propina;
+                let visitasToSave = form.formData.visitas;
 
-            if (result !== false) {
-                const arqueoId = typeof result === 'string' ? result : `legacy-${Date.now()}`;
-                try {
+                if (isBlindMode) {
+                    const cfg = getRestofyConfig();
+                    if (cfg.enabled && cfg.cashRegisterId) {
+                        try {
+                            const silentData = await restofyService.fetchSessionSalesAndTips(cfg.cashRegisterId);
+                            ventaPosToSave = silentData.ventaPos;
+                            propinaToSave = silentData.propina;
+                            if (!visitasToSave && silentData.visitas > 0) {
+                                visitasToSave = silentData.visitas;
+                            }
+                        } catch (err) {
+                            console.warn('No se pudieron obtener ventas silenciosas de Restofy en modo ciego:', err);
+                        }
+                    }
+                }
+
+                const dataToSave = {
+                    ...form.formData,
+                    ventaPos: ventaPosToSave,
+                    propina: propinaToSave,
+                    visitas: visitasToSave,
+                    baseDetail: form.baseCaja,
+                    cuadreDetail: form.cuadreVenta
+                };
+                const result = await onSave(dataToSave, form.totalRecaudado);
+                savedOk = result !== false;
+
+                if (savedOk) {
+                    setFlujoSavedForCurrentModal(true);
+                    const arqueoId = typeof result === 'string' ? result : `legacy-${Date.now()}`;
+                    try {
                     const transfersToSave: TransferRecord[] = [];
                     const timestamp = new Date().toISOString();
                     const date = form.formData.fecha;
@@ -253,10 +542,16 @@ const ArqueoPreview: React.FC = () => {
                 } catch (err) {
                     console.error('Error saving transfers:', err);
                 }
+                }
+            }
 
-                form.resetForm();
-                await DatabaseService.autoPurgeOldData();
-                form.setShowConfirmation(false);
+            if (savedOk) {
+                const restofyOk = await runRestofySync();
+                if (restofyOk) {
+                    form.resetForm();
+                    await DatabaseService.autoPurgeOldData();
+                    form.setShowConfirmation(false);
+                }
             }
         } catch (error) {
             console.error('Error in handleConfirmSave:', error);
@@ -300,9 +595,21 @@ const ArqueoPreview: React.FC = () => {
                     isOpen={form.showConfirmation}
                     confirmationData={form.confirmationData}
                     isSaving={form.isSaving}
+                    isBlindMode={isBlindMode}
+                    restofyStatus={restofyStatus}
                     onClose={() => form.setShowConfirmation(false)}
                     onConfirmSave={handleConfirmSave}
                     onExportPDF={handleExportPDF}
+                    onRetryRestofyClose={handleRetryRestofyClose}
+                    onOpenRestofyConfig={() => setShowRestofyConfig(true)}
+                />
+
+                <RestofyConfigModal
+                    isOpen={showRestofyConfig}
+                    onClose={() => setShowRestofyConfig(false)}
+                    onSaved={() => {
+                        if (form.showConfirmation) loadRestofyPreCheck();
+                    }}
                 />
 
                 <div className={activeTab === 'historial' ? 'px-6 pt-4 shrink-0 mb-4' : ''}>
@@ -318,10 +625,12 @@ const ArqueoPreview: React.FC = () => {
                                 <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm h-10">
                                     <Button
                                         variant="ghost" size="sm"
+                                        title="Guía rápida de arqueo"
+                                        aria-label="Guía rápida de arqueo"
                                         onClick={() => form.setAlertConfig({
                                             isOpen: true,
                                             title: 'Guía Rápida',
-                                            message: '1. Completa la Información General.\n2. Abre la Calculadora de Efectivo para registrar el conteo físico.\n3. Verifica el descuadre y finaliza el arqueo.',
+                                            message: '1. Completa la Información General.\n2. Registra la venta, base y conteo físico.\n3. Agrega gastos y medios digitales.\n4. Verifica el resumen y finaliza el arqueo.',
                                             type: 'info',
                                             confirmText: 'Entendido',
                                             showCancel: false
@@ -330,8 +639,21 @@ const ArqueoPreview: React.FC = () => {
                                     >
                                         <InformationCircleIcon className="h-5 w-5" />
                                     </Button>
+                                    {!isBlindMode && (
+                                        <Button
+                                            variant="ghost" size="sm"
+                                            onClick={() => setShowRestofyConfig(true)}
+                                            title="Configurar integración Restofy Pro"
+                                            aria-label="Configurar integración Restofy Pro"
+                                            className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-slate-700"
+                                        >
+                                            <Cog6ToothIcon className="h-5 w-5" />
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="ghost" size="sm"
+                                        title={form.isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                                        aria-label={form.isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                                         onClick={() => form.setIsDarkMode(!form.isDarkMode)}
                                         className="p-1 h-8 w-8 text-gray-500 hover:bg-gray-50 dark:text-yellow-400 dark:hover:bg-slate-700"
                                     >
@@ -410,10 +732,16 @@ const ArqueoPreview: React.FC = () => {
                                 <Card className="w-full max-w-5xl flex flex-col max-h-[85dvh] animate-in zoom-in-95 duration-200 shadow-2xl" noPadding>
                                     <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                                         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                            <ArrowUpTrayIcon className="h-6 w-6 text-indigo-600" /> Importar Arqueos
+                                            <ArrowUpTrayIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" /> Importar Arqueos
                                         </h3>
-                                        <Button variant="ghost" size="sm" onClick={() => form.setShowImportModal(false)} className="h-8 w-8 p-1 text-slate-400 rounded-full">
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-md"
+                                            onClick={() => form.setShowImportModal(false)}
+                                            className="text-slate-400 rounded-full"
+                                            aria-label="Cerrar modal de importación"
+                                        >
+                                            <XMarkIcon className="w-5 h-5" />
                                         </Button>
                                     </div>
                                     <div className="p-4 sm:p-6 overflow-y-auto">
@@ -435,17 +763,45 @@ const ArqueoPreview: React.FC = () => {
                             <div className="flex flex-col items-center justify-center p-8 mt-12 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700 min-h-[400px]">
                                 <EmptyState
                                     icon={<CalendarDaysIcon className="h-16 w-16 text-purple-500 opacity-80" />}
-                                    title="Ningún arqueo en curso"
-                                    description="Para comenzar a registrar el cierre de caja, inicia un nuevo arqueo."
+                                    title={hasDraftInProgress ? 'Arqueo en curso detectado' : 'Ningún arqueo en curso'}
+                                    description={
+                                        hasDraftInProgress
+                                            ? `Tienes un borrador guardado${form.formData.cajero ? ` de ${form.formData.cajero}` : ''} en el Paso ${form.currentStep} de ${ARQUEO_STEPS.length}.`
+                                            : 'Para comenzar a registrar el cierre de caja, inicia un nuevo arqueo.'
+                                    }
                                     action={
-                                        <Button 
-                                            variant="primary" 
-                                            size="lg" 
-                                            onClick={() => setShowDateModal(true)}
-                                            className="mt-4 shadow-lg shadow-purple-500/30 font-semibold tracking-wide"
-                                        >
-                                            Iniciar Nuevo Arqueo
-                                        </Button>
+                                        hasDraftInProgress ? (
+                                            <div className="flex flex-col sm:flex-row items-center gap-3 mt-4">
+                                                <Button
+                                                    variant="primary"
+                                                    size="lg"
+                                                    onClick={() => setIsDateConfirmed(true)}
+                                                    className="shadow-lg shadow-purple-500/30 font-semibold tracking-wide"
+                                                >
+                                                    Continuar Arqueo
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="lg"
+                                                    onClick={() => {
+                                                        form.resetForm();
+                                                        setMaxStepReached(1);
+                                                        setShowDateModal(true);
+                                                    }}
+                                                >
+                                                    Empezar Uno Nuevo
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                variant="primary"
+                                                size="lg"
+                                                onClick={() => setShowDateModal(true)}
+                                                className="mt-4 shadow-lg shadow-purple-500/30 font-semibold tracking-wide"
+                                            >
+                                                Iniciar Nuevo Arqueo
+                                            </Button>
+                                        )
                                     }
                                 />
                                 {showDateModal && (
@@ -462,31 +818,20 @@ const ArqueoPreview: React.FC = () => {
                             </div>
                         ) : (
                         <div className="mx-auto w-full max-w-3xl pb-24 px-4 sm:px-0">
-                            {/* Stepper Header */}
-                            <div className="flex justify-between items-center mb-4 overflow-x-auto hide-scrollbar">
-                                {['Info', 'Ventas', 'Base', 'Conteo', 'Gastos', 'Pagos', 'Resumen'].map((label, idx) => {
-                                    const stepNumber = idx + 1;
-                                    const isActive = form.currentStep === stepNumber;
-                                    const isPast = form.currentStep > stepNumber;
-                                    return (
-                                        <div key={label} className="flex flex-col items-center flex-1 min-w-[50px] sm:min-w-[70px]">
-                                            <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm mb-1 transition-colors", 
-                                                isActive ? "bg-purple-600 text-white shadow-md shadow-purple-500/30" : 
-                                                isPast ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-gray-400"
-                                            )}>
-                                                {stepNumber}
-                                            </div>
-                                            <span className={cn("text-[10px] sm:text-xs text-center", isActive ? "font-bold text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400")}>
-                                                {label}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            <ArqueoStepper
+                                currentStep={form.currentStep}
+                                maxStepReached={maxStepReached}
+                                onStepSelect={(step) => {
+                                    if (form.currentStep === 4 || form.currentStep === 5) {
+                                        form.handleSendToArqueo();
+                                    }
+                                    form.setCurrentStep(step);
+                                }}
+                            />
 
                             <form onSubmit={(e) => {
                                 e.preventDefault();
-                                form.handleSendToArqueo(); // ensure synced
+                                form.handleSendToArqueo();
                                 form.handleSubmit(e);
                             }} className="space-y-4">
                                 
@@ -498,10 +843,26 @@ const ArqueoPreview: React.FC = () => {
                                         </h3>
                                         <div className="space-y-5">
                                             <FormGroup label="Fecha del Arqueo" required>
-                                                <DatePicker value={form.formData.fecha} onChange={() => {}} className="w-full h-10" required />
+                                                <DatePicker
+                                                    value={form.formData.fecha}
+                                                    onChange={(val) => form.setFormData((prev) => ({ ...prev, fecha: val }))}
+                                                    className="w-full h-10"
+                                                    required
+                                                />
                                             </FormGroup>
-                                            <FormGroup label="Cajero Responsable" required>
-                                                <Input type="text" name="cajero" value={form.formData.cajero} onChange={form.handleSimpleChange} placeholder="Nombre..." className="text-sm h-10" required />
+                                            <FormGroup label="Cajero Responsable" required error={cajeroError}>
+                                                <Input
+                                                    type="text"
+                                                    name="cajero"
+                                                    value={form.formData.cajero}
+                                                    onChange={(e) => {
+                                                        if (cajeroError) setCajeroError('');
+                                                        form.handleSimpleChange(e);
+                                                    }}
+                                                    placeholder="Nombre del responsable del turno..."
+                                                    className="text-sm h-10"
+                                                    required
+                                                />
                                             </FormGroup>
                                         </div>
                                     </Card>
@@ -509,13 +870,31 @@ const ArqueoPreview: React.FC = () => {
 
                                 {form.currentStep === 2 && (
                                     <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
-                                            Registro de Venta
-                                        </h3>
+                                        <div className="flex items-center justify-between gap-2 mb-6">
+                                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span>
+                                                Registro de Venta
+                                            </h3>
+                                            {!isBlindMode && getRestofyConfig().enabled && (
+                                                <Button
+                                                    variant="secondary"
+                                                    size="xs"
+                                                    onClick={handleImportSalesFromRestofy}
+                                                    disabled={isImportingRestofy}
+                                                    className="gap-1.5"
+                                                >
+                                                    <ArrowPathIcon className={cn('h-3.5 w-3.5', isImportingRestofy && 'animate-spin')} />
+                                                    {isImportingRestofy ? 'Cargando...' : 'Cargar de Restofy'}
+                                                </Button>
+                                            )}
+                                        </div>
                                         <div className="space-y-4">
-                                            <CurrencyInput label="Venta POS" name="ventaPos" value={form.formData.ventaPos} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
-                                            <CurrencyInput label="Propinas Recaudadas" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            {!isBlindMode && (
+                                                <>
+                                                    <CurrencyInput label="Venta POS" name="ventaPos" value={form.formData.ventaPos} onChange={form.handleCurrencyChange} sublabel="Según reporte del sistema" useMonoFont={useMonoFont} />
+                                                    <CurrencyInput label="Propinas Recaudadas" name="propina" value={form.formData.propina} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                                </>
+                                            )}
                                             
                                             <FormGroup label="¿Hubo Cover?" className="mt-4">
                                                 <div className="flex gap-4 mb-2">
@@ -545,23 +924,24 @@ const ArqueoPreview: React.FC = () => {
 
                                 {form.currentStep === 3 && (
                                     <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span>
                                             Base de Caja
                                         </h3>
                                         <div className="space-y-6">
                                             <FormGroup label="Base Inicial Declarada (Informativo)">
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm pointer-events-none">$</span>
                                                     <Input 
-                                                        type="text" 
-                                                        value={form.baseInicialDeclarada || ''} 
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        value={form.baseInicialDeclarada > 0 ? formatCOP(form.baseInicialDeclarada) : ''} 
                                                         onChange={(e) => {
-                                                            const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                                                            const val = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
                                                             form.setBaseInicialDeclarada(val);
                                                         }}
-                                                        className="pl-7 text-sm h-10" 
-                                                        placeholder="Ej. 200000" 
+                                                        className="pl-7 text-sm h-10 font-bold tabular-nums" 
+                                                        placeholder="Ej. 200.000" 
                                                     />
                                                 </div>
                                             </FormGroup>
@@ -576,20 +956,32 @@ const ArqueoPreview: React.FC = () => {
                                                 />
                                             </div>
                                             
-                                            {form.baseInicialDeclarada > 0 && (
-                                                <div className={cn("p-4 rounded-xl text-center font-bold", 
-                                                    form.totalBaseCaja === form.baseInicialDeclarada ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700")}>
-                                                    Diferencia: {formatCurrencyValue(form.totalBaseCaja - form.baseInicialDeclarada)}
-                                                </div>
-                                            )}
+                                            {form.baseInicialDeclarada > 0 && (() => {
+                                                const diff = form.totalBaseCaja - form.baseInicialDeclarada;
+                                                const isMatch = diff === 0;
+                                                return (
+                                                    <div className={cn(
+                                                        "p-3.5 rounded-xl text-center font-bold text-sm border tabular-nums",
+                                                        isMatch
+                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/50"
+                                                            : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/50"
+                                                    )}>
+                                                        {isMatch
+                                                            ? 'Base cuadrada exactamente con el monto inicial declarado'
+                                                            : diff > 0
+                                                                ? `Sobrante en base: ${formatCurrencyValue(diff)}`
+                                                                : `Faltante en base: ${formatCurrencyValue(Math.abs(diff))}`}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </Card>
                                 )}
 
                                 {form.currentStep === 4 && (
                                     <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span>
                                             Conteo Efectivo (Ventas)
                                         </h3>
                                         <DenominationTable 
@@ -604,8 +996,8 @@ const ArqueoPreview: React.FC = () => {
 
                                 {form.currentStep === 5 && (
                                     <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span>
                                             Gastos de Caja
                                         </h3>
                                         <div className="space-y-6">
@@ -623,9 +1015,9 @@ const ArqueoPreview: React.FC = () => {
                                                 onAdd={form.handleAddGastoProveedor} 
                                                 onRemove={form.handleRemoveGastoProveedor} 
                                             />
-                                            <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center text-lg">
-                                                <span className="font-bold text-gray-700 dark:text-gray-300">Total Gastos:</span>
-                                                <span className="font-black text-indigo-600 dark:text-indigo-400">{formatCurrencyValue(form.totalGastosPersonal + form.totalGastosProveedores)}</span>
+                                            <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center text-lg">
+                                                <span className="font-bold text-slate-700 dark:text-slate-300">Total Gastos:</span>
+                                                <span className="font-black text-purple-600 dark:text-purple-400 tabular-nums">{formatCurrencyValue(form.totalGastosPersonal + form.totalGastosProveedores)}</span>
                                             </div>
                                         </div>
                                     </Card>
@@ -633,13 +1025,13 @@ const ArqueoPreview: React.FC = () => {
 
                                 {form.currentStep === 6 && (
                                     <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300">
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-cyan-500 rounded-full"></span>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+                                            <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span>
                                             Medios Digitales
                                         </h3>
                                         <div className="space-y-4">
-                                            <CurrencyInput label="Datáfono David" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
-                                            <CurrencyInput label="Datáfono Julián" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            <CurrencyInput label="Datáfono Bold" name="datafonoDavid" value={form.formData.datafonoDavid} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
+                                            <CurrencyInput label="Datáfono Credibanco" name="datafonoJulian" value={form.formData.datafonoJulian} onChange={form.handleCurrencyChange} useMonoFont={useMonoFont} />
                                             
                                             <div className="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700 space-y-4">
                                                 <CurrencyInput
@@ -648,6 +1040,8 @@ const ArqueoPreview: React.FC = () => {
                                                     value={form.formData.transfBancolombia}
                                                     onChange={form.handleCurrencyChange}
                                                     onDetailClick={() => form.openDetailModal('transfBancolombia', 'Código QR')}
+                                                    detailCount={form.paymentDetails.transfBancolombia.length}
+                                                    sublabel="Haz clic en Detalle para sumar transferencias"
                                                     readOnly={true}
                                                     useMonoFont={useMonoFont}
                                                 />
@@ -657,6 +1051,8 @@ const ArqueoPreview: React.FC = () => {
                                                     value={form.formData.nequi}
                                                     onChange={form.handleCurrencyChange}
                                                     onDetailClick={() => form.openDetailModal('nequi', 'Nequi')}
+                                                    detailCount={form.paymentDetails.nequi.length}
+                                                    sublabel="Haz clic en Detalle para sumar movimientos Nequi"
                                                     readOnly={true}
                                                     useMonoFont={useMonoFont}
                                                 />
@@ -666,40 +1062,110 @@ const ArqueoPreview: React.FC = () => {
                                     </Card>
                                 )}
 
-                                {form.currentStep === 7 && (
-                                    <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">
-                                            Resumen del Arqueo
-                                        </h3>
-                                        
-                                        <div className="grid grid-cols-2 gap-4 mb-6">
-                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center">
-                                                <span className="block text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Total Esperado</span>
-                                                <span className="block text-base font-bold text-blue-700 dark:text-blue-300">{formatCurrencyValue(form.ventaTotalEsperada)}</span>
+                                {form.currentStep === 7 && (() => {
+                                    const totalGastos = form.totalGastosPersonal + form.totalGastosProveedores;
+                                    const totalDatafonos = form.formData.datafonoDavid + form.formData.datafonoJulian;
+                                    return (
+                                        <Card className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg border-0 dark:bg-slate-800 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
+                                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-emerald-500"></div>
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5 pb-4 border-b border-gray-100 dark:border-slate-700">
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                                                        Resumen del Arqueo
+                                                    </h3>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        Revisa los valores antes de confirmar el cierre definitivo.
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                    <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 font-semibold text-gray-700 dark:text-gray-200">
+                                                        {form.formData.fecha}
+                                                    </span>
+                                                    <span className="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 font-semibold text-purple-700 dark:text-purple-300">
+                                                        {form.formData.cajero || 'Sin cajero'}
+                                                    </span>
+                                                    {form.formData.visitas > 0 && (
+                                                        <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 font-semibold text-slate-700 dark:text-slate-200">
+                                                            {form.formData.visitas} visitas
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl text-center">
-                                                <span className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Total Recaudado</span>
-                                                <span className="block text-base font-bold text-emerald-700 dark:text-emerald-300">{formatCurrencyValue(form.totalRecaudado)}</span>
+
+                                            <div className={isBlindMode ? 'grid grid-cols-1 gap-4 mb-5' : 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5'}>
+                                                {!isBlindMode && (
+                                                    <div className="bg-purple-50 dark:bg-purple-900/20 p-3.5 rounded-xl text-center border border-purple-100 dark:border-purple-800/40">
+                                                        <span className="block text-xs2 font-bold text-purple-600 dark:text-purple-400 uppercase tracking-caps mb-1">Total Esperado</span>
+                                                        <span className="block text-lg font-black text-purple-700 dark:text-purple-300 tabular-nums">{formatCurrencyValue(form.ventaTotalEsperada)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3.5 rounded-xl text-center border border-emerald-100 dark:border-emerald-800/40">
+                                                    <span className="block text-xs2 font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-caps mb-1">Total Recaudado</span>
+                                                    <span className="block text-lg font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{formatCurrencyValue(form.totalRecaudado)}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        
-                                        <div className={cn("p-3 rounded-xl text-center font-bold text-sm mb-6", 
-                                            form.descuadre === 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-                                            Descuadre Final: {formatCurrencyValue(form.descuadre)}
-                                        </div>
-                                        
-                                        <Button
-                                            type="submit"
-                                            variant="primary"
-                                            size="md"
-                                            className="w-full flex justify-center items-center gap-2"
-                                        >
-                                            <span>Finalizar Arqueo</span>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        </Button>
-                                    </Card>
-                                )}
+
+                                            {/* Desglose rápido */}
+                                            <div className="bg-gray-50 dark:bg-slate-900/40 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 space-y-2 mb-5 text-sm">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 dark:text-gray-400">Efectivo Contado (Ventas)</span>
+                                                    <span className="font-bold text-gray-800 dark:text-gray-100 tabular-nums">{formatCurrencyValue(form.totalCuadreVenta)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 dark:text-gray-400">Gastos de Caja</span>
+                                                    <span className="font-bold text-gray-800 dark:text-gray-100 tabular-nums">{formatCurrencyValue(totalGastos)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 dark:text-gray-400">Datáfonos (Bold + Credibanco)</span>
+                                                    <span className="font-bold text-gray-800 dark:text-gray-100 tabular-nums">{formatCurrencyValue(totalDatafonos)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 dark:text-gray-400">Código QR / Transferencias</span>
+                                                    <span className="font-bold text-gray-800 dark:text-gray-100 tabular-nums">{formatCurrencyValue(form.formData.transfBancolombia)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 dark:text-gray-400">Nequi</span>
+                                                    <span className="font-bold text-gray-800 dark:text-gray-100 tabular-nums">{formatCurrencyValue(form.formData.nequi)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600 dark:text-gray-400">Rappi</span>
+                                                    <span className="font-bold text-gray-800 dark:text-gray-100 tabular-nums">{formatCurrencyValue(form.formData.rappi)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-slate-700 text-xs">
+                                                    <span className="text-gray-500 dark:text-gray-400">Base de Caja (Retorno al fondo)</span>
+                                                    <span className="font-semibold text-gray-700 dark:text-gray-300 tabular-nums">{formatCurrencyValue(form.totalBaseCaja)}</span>
+                                                </div>
+                                            </div>
+
+                                            {!isBlindMode && (
+                                                <div className={cn(
+                                                    "p-3.5 rounded-xl text-center font-bold text-sm mb-5 border tabular-nums",
+                                                    form.descuadre === 0
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/50"
+                                                        : form.descuadre > 0
+                                                            ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800/50"
+                                                            : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800/50"
+                                                )}>
+                                                    {form.descuadre === 0
+                                                        ? 'Cuadre Perfecto ($ 0)'
+                                                        : form.descuadre > 0
+                                                            ? `Sobrante Final: ${formatCurrencyValue(form.descuadre)}`
+                                                            : `Faltante Final: ${formatCurrencyValue(Math.abs(form.descuadre))}`}
+                                                </div>
+                                            )}
+
+                                            <Button
+                                                type="submit"
+                                                variant="primary"
+                                                size="lg"
+                                                className="w-full flex justify-center items-center gap-2 font-bold"
+                                            >
+                                                <span>Finalizar Arqueo</span>
+                                                <CheckIcon className="w-5 h-5" />
+                                            </Button>
+                                        </Card>
+                                    );
+                                })()}
 
                                 {/* Nav Buttons */}
                                 <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
@@ -717,10 +1183,15 @@ const ArqueoPreview: React.FC = () => {
                                             variant="primary" 
                                             type="button" 
                                             onClick={() => {
+                                                if (form.currentStep === 1 && !form.formData.cajero.trim()) {
+                                                    setCajeroError('Ingresa el nombre del cajero responsable para continuar.');
+                                                    return;
+                                                }
                                                 if (form.currentStep === 3 && form.totalBaseCaja !== form.baseInicialDeclarada) {
+                                                    const diff = form.totalBaseCaja - form.baseInicialDeclarada;
                                                     setAlertState({
                                                         isOpen: true,
-                                                        message: "El conteo físico no concuerda con la Base Inicial Declarada. Ajusta el conteo o el valor inicial para continuar."
+                                                        message: `El conteo físico de la base (${formatCurrencyValue(form.totalBaseCaja)}) no concuerda con la Base Inicial Declarada (${formatCurrencyValue(form.baseInicialDeclarada)}). Diferencia: ${diff > 0 ? '+' : ''}${formatCurrencyValue(diff)}.`
                                                     });
                                                     return;
                                                 }
@@ -752,42 +1223,6 @@ const ArqueoPreview: React.FC = () => {
                 type="warning"
             />
         </div >
-    );
-};
-
-const GastoList = ({ title, gastos, total, onAdd, onRemove }: { title: string, gastos: any[], total: number, onAdd: (desc: string, val: number) => void, onRemove: (id: string) => void }) => {
-    const [desc, setDesc] = useState('');
-    const [val, setVal] = useState('');
-    return (
-        <div className="space-y-3">
-            <div className="flex justify-between items-center px-2">
-                <h4 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">{title}</h4>
-                <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatCurrencyValue(total)}</span>
-            </div>
-            <div className="bg-gray-50 dark:bg-slate-900/30 rounded-xl p-3 space-y-3 border border-gray-100 dark:border-slate-700">
-                {gastos.map(g => (
-                    <div key={g.id} className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-gray-200 dark:border-slate-600 shadow-sm">
-                        <span className="text-sm font-medium flex-1 truncate">{g.descripcion}</span>
-                        <span className="text-sm font-bold w-24 text-right mx-2">{formatCurrencyValue(g.valor)}</span>
-                        <Button variant="icon-danger" size="icon-sm" type="button" onClick={() => onRemove(g.id)}>
-                            <TrashIcon className="h-4 w-4" />
-                        </Button>
-                    </div>
-                ))}
-                
-                <div className="flex gap-2 items-center pt-2">
-                    <div className="flex-1 min-w-0">
-                        <Input type="text" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Descripción" className="text-sm h-9" />
-                    </div>
-                    <div className="w-28 shrink-0">
-                        <Input type="text" value={val} onChange={e => setVal(e.target.value.replace(/\D/g, ''))} placeholder="Valor" className="text-sm text-right h-9" />
-                    </div>
-                    <Button variant="primary" size="sm" type="button" disabled={!desc || !val} onClick={() => { onAdd(desc, parseInt(val) || 0); setDesc(''); setVal(''); }}>
-                        Añadir
-                    </Button>
-                </div>
-            </div>
-        </div>
     );
 };
 

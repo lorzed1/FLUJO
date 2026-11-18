@@ -108,12 +108,15 @@ const AppRouter: React.FC = () => {
         <Routes>
             {/* Layout Principal */}
             <Route element={<MainLayout />}>
-                {/* Arqueo: Accesible para Admin y Cajero */}
+                {/* Arqueo: Accesible para Admin y Cajero (submódulos restringidos a Admin) */}
                 <Route path="/arqueo/tips" element={
-                    <TipsPage />
+                    userRole === 'admin' ? <TipsPage /> : <Navigate to="/arqueo" replace />
                 } />
                 <Route path="/arqueo/transfers" element={
-                    <TransfersView />
+                    userRole === 'admin' ? <TransfersView /> : <Navigate to="/arqueo" replace />
+                } />
+                <Route path="/arqueo/history" element={
+                    userRole === 'admin' ? <ArqueoView /> : <Navigate to="/arqueo" replace />
                 } />
                 <Route path="/arqueo/*" element={
                     <ArqueoView />

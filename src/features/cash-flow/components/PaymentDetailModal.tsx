@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ClipboardDocumentListIcon, PlusCircleIcon, TrashIcon } from '../../../components/ui/Icons';
 import { formatCOP, parseCOP } from '../../../components/ui/Input';
 import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 interface PaymentDetailModalProps {
     isOpen: boolean;
@@ -70,28 +72,33 @@ export const PaymentDetailModal: React.FC<PaymentDetailModalProps> = ({ isOpen, 
                                     setNewVal(raw ? formatCOP(raw) : '');
                                 }}
                                 placeholder="0"
-                                className={`w-full pl-7 pr-3 py-3 text-lg ${useMonoFont ? 'font-mono' : ''} text-gray-800 dark:text-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all`}
+                                className={`w-full pl-7 pr-3 py-3 text-lg ${useMonoFont ? 'font-mono' : ''} text-slate-800 dark:text-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-purple-600 focus:ring-4 focus:ring-purple-500/15 outline-none transition-all`}
                                 autoComplete="off"
                             />
                         </div>
-                        <button
+                        <Button
                             type="submit"
+                            variant="primary"
+                            size="lg"
                             disabled={!newVal}
                             onMouseDown={(e) => e.preventDefault()}
-                            className="bg-primary disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 rounded-xl hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center shadow-md shadow-indigo-200"
+                            className="px-4 rounded-xl"
+                            aria-label="Agregar movimiento"
                         >
                             <PlusCircleIcon className="h-6 w-6" />
-                        </button>
+                        </Button>
                     </form>
                 </div>
 
                 {/* List */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                     {items.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60">
-                            <ClipboardDocumentListIcon className="h-16 w-16 mb-2" />
-                            <p className="text-sm">Sin registros agregados</p>
-                        </div>
+                        <EmptyState
+                            icon={<ClipboardDocumentListIcon className="h-12 w-12 text-gray-400" />}
+                            title="Sin registros agregados"
+                            description="Ingresa un monto arriba y presiona Enter para sumarlo."
+                            className="py-6"
+                        />
                     ) : (
                         items.map((amount, idx) => (
                             <div key={idx} className="flex justify-between items-center p-3.5 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl border border-gray-100 dark:border-slate-700 transition-colors group animate-in slide-in-from-bottom-2 duration-300 fill-mode-backwards" style={{ animationDelay: `${idx * 50}ms` }}>
@@ -99,14 +106,18 @@ export const PaymentDetailModal: React.FC<PaymentDetailModalProps> = ({ isOpen, 
                                     <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center text-xs font-bold text-gray-400 shadow-sm">
                                         {idx + 1}
                                     </div>
-                                    <span className={`${useMonoFont ? 'font-mono' : ''} text-lg font-medium text-gray-700 dark:text-gray-200`}>${formatCOP(amount)}</span>
+                                    <span className={`${useMonoFont ? 'font-mono' : ''} text-lg font-medium text-gray-700 dark:text-gray-200 tabular-nums`}>${formatCOP(amount)}</span>
                                 </div>
-                                <button
+                                <Button
+                                    type="button"
+                                    variant="icon-danger"
+                                    size="icon-md"
                                     onClick={() => onRemoveItem(idx)}
-                                    className="text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-2 rounded-lg transition-all"
+                                    title="Eliminar movimiento"
+                                    aria-label={`Eliminar movimiento ${idx + 1}`}
                                 >
                                     <TrashIcon className="h-5 w-5" />
-                                </button>
+                                </Button>
                             </div>
                         ))
                     )}
@@ -114,20 +125,23 @@ export const PaymentDetailModal: React.FC<PaymentDetailModalProps> = ({ isOpen, 
             </div>
 
             {/* Footer Totals */}
-            <div className="p-4 bg-gray-50 dark:bg-slate-900 border-t border-gray-100 dark:border-slate-700 mt-auto shrink-0 pb-6 sm:pb-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 mt-auto shrink-0 pb-6 sm:pb-4">
                 <div className="flex justify-between items-end mb-4">
                     <div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Total Acumulado</span>
-                        <div className="text-xs text-gray-400">{items.length} movimientos</div>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Total Acumulado</span>
+                        <div className="text-xs text-slate-400">{items.length} movimientos</div>
                     </div>
-                    <span className="text-3xl font-black text-primary tracking-tight">${formatCOP(total)}</span>
+                    <span className="text-3xl font-black text-purple-600 dark:text-purple-400 tracking-tight tabular-nums">${formatCOP(total)}</span>
                 </div>
-                <button
+                <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
                     onClick={onClose}
-                    className="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all shadow-lg shadow-indigo-200"
+                    className="w-full font-bold rounded-xl"
                 >
                     Confirmar y Cerrar
-                </button>
+                </Button>
             </div>
         </Modal>
     );

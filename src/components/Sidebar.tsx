@@ -134,9 +134,9 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
       path: '/arqueo',
       children: [
         { id: 'arqueo-form', label: 'Arqueo diario', icon: <ClipboardDocumentListIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/form' },
-        { id: 'arqueo-history', label: 'Historial de cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/history' },
-        { id: 'arqueo-transfers', label: 'Medios de Pago', icon: <ArrowDownTrayIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/transfers' },
-        { id: 'arqueo-tips', label: 'Propinas', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin', 'cajero'], path: '/arqueo/tips' },
+        { id: 'arqueo-history', label: 'Historial de cierres', icon: <CalendarDaysIcon className="h-4 w-4" />, roles: ['admin'], path: '/arqueo/history' },
+        { id: 'arqueo-transfers', label: 'Medios de Pago', icon: <ArrowDownTrayIcon className="h-4 w-4" />, roles: ['admin'], path: '/arqueo/transfers' },
+        { id: 'arqueo-tips', label: 'Propinas', icon: <TableCellsIcon className="h-4 w-4" />, roles: ['admin'], path: '/arqueo/tips' },
       ]
     },
     {
@@ -205,7 +205,12 @@ const Sidebar: React.FC<SidebarProps> = ({ setCurrentView, onExport, onImport, o
     },
   ];
 
-  const navItems = allNavItems.filter(item => userRole ? item.roles.includes(userRole) : false);
+  const navItems = allNavItems
+    .filter(item => userRole ? item.roles.includes(userRole) : false)
+    .map(item => ({
+      ...item,
+      children: item.children?.filter(child => userRole ? child.roles.includes(userRole) : false),
+    }));
 
   const textClass = isCollapsed ? 'hidden' : 'hidden md:block';
 

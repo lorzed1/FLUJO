@@ -4,6 +4,7 @@ import { CalendarDaysIcon } from '../../../components/ui/Icons';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
+import { FormGroup } from '../../../components/ui/FormGroup';
 
 interface ArqueoDateSelectorProps {
     currentDate: string;
@@ -53,17 +54,11 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
             <form onSubmit={handleSubmit}>
                 {/* Content (High Density) */}
                 <div className="p-5 space-y-4">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-xs text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800/50 mb-2">
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg text-xs text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800/50 mb-2">
                         <p>Antes de continuar, asegúrate de que la fecha seleccionada coincida con el turno que estás cerrando.</p>
                     </div>
 
-                    <div>
-                        <label
-                            htmlFor="date-selector"
-                            className="block text-xs2 font-medium uppercase tracking-caps text-gray-500 dark:text-gray-400 mb-1"
-                        >
-                            Fecha de Registro
-                        </label>
+                    <FormGroup label="Fecha de Registro" required htmlFor="date-selector">
                         <DatePicker
                             id="date-selector"
                             value={currentDate}
@@ -71,7 +66,7 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
                             className="w-full"
                             required
                         />
-                    </div>
+                    </FormGroup>
                 </div>
 
                 {/* Footer (Right Aligned Actions) */}
@@ -80,15 +75,16 @@ export const ArqueoDateSelector: React.FC<ArqueoDateSelectorProps> = ({
                         <Button
                             type="button"
                             variant="secondary"
+                            size="sm"
                             onClick={onCancel}
-                            className="h-8 text-xs font-medium px-4 rounded shadow-sm"
                         >
                             Cancelar
                         </Button>
                     )}
                     <Button
                         type="submit"
-                        className="bg-purple-600 hover:bg-purple-700 text-white h-8 text-xs font-medium px-4 rounded shadow-sm"
+                        variant="primary"
+                        size="sm"
                     >
                         Confirmar y Continuar
                     </Button>
