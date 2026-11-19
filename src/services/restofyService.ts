@@ -372,7 +372,7 @@ export const restofyService = {
         cashExpensesPesos?: number;
         paymentAmounts: Partial<Record<FlujoPaymentField, number>>;
         paymentMapping: RestofyPaymentMapping;
-        baseReturnPesos: number;
+        baseReturnPesos?: number;
         notes?: string;
     }): Promise<RestofyCloseExecutionResult> {
         const {
@@ -381,7 +381,7 @@ export const restofyService = {
             cashExpensesPesos = 0,
             paymentAmounts,
             paymentMapping,
-            baseReturnPesos,
+            baseReturnPesos = 0,
             notes,
         } = params;
 
