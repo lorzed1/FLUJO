@@ -334,6 +334,33 @@ export class DatabaseService {
         }
     }
 
+    static async saveRestofyConfig(config: unknown): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('settings')
+                .upsert({ key: 'restofyConfig', data: config, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error guardando configuración de Restofy:', error);
+            throw error;
+        }
+    }
+
+    static async getRestofyConfig<T = unknown>(): Promise<T | null> {
+        try {
+            const { data, error } = await supabase
+                .from('settings')
+                .select('data')
+                .eq('key', 'restofyConfig')
+                .maybeSingle();
+            if (error) throw error;
+            return (data?.data as T) ?? null;
+        } catch (error) {
+            console.error('Error obteniendo configuración de Restofy:', error);
+            throw error;
+        }
+    }
+
 
     // ============ ARQUEOS (UPDATED) ============
 

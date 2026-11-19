@@ -46,7 +46,8 @@ import { RestofyConfigModal } from './components/RestofyConfigModal';
 import { useArqueoForm, formatCurrencyValue } from './hooks/useArqueoForm';
 import { ArqueoDateSelector } from './components/ArqueoDateSelector';
 import { cn } from '../../lib/utils';
-import { getRestofyConfig, restofyService } from '../../services/restofyService';
+import { getRestofyConfig, loadRestofyConfig, restofyService } from '../../services/restofyService';
+import type { RestofyConfig } from '../../types/restofy';
 
 // ============================================
 // Types (re-exported for external consumers)
@@ -67,6 +68,7 @@ const ArqueoPreview: React.FC = () => {
     const form = useArqueoForm();
 
     const [showRestofyConfig, setShowRestofyConfig] = useState(false);
+    const [restofyConfig, setRestofyConfig] = useState<RestofyConfig>(() => getRestofyConfig());
     const [isImportingRestofy, setIsImportingRestofy] = useState(false);
     const [flujoSavedForCurrentModal, setFlujoSavedForCurrentModal] = useState(false);
     const [restofyStatus, setRestofyStatus] = useState<RestofyConfirmationStatus>({
@@ -79,8 +81,19 @@ const ArqueoPreview: React.FC = () => {
         syncResult: null,
     });
 
-    const loadRestofyPreCheck = async () => {
-        const cfg = getRestofyConfig();
+    useEffect(() => {
+        let cancelled = false;
+        loadRestofyConfig().then((cfg) => {
+            if (!cancelled) setRestofyConfig(cfg);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const loadRestofyPreCheck = async (overrideConfig?: RestofyConfig) => {
+        const cfg = overrideConfig ?? await loadRestofyConfig();
+        setRestofyConfig(cfg);
         if (!cfg.enabled) {
             setRestofyStatus({
                 enabled: false,
@@ -173,14 +186,13 @@ const ArqueoPreview: React.FC = () => {
 
     useEffect(() => {
         if (form.currentStep !== 2 || form.formData.visitas > 0) return;
-        const cfg = getRestofyConfig();
-        if (!cfg.enabled || !cfg.cashRegisterId) return;
+        if (!restofyConfig.enabled || !restofyConfig.cashRegisterId) return;
 
         let cancelled = false;
         const loadGuests = async () => {
             try {
                 const registers = await restofyService.listCashRegisters();
-                const target = registers.find((r) => r.cashRegisterId === cfg.cashRegisterId);
+                const target = registers.find((r) => r.cashRegisterId === restofyConfig.cashRegisterId);
                 if (!target?.activeSessionId || cancelled) return;
                 const guests = await restofyService.fetchSessionGuestsCount(target.activeSessionId);
                 if (!cancelled && guests > 0) {
@@ -195,7 +207,7 @@ const ArqueoPreview: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [form.currentStep]);
+    }, [form.currentStep, restofyConfig.enabled, restofyConfig.cashRegisterId]);
     const tableRef = useRef<ArqueosTableHandle>(null);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [alertState, setAlertState] = useState<{isOpen: boolean, message: string}>({isOpen: false, message: ''});
@@ -322,7 +334,8 @@ const ArqueoPreview: React.FC = () => {
     };
 
     const runRestofySync = async (): Promise<boolean> => {
-        const cfg = getRestofyConfig();
+        const cfg = await loadRestofyConfig();
+        setRestofyConfig(cfg);
         if (!cfg.enabled) return true;
 
         if (!restofyStatus.sessionId) {
@@ -354,7 +367,8 @@ const ArqueoPreview: React.FC = () => {
     };
 
     const handleImportSalesFromRestofy = async () => {
-        const cfg = getRestofyConfig();
+        const cfg = await loadRestofyConfig();
+        setRestofyConfig(cfg);
         if (!cfg.enabled || !cfg.cashRegisterId) {
             setShowRestofyConfig(true);
             return;
@@ -438,7 +452,8 @@ const ArqueoPreview: React.FC = () => {
                 let visitasToSave = form.formData.visitas;
 
                 if (isBlindMode) {
-                    const cfg = getRestofyConfig();
+                    const cfg = await loadRestofyConfig();
+                    setRestofyConfig(cfg);
                     if (cfg.enabled && cfg.cashRegisterId) {
                         try {
                             const silentData = await restofyService.fetchSessionSalesAndTips(cfg.cashRegisterId);
@@ -607,8 +622,9 @@ const ArqueoPreview: React.FC = () => {
                 <RestofyConfigModal
                     isOpen={showRestofyConfig}
                     onClose={() => setShowRestofyConfig(false)}
-                    onSaved={() => {
-                        if (form.showConfirmation) loadRestofyPreCheck();
+                    onSaved={(savedConfig) => {
+                        setRestofyConfig(savedConfig);
+                        if (form.showConfirmation) loadRestofyPreCheck(savedConfig);
                     }}
                 />
 
@@ -875,7 +891,7 @@ const ArqueoPreview: React.FC = () => {
                                                 <span className="w-1.5 h-6 bg-purple-600 rounded-full"></span>
                                                 Registro de Venta
                                             </h3>
-                                            {!isBlindMode && getRestofyConfig().enabled && (
+                                            {!isBlindMode && restofyConfig.enabled && (
                                                 <Button
                                                     variant="secondary"
                                                     size="xs"

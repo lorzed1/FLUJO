@@ -12,8 +12,9 @@ import {
 import {
     FLUJO_PAYMENT_FIELD_LABELS,
     getRestofyConfig,
+    loadRestofyConfig,
+    persistRestofyConfig,
     restofyService,
-    saveRestofyConfig,
 } from '../../../services/restofyService';
 import type {
     FlujoPaymentField,
@@ -37,6 +38,7 @@ export const RestofyConfigModal: React.FC<RestofyConfigModalProps> = ({
     const [registers, setRegisters] = useState<RestofyCashRegister[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<RestofyPaymentMethod[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSavingConfig, setIsSavingConfig] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
@@ -74,9 +76,17 @@ export const RestofyConfigModal: React.FC<RestofyConfigModalProps> = ({
 
     useEffect(() => {
         if (!isOpen) return;
-        const current = getRestofyConfig();
-        setConfig(current);
-        loadRestofyMetadata(current.cashRegisterId);
+        let cancelled = false;
+        const initModal = async () => {
+            const current = await loadRestofyConfig();
+            if (cancelled) return;
+            setConfig(current);
+            await loadRestofyMetadata(current.cashRegisterId);
+        };
+        initModal();
+        return () => {
+            cancelled = true;
+        };
     }, [isOpen]);
 
     const handleRegisterChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -100,10 +110,22 @@ export const RestofyConfigModal: React.FC<RestofyConfigModalProps> = ({
         }));
     };
 
-    const handleSave = () => {
-        saveRestofyConfig(config);
-        onSaved?.(config);
-        onClose();
+    const handleSave = async () => {
+        setIsSavingConfig(true);
+        setErrorMsg(null);
+        try {
+            await persistRestofyConfig(config);
+            onSaved?.(config);
+            onClose();
+        } catch (err: unknown) {
+            setErrorMsg(
+                err instanceof Error
+                    ? `No se pudo guardar en Supabase: ${err.message}`
+                    : 'No se pudo guardar la configuración en Supabase.'
+            );
+        } finally {
+            setIsSavingConfig(false);
+        }
     };
 
     return (
@@ -212,11 +234,11 @@ export const RestofyConfigModal: React.FC<RestofyConfigModalProps> = ({
             </div>
 
             <div className="p-4 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2 bg-gray-50 dark:bg-slate-800/50">
-                <Button variant="secondary" size="md" onClick={onClose}>
+                <Button variant="secondary" size="md" onClick={onClose} disabled={isSavingConfig}>
                     Cancelar
                 </Button>
-                <Button variant="primary" size="md" onClick={handleSave}>
-                    Guardar Configuración
+                <Button variant="primary" size="md" onClick={handleSave} disabled={isSavingConfig}>
+                    {isSavingConfig ? <Spinner size="sm" variant="white" /> : 'Guardar Configuración'}
                 </Button>
             </div>
         </Modal>

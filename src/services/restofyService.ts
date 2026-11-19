@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { DatabaseService } from './database';
 import type {
     FlujoPaymentField,
     RestofyActiveSession,
@@ -49,28 +50,67 @@ export function fromCents(cents: number): number {
     return Math.round((Number(cents) || 0) / 100);
 }
 
+export function normalizeRestofyConfig(raw: unknown): RestofyConfig {
+    const parsed = (raw && typeof raw === 'object' ? raw : {}) as Partial<RestofyConfig>;
+    return {
+        enabled: Boolean(parsed.enabled),
+        cashRegisterId: typeof parsed.cashRegisterId === 'number' ? parsed.cashRegisterId : null,
+        paymentMethodMapping: {
+            ...DEFAULT_PAYMENT_MAPPING,
+            ...(parsed.paymentMethodMapping || {}),
+        },
+    };
+}
+
 export function getRestofyConfig(): RestofyConfig {
-    if (typeof window === 'undefined') return { ...DEFAULT_RESTOFY_CONFIG };
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || typeof localStorage.getItem !== 'function') {
+        return { ...DEFAULT_RESTOFY_CONFIG };
+    }
     try {
         const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
         if (!raw) return { ...DEFAULT_RESTOFY_CONFIG };
-        const parsed = JSON.parse(raw);
-        return {
-            enabled: Boolean(parsed?.enabled),
-            cashRegisterId: typeof parsed?.cashRegisterId === 'number' ? parsed.cashRegisterId : null,
-            paymentMethodMapping: {
-                ...DEFAULT_PAYMENT_MAPPING,
-                ...(parsed?.paymentMethodMapping || {}),
-            },
-        };
+        return normalizeRestofyConfig(JSON.parse(raw));
     } catch {
         return { ...DEFAULT_RESTOFY_CONFIG };
     }
 }
 
 export function saveRestofyConfig(config: RestofyConfig): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'function') {
+        return;
+    }
+    try {
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+    } catch {
+        // Ignorar errores de cuota o acceso a localStorage
+    }
+}
+
+/**
+ * Carga la configuración persistente desde Supabase (`settings.restofyConfig`)
+ * y sincroniza el caché local. Si falla Supabase, usa `localStorage` como respaldo.
+ */
+export async function loadRestofyConfig(): Promise<RestofyConfig> {
+    try {
+        const remote = await DatabaseService.getRestofyConfig<RestofyConfig>();
+        if (remote) {
+            const normalized = normalizeRestofyConfig(remote);
+            saveRestofyConfig(normalized);
+            return normalized;
+        }
+    } catch (error) {
+        console.warn('No se pudo cargar restofyConfig desde Supabase, usando caché local:', error);
+    }
+    return getRestofyConfig();
+}
+
+/**
+ * Persiste la configuración en Supabase (`settings.restofyConfig`) y en caché local.
+ */
+export async function persistRestofyConfig(config: RestofyConfig): Promise<void> {
+    const normalized = normalizeRestofyConfig(config);
+    saveRestofyConfig(normalized);
+    await DatabaseService.saveRestofyConfig(normalized);
 }
 
 /**

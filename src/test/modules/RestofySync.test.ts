@@ -4,16 +4,26 @@ import {
     fromCents,
     mapDenominationsToRestofy,
     mapPaymentMethodsToRestofy,
+    loadRestofyConfig,
+    persistRestofyConfig,
     restofyService,
 } from '../../services/restofyService';
 import type { RestofyDenomination, RestofyPaymentMapping } from '../../types/restofy';
 import { supabase } from '../../services/supabaseClient';
+import { DatabaseService } from '../../services/database';
 
 vi.mock('../../services/supabaseClient', () => ({
     supabase: {
         functions: {
             invoke: vi.fn(),
         },
+    },
+}));
+
+vi.mock('../../services/database', () => ({
+    DatabaseService: {
+        getRestofyConfig: vi.fn(),
+        saveRestofyConfig: vi.fn(),
     },
 }));
 
@@ -260,5 +270,27 @@ describe('restofyService - transformación y flujo de cierre', () => {
             baseInicial: 200000,
             visitas: 6,
         });
+    });
+
+    it('persiste y carga la configuración de Restofy desde Supabase', async () => {
+        const sampleConfig = {
+            enabled: true,
+            cashRegisterId: 1,
+            paymentMethodMapping: {
+                datafonoDavid: 14,
+                datafonoJulian: 14,
+                transfBancolombia: 11,
+                nequi: 11,
+                rappi: null,
+            },
+        };
+
+        vi.mocked(DatabaseService.saveRestofyConfig).mockResolvedValueOnce();
+        await persistRestofyConfig(sampleConfig);
+        expect(DatabaseService.saveRestofyConfig).toHaveBeenCalledWith(sampleConfig);
+
+        vi.mocked(DatabaseService.getRestofyConfig).mockResolvedValueOnce(sampleConfig);
+        const loaded = await loadRestofyConfig();
+        expect(loaded).toEqual(sampleConfig);
     });
 });
