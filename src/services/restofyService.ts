@@ -316,15 +316,18 @@ export const restofyService = {
             this.fetchSessionGuestsCount(target.activeSessionId).catch(() => 0),
         ]);
 
-        const totalSalesCents =
-            zReport?.kpis?.totalSalesCents ??
+        // kpis.totalIncomeCents ya descuenta salesData.discountCents; totalSalesCents es bruto sin descuentos.
+        const netSalesCents =
             zReport?.kpis?.totalIncomeCents ??
+            (zReport?.salesData
+                ? (Number(zReport.salesData.incomeCents) || 0) - (Number(zReport.salesData.discountCents) || 0)
+                : zReport?.kpis?.totalSalesCents) ??
             0;
 
         return {
             cashRegisterSessionId: target.activeSessionId,
             registerName: target.name,
-            ventaPos: fromCents(Number(totalSalesCents) || 0),
+            ventaPos: fromCents(Number(netSalesCents) || 0),
             propina: fromCents(Number(closeSummary?.summary?.tipsCents) || 0),
             baseInicial: fromCents(Number(closeSummary?.summary?.baseCents) || 0),
             visitas,

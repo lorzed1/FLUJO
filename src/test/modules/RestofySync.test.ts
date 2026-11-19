@@ -230,7 +230,8 @@ describe('restofyService - transformación y flujo de cierre', () => {
                 data: {
                     success: true,
                     data: {
-                        kpis: { totalSalesCents: 185000000, totalIncomeCents: 185000000 },
+                        kpis: { totalSalesCents: 96050000, totalIncomeCents: 95600000 },
+                        salesData: { incomeCents: 96050000, discountCents: 450000 },
                     },
                 },
                 error: null,
@@ -265,7 +266,7 @@ describe('restofyService - transformación y flujo de cierre', () => {
         expect(imported).toEqual({
             cashRegisterSessionId: 12,
             registerName: 'Caja Principal',
-            ventaPos: 1850000,
+            ventaPos: 956000,
             propina: 45000,
             baseInicial: 200000,
             visitas: 6,
